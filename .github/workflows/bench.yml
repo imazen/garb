@@ -41,3 +41,63 @@ jobs:
           path: |
             bench-output.txt
             target/criterion/
+
+  # Diagnostic: test whether target-cpu=native helps aarch64 by allowing
+  # #[target_feature(enable = "neon")] functions to inline (features already
+  # globally enabled, so the attribute boundary becomes a no-op).
+  bench-native-cpu:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            name: Linux aarch64 native
+          - os: macos-latest
+            name: macOS aarch64 native
+          - os: windows-11-arm
+            name: Windows aarch64 native
+    name: bench (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    env:
+      RUSTFLAGS: "-C target-cpu=native"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: native-cpu
+      - name: Run benchmarks (target-cpu=native)
+        run: cargo bench --bench swizzle -- --noplot 2>&1 | tee bench-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-${{ matrix.name }}
+          path: bench-output.txt
+
+  # Diagnostic: test with cross-compiled aarch64 under QEMU on x86_64
+  bench-qemu-aarch64:
+    name: bench (QEMU aarch64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+      - name: Install cross-compilation tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-user-static gcc-aarch64-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: qemu-aarch64
+      - name: Run benchmarks under QEMU
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER: qemu-aarch64-static -L /usr/aarch64-linux-gnu
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: |
+          cargo bench --bench swizzle --target aarch64-unknown-linux-gnu -- --noplot 2>&1 | tee bench-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-QEMU aarch64
+          path: bench-output.txt
