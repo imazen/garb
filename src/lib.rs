@@ -10,17 +10,18 @@
 //! operations. Supports x86-64 AVX2, ARM NEON, and WASM SIMD128 with
 //! automatic fallback to scalar code.
 //!
-//! ## Core operations (always available)
+//! ## Naming convention
 //!
-//! All functions in the crate root operate on raw `&[u8]` / `&mut [u8]` slices
-//! at row granularity. They are the SIMD-accelerated building blocks.
+//! All functions follow the pattern `{src}_to_{dst}` for copy operations and
+//! `{src}_to_{dst}_inplace` for in-place mutations. Append `_strided` for
+//! multi-row buffers with stride.
 //!
 //! ## Feature flags
 //!
 //! - **`rgb`** — Type-safe conversions using [`rgb`] crate pixel types
-//!   (`Rgb<u8>`, `Rgba<u8>`, `Bgr<u8>`, `Bgra<u8>`, etc.) via bytemuck.
-//! - **`imgref`** — Whole-image conversions using [`imgref`] types
-//!   (`ImgRef`, `ImgVec`). Implies `rgb`.
+//!   via bytemuck. Zero-copy in-place swaps return reinterpreted references.
+//! - **`imgref`** — Multi-row conversions using [`imgref::ImgRef`] /
+//!   [`imgref::ImgRefMut`]. No allocation — caller owns all buffers.
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -28,10 +29,10 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+#[cfg(feature = "imgref")]
 extern crate alloc;
 
 mod swizzle;
-
 pub use swizzle::*;
 
 #[cfg(feature = "rgb")]
@@ -39,3 +40,16 @@ pub mod typed;
 
 #[cfg(feature = "imgref")]
 pub mod img;
+
+/// Pixel buffer size or alignment error.
+///
+/// Returned when a buffer's length is not a multiple of the pixel size,
+/// or a destination buffer is too small for the source pixel count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SizeError;
+
+impl core::fmt::Display for SizeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("pixel buffer size mismatch")
+    }
+}
