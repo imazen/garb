@@ -1,0 +1,27 @@
+[package]
+name = "garb"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Lilith River <lilith@imazen.io>"]
+description = "Dress your pixels for the occasion — SIMD-optimized pixel format conversions"
+license = "MIT OR Apache-2.0"
+keywords = ["pixel", "swizzle", "bgra", "rgba", "simd"]
+categories = ["graphics", "multimedia::images", "no-std"]
+
+[dependencies]
+archmage = { version = "0.8", features = ["macros", "safe_unaligned_simd"] }
+safe_unaligned_simd = "0.2"
+bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
+rgb = { version = "0.8", features = ["bytemuck"], optional = true }
+imgref = { version = "1", optional = true }
+
+[dev-dependencies]
+rgb = { version = "0.8", features = ["bytemuck"] }
+imgref = "1"
+
+[features]
+default = ["std"]
+std = []
+rgb = ["dep:rgb"]
+imgref = ["dep:imgref", "rgb"]
