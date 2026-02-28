@@ -387,6 +387,9 @@ mod tests {
         let src = ImgVec::new(vec![Rgba::new(1u8, 2, 3, 4); 4], 2, 2);
         let mut dst_buf = vec![Bgra::default(); 6];
         let dst = ImgRefMut::new(&mut dst_buf, 3, 2); // width mismatch
-        assert_eq!(convert_rgba_to_bgra(src.as_ref(), dst), Err(SizeError::PixelCountMismatch));
+        assert_eq!(
+            convert_rgba_to_bgra(src.as_ref(), dst),
+            Err(SizeError::PixelCountMismatch)
+        );
     }
 }

@@ -42,9 +42,9 @@ fn check_copy(
 #[inline]
 fn check_strided(
     len: usize,
-    stride: usize,
     width: usize,
     height: usize,
+    stride: usize,
     bpp: usize,
 ) -> Result<(), SizeError> {
     if width == 0 || height == 0 {
@@ -278,7 +278,7 @@ fn bgra_to_rgb_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
 // Scalar strided wrappers
 // ===========================================================================
 
-fn swap_br_strided_scalar(t: ScalarToken, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn swap_br_strided_scalar(t: ScalarToken, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         swap_br_row_scalar(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -286,17 +286,17 @@ fn swap_br_strided_scalar(t: ScalarToken, buf: &mut [u8], stride: usize, w: usiz
 fn copy_swap_br_strided_scalar(
     t: ScalarToken,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         copy_swap_br_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
     }
 }
-fn fill_alpha_strided_scalar(t: ScalarToken, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn fill_alpha_strided_scalar(t: ScalarToken, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         fill_alpha_row_scalar(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -304,11 +304,11 @@ fn fill_alpha_strided_scalar(t: ScalarToken, buf: &mut [u8], stride: usize, w: u
 fn rgb_to_bgra_strided_scalar(
     t: ScalarToken,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgb_to_bgra_row_scalar(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
@@ -317,11 +317,11 @@ fn rgb_to_bgra_strided_scalar(
 fn rgb_to_rgba_strided_scalar(
     t: ScalarToken,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgb_to_rgba_row_scalar(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
@@ -330,11 +330,11 @@ fn rgb_to_rgba_strided_scalar(
 fn gray_to_4bpp_strided_scalar(
     t: ScalarToken,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         gray_to_4bpp_row_scalar(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
@@ -343,17 +343,17 @@ fn gray_to_4bpp_strided_scalar(
 fn gray_alpha_to_4bpp_strided_scalar(
     t: ScalarToken,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         gray_alpha_to_4bpp_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
     }
 }
-fn swap_bgr_strided_scalar(t: ScalarToken, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn swap_bgr_strided_scalar(t: ScalarToken, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         swap_bgr_row_scalar(t, &mut buf[y * stride..][..w * 3]);
     }
@@ -361,11 +361,11 @@ fn swap_bgr_strided_scalar(t: ScalarToken, buf: &mut [u8], stride: usize, w: usi
 fn copy_swap_bgr_strided_scalar(
     t: ScalarToken,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         copy_swap_bgr_row_scalar(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
@@ -374,11 +374,11 @@ fn copy_swap_bgr_strided_scalar(
 fn rgba_to_rgb_strided_scalar(
     t: ScalarToken,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgba_to_rgb_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
@@ -387,11 +387,11 @@ fn rgba_to_rgb_strided_scalar(
 fn bgra_to_rgb_strided_scalar(
     t: ScalarToken,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         bgra_to_rgb_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
@@ -715,7 +715,7 @@ fn bgra_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
 // x86-64 arcane strided wrappers
 #[cfg(target_arch = "x86_64")]
 #[arcane]
-fn swap_br_strided_v3(t: X64V3Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn swap_br_strided_v3(t: X64V3Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         swap_br_row_v3(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -725,11 +725,11 @@ fn swap_br_strided_v3(t: X64V3Token, buf: &mut [u8], stride: usize, w: usize, h:
 fn copy_swap_br_strided_v3(
     t: X64V3Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         copy_swap_br_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
@@ -737,7 +737,7 @@ fn copy_swap_br_strided_v3(
 }
 #[cfg(target_arch = "x86_64")]
 #[arcane]
-fn fill_alpha_strided_v3(t: X64V3Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn fill_alpha_strided_v3(t: X64V3Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         fill_alpha_row_v3(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -747,11 +747,11 @@ fn fill_alpha_strided_v3(t: X64V3Token, buf: &mut [u8], stride: usize, w: usize,
 fn rgb_to_bgra_strided_v3(
     t: X64V3Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgb_to_bgra_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
@@ -762,11 +762,11 @@ fn rgb_to_bgra_strided_v3(
 fn rgb_to_rgba_strided_v3(
     t: X64V3Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgb_to_rgba_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
@@ -777,11 +777,11 @@ fn rgb_to_rgba_strided_v3(
 fn gray_to_4bpp_strided_v3(
     t: X64V3Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         gray_to_4bpp_row_v3(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
@@ -792,11 +792,11 @@ fn gray_to_4bpp_strided_v3(
 fn gray_alpha_to_4bpp_strided_v3(
     t: X64V3Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         gray_alpha_to_4bpp_row_v3(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
@@ -804,7 +804,7 @@ fn gray_alpha_to_4bpp_strided_v3(
 }
 #[cfg(target_arch = "x86_64")]
 #[arcane]
-fn swap_bgr_strided_v3(t: X64V3Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn swap_bgr_strided_v3(t: X64V3Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         swap_bgr_row_v3(t, &mut buf[y * stride..][..w * 3]);
     }
@@ -814,11 +814,11 @@ fn swap_bgr_strided_v3(t: X64V3Token, buf: &mut [u8], stride: usize, w: usize, h
 fn copy_swap_bgr_strided_v3(
     t: X64V3Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         copy_swap_bgr_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
@@ -829,11 +829,11 @@ fn copy_swap_bgr_strided_v3(
 fn rgba_to_rgb_strided_v3(
     t: X64V3Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgba_to_rgb_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
@@ -844,11 +844,11 @@ fn rgba_to_rgb_strided_v3(
 fn bgra_to_rgb_strided_v3(
     t: X64V3Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         bgra_to_rgb_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
@@ -1198,7 +1198,7 @@ fn bgra_to_rgb_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
 // ARM arcane strided wrappers
 #[cfg(target_arch = "aarch64")]
 #[arcane]
-fn swap_br_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn swap_br_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         swap_br_row_arm_v2(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -1208,11 +1208,11 @@ fn swap_br_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], stride: usize, w: usi
 fn copy_swap_br_strided_arm_v2(
     t: Arm64V2Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         copy_swap_br_row_arm_v2(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
@@ -1220,7 +1220,7 @@ fn copy_swap_br_strided_arm_v2(
 }
 #[cfg(target_arch = "aarch64")]
 #[arcane]
-fn fill_alpha_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn fill_alpha_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         fill_alpha_row_arm_v2(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -1230,11 +1230,11 @@ fn fill_alpha_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], stride: usize, w: 
 fn rgb_to_bgra_strided_arm_v2(
     t: Arm64V2Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgb_to_bgra_row_arm_v2(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
@@ -1245,11 +1245,11 @@ fn rgb_to_bgra_strided_arm_v2(
 fn rgb_to_rgba_strided_arm_v2(
     t: Arm64V2Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgb_to_rgba_row_arm_v2(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
@@ -1260,11 +1260,11 @@ fn rgb_to_rgba_strided_arm_v2(
 fn gray_to_4bpp_strided_arm_v2(
     t: Arm64V2Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         gray_to_4bpp_row_arm_v2(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
@@ -1275,11 +1275,11 @@ fn gray_to_4bpp_strided_arm_v2(
 fn gray_alpha_to_4bpp_strided_arm_v2(
     t: Arm64V2Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         gray_alpha_to_4bpp_row_arm_v2(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
@@ -1287,7 +1287,7 @@ fn gray_alpha_to_4bpp_strided_arm_v2(
 }
 #[cfg(target_arch = "aarch64")]
 #[arcane]
-fn swap_bgr_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn swap_bgr_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         swap_bgr_row_arm_v2(t, &mut buf[y * stride..][..w * 3]);
     }
@@ -1297,11 +1297,11 @@ fn swap_bgr_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], stride: usize, w: us
 fn copy_swap_bgr_strided_arm_v2(
     t: Arm64V2Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         copy_swap_bgr_row_arm_v2(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
@@ -1312,11 +1312,11 @@ fn copy_swap_bgr_strided_arm_v2(
 fn rgba_to_rgb_strided_arm_v2(
     t: Arm64V2Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgba_to_rgb_row_arm_v2(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
@@ -1327,11 +1327,11 @@ fn rgba_to_rgb_strided_arm_v2(
 fn bgra_to_rgb_strided_arm_v2(
     t: Arm64V2Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         bgra_to_rgb_row_arm_v2(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
@@ -1666,7 +1666,7 @@ fn bgra_to_rgb_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
 // WASM arcane strided wrappers
 #[cfg(target_arch = "wasm32")]
 #[arcane]
-fn swap_br_strided_wasm128(t: Wasm128Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn swap_br_strided_wasm128(t: Wasm128Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         swap_br_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -1676,11 +1676,11 @@ fn swap_br_strided_wasm128(t: Wasm128Token, buf: &mut [u8], stride: usize, w: us
 fn copy_swap_br_strided_wasm128(
     t: Wasm128Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         copy_swap_br_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
@@ -1688,7 +1688,7 @@ fn copy_swap_br_strided_wasm128(
 }
 #[cfg(target_arch = "wasm32")]
 #[arcane]
-fn fill_alpha_strided_wasm128(t: Wasm128Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn fill_alpha_strided_wasm128(t: Wasm128Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         fill_alpha_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -1698,11 +1698,11 @@ fn fill_alpha_strided_wasm128(t: Wasm128Token, buf: &mut [u8], stride: usize, w:
 fn rgb_to_bgra_strided_wasm128(
     t: Wasm128Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgb_to_bgra_row_wasm128(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
@@ -1713,11 +1713,11 @@ fn rgb_to_bgra_strided_wasm128(
 fn rgb_to_rgba_strided_wasm128(
     t: Wasm128Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgb_to_rgba_row_wasm128(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
@@ -1728,11 +1728,11 @@ fn rgb_to_rgba_strided_wasm128(
 fn gray_to_4bpp_strided_wasm128(
     t: Wasm128Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         gray_to_4bpp_row_wasm128(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
@@ -1743,11 +1743,11 @@ fn gray_to_4bpp_strided_wasm128(
 fn gray_alpha_to_4bpp_strided_wasm128(
     t: Wasm128Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         gray_alpha_to_4bpp_row_wasm128(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
@@ -1755,7 +1755,7 @@ fn gray_alpha_to_4bpp_strided_wasm128(
 }
 #[cfg(target_arch = "wasm32")]
 #[arcane]
-fn swap_bgr_strided_wasm128(t: Wasm128Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+fn swap_bgr_strided_wasm128(t: Wasm128Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
     for y in 0..h {
         swap_bgr_row_wasm128(t, &mut buf[y * stride..][..w * 3]);
     }
@@ -1765,11 +1765,11 @@ fn swap_bgr_strided_wasm128(t: Wasm128Token, buf: &mut [u8], stride: usize, w: u
 fn copy_swap_bgr_strided_wasm128(
     t: Wasm128Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         copy_swap_bgr_row_wasm128(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
@@ -1780,11 +1780,11 @@ fn copy_swap_bgr_strided_wasm128(
 fn rgba_to_rgb_strided_wasm128(
     t: Wasm128Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         rgba_to_rgb_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
@@ -1795,11 +1795,11 @@ fn rgba_to_rgb_strided_wasm128(
 fn bgra_to_rgb_strided_wasm128(
     t: Wasm128Token,
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
     w: usize,
     h: usize,
+    ss: usize,
+    ds: usize,
 ) {
     for y in 0..h {
         bgra_to_rgb_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
@@ -1866,121 +1866,144 @@ pub fn gray_alpha_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 // Public API — strided
 // ===========================================================================
 
-/// Swap B↔R in-place for a strided 4bpp image. Single SIMD dispatch.
+/// Swap B↔R in-place for a strided 4bpp image (RGBA↔BGRA).
+///
+/// `stride` is the distance in bytes between the start of consecutive rows.
+/// Must be ≥ `width × 4`. Padding bytes between rows are never read or written.
+/// The buffer must be at least `(height - 1) * stride + width * 4` bytes.
 pub fn rgba_to_bgra_inplace_strided(
     buf: &mut [u8],
-    stride: usize,
     width: usize,
     height: usize,
+    stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(buf.len(), stride, width, height, 4)?;
+    check_strided(buf.len(), width, height, stride, 4)?;
     incant!(
-        swap_br_strided(buf, stride, width, height),
+        swap_br_strided(buf, width, height, stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
 }
 
-/// Copy 4bpp pixels with stride, swapping B↔R. Single SIMD dispatch.
+/// Copy 4bpp pixels between strided buffers, swapping B↔R (RGBA→BGRA or vice versa).
+///
+/// `src_stride` / `dst_stride` are the distances in bytes between the start of
+/// consecutive rows in the source and destination buffers respectively.
+/// Padding bytes between rows are never read or written.
 pub fn rgba_to_bgra_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), ss, w, h, 4)?;
-    check_strided(dst.len(), ds, w, h, 4)?;
-    incant!(
-        copy_swap_br_strided(src, ss, dst, ds, w, h),
-        [v3, arm_v2, wasm128, scalar]
-    );
-    Ok(())
-}
-
-/// Fill alpha with stride. Single SIMD dispatch.
-pub fn fill_alpha_strided(
-    buf: &mut [u8],
-    stride: usize,
     width: usize,
     height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(buf.len(), stride, width, height, 4)?;
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
-        fill_alpha_strided(buf, stride, width, height),
+        copy_swap_br_strided(src, dst, width, height, src_stride, dst_stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
 }
 
-/// RGB→BGRA with stride. Single SIMD dispatch.
+/// Set alpha to 255 for every 4bpp pixel in a strided buffer.
+///
+/// `stride` is the distance in bytes between the start of consecutive rows.
+/// Must be ≥ `width × 4`. Padding bytes between rows are never read or written.
+pub fn fill_alpha_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        fill_alpha_strided(buf, width, height, stride),
+        [v3, arm_v2, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// RGB (3 bytes/px) → BGRA (4 bytes/px) between strided buffers. Alpha=255.
+///
+/// `src_stride` / `dst_stride` are the distances in bytes between the start of
+/// consecutive rows. Padding bytes between rows are never read or written.
 pub fn rgb_to_bgra_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(src.len(), ss, w, h, 3)?;
-    check_strided(dst.len(), ds, w, h, 4)?;
+    check_strided(src.len(), width, height, src_stride, 3)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
-        rgb_to_bgra_strided(src, ss, dst, ds, w, h),
+        rgb_to_bgra_strided(src, dst, width, height, src_stride, dst_stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
 }
 
-/// RGB→RGBA with stride. Single SIMD dispatch.
+/// RGB (3 bytes/px) → RGBA (4 bytes/px) between strided buffers. Alpha=255.
+///
+/// `src_stride` / `dst_stride` are the distances in bytes between the start of
+/// consecutive rows. Padding bytes between rows are never read or written.
 pub fn rgb_to_rgba_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(src.len(), ss, w, h, 3)?;
-    check_strided(dst.len(), ds, w, h, 4)?;
+    check_strided(src.len(), width, height, src_stride, 3)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
-        rgb_to_rgba_strided(src, ss, dst, ds, w, h),
+        rgb_to_rgba_strided(src, dst, width, height, src_stride, dst_stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
 }
 
-/// Gray→RGBA with stride. Single SIMD dispatch.
+/// Gray (1 byte/px) → RGBA (4 bytes/px) between strided buffers. R=G=B=gray, alpha=255.
+///
+/// `src_stride` / `dst_stride` are the distances in bytes between the start of
+/// consecutive rows. Padding bytes between rows are never read or written.
 pub fn gray_to_rgba_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(src.len(), ss, w, h, 1)?;
-    check_strided(dst.len(), ds, w, h, 4)?;
+    check_strided(src.len(), width, height, src_stride, 1)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
-        gray_to_4bpp_strided(src, ss, dst, ds, w, h),
+        gray_to_4bpp_strided(src, dst, width, height, src_stride, dst_stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
 }
 
-/// GrayAlpha→RGBA with stride. Single SIMD dispatch.
+/// GrayAlpha (2 bytes/px) → RGBA (4 bytes/px) between strided buffers. R=G=B=gray.
+///
+/// `src_stride` / `dst_stride` are the distances in bytes between the start of
+/// consecutive rows. Padding bytes between rows are never read or written.
 pub fn gray_alpha_to_rgba_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(src.len(), ss, w, h, 2)?;
-    check_strided(dst.len(), ds, w, h, 4)?;
+    check_strided(src.len(), width, height, src_stride, 2)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
-        gray_alpha_to_4bpp_strided(src, ss, dst, ds, w, h),
+        gray_alpha_to_4bpp_strided(src, dst, width, height, src_stride, dst_stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
@@ -2018,70 +2041,82 @@ pub fn bgra_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     Ok(())
 }
 
-/// Strided 3bpp swap R↔B in-place.
+/// Swap R↔B in-place for a strided 3bpp image (RGB↔BGR).
+///
+/// `stride` is the distance in bytes between the start of consecutive rows.
+/// Must be ≥ `width × 3`. Padding bytes between rows are never read or written.
 pub fn rgb_to_bgr_inplace_strided(
     buf: &mut [u8],
-    stride: usize,
     width: usize,
     height: usize,
+    stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(buf.len(), stride, width, height, 3)?;
+    check_strided(buf.len(), width, height, stride, 3)?;
     incant!(
-        swap_bgr_strided(buf, stride, width, height),
+        swap_bgr_strided(buf, width, height, stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
 }
 
-/// Strided 3bpp copy R↔B swap.
+/// Copy 3bpp pixels between strided buffers, swapping R↔B (RGB→BGR or vice versa).
+///
+/// `src_stride` / `dst_stride` are the distances in bytes between the start of
+/// consecutive rows. Padding bytes between rows are never read or written.
 pub fn rgb_to_bgr_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(src.len(), ss, w, h, 3)?;
-    check_strided(dst.len(), ds, w, h, 3)?;
+    check_strided(src.len(), width, height, src_stride, 3)?;
+    check_strided(dst.len(), width, height, dst_stride, 3)?;
     incant!(
-        copy_swap_bgr_strided(src, ss, dst, ds, w, h),
+        copy_swap_bgr_strided(src, dst, width, height, src_stride, dst_stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
 }
 
-/// Strided 4bpp → 3bpp, dropping alpha.
+/// RGBA (4 bytes/px) → RGB (3 bytes/px) between strided buffers, dropping alpha.
+///
+/// `src_stride` / `dst_stride` are the distances in bytes between the start of
+/// consecutive rows. Padding bytes between rows are never read or written.
 pub fn rgba_to_rgb_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(src.len(), ss, w, h, 4)?;
-    check_strided(dst.len(), ds, w, h, 3)?;
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 3)?;
     incant!(
-        rgba_to_rgb_strided(src, ss, dst, ds, w, h),
+        rgba_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
 }
 
-/// Strided BGRA→RGB (4→3, drop alpha + swap).
+/// BGRA (4 bytes/px) → RGB (3 bytes/px) between strided buffers, dropping alpha + swapping.
+///
+/// `src_stride` / `dst_stride` are the distances in bytes between the start of
+/// consecutive rows. Padding bytes between rows are never read or written.
 pub fn bgra_to_rgb_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    check_strided(src.len(), ss, w, h, 4)?;
-    check_strided(dst.len(), ds, w, h, 3)?;
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 3)?;
     incant!(
-        bgra_to_rgb_strided(src, ss, dst, ds, w, h),
+        bgra_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
@@ -2152,113 +2187,121 @@ pub fn rgba_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 }
 
 // Strided aliases
+/// Alias for [`rgba_to_bgra_inplace_strided`] — same swap operation.
 #[inline(always)]
 pub fn bgra_to_rgba_inplace_strided(
     buf: &mut [u8],
+    width: usize,
+    height: usize,
     stride: usize,
-    w: usize,
-    h: usize,
 ) -> Result<(), SizeError> {
-    rgba_to_bgra_inplace_strided(buf, stride, w, h)
+    rgba_to_bgra_inplace_strided(buf, width, height, stride)
 }
+/// Alias for [`rgba_to_bgra_strided`] — same swap operation.
 #[inline(always)]
 pub fn bgra_to_rgba_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    rgba_to_bgra_strided(src, ss, dst, ds, w, h)
+    rgba_to_bgra_strided(src, dst, width, height, src_stride, dst_stride)
 }
+/// BGR→RGBA = same byte shuffle as RGB→BGRA.
 #[inline(always)]
 pub fn bgr_to_rgba_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    rgb_to_bgra_strided(src, ss, dst, ds, w, h)
+    rgb_to_bgra_strided(src, dst, width, height, src_stride, dst_stride)
 }
+/// BGR→BGRA = same byte shuffle as RGB→RGBA.
 #[inline(always)]
 pub fn bgr_to_bgra_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    rgb_to_rgba_strided(src, ss, dst, ds, w, h)
+    rgb_to_rgba_strided(src, dst, width, height, src_stride, dst_stride)
 }
+/// Alias for [`gray_to_rgba_strided`] — R=G=B so output is identical.
 #[inline(always)]
 pub fn gray_to_bgra_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    gray_to_rgba_strided(src, ss, dst, ds, w, h)
+    gray_to_rgba_strided(src, dst, width, height, src_stride, dst_stride)
 }
+/// Alias for [`gray_alpha_to_rgba_strided`] — R=G=B so output is identical.
 #[inline(always)]
 pub fn gray_alpha_to_bgra_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    gray_alpha_to_rgba_strided(src, ss, dst, ds, w, h)
+    gray_alpha_to_rgba_strided(src, dst, width, height, src_stride, dst_stride)
 }
+/// BGRA→BGR = same as RGBA→RGB (drop alpha, keep order).
 #[inline(always)]
 pub fn bgra_to_bgr_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    rgba_to_rgb_strided(src, ss, dst, ds, w, h)
+    rgba_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
 }
+/// RGBA→BGR = same as BGRA→RGB (drop alpha + swap).
 #[inline(always)]
 pub fn rgba_to_bgr_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    bgra_to_rgb_strided(src, ss, dst, ds, w, h)
+    bgra_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
 }
 /// Alias for [`rgb_to_bgr_inplace_strided`].
 #[inline(always)]
 pub fn bgr_to_rgb_inplace_strided(
     buf: &mut [u8],
+    width: usize,
+    height: usize,
     stride: usize,
-    w: usize,
-    h: usize,
 ) -> Result<(), SizeError> {
-    rgb_to_bgr_inplace_strided(buf, stride, w, h)
+    rgb_to_bgr_inplace_strided(buf, width, height, stride)
 }
 /// Alias for [`rgb_to_bgr_strided`].
 #[inline(always)]
 pub fn bgr_to_rgb_strided(
     src: &[u8],
-    ss: usize,
     dst: &mut [u8],
-    ds: usize,
-    w: usize,
-    h: usize,
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
 ) -> Result<(), SizeError> {
-    rgb_to_bgr_strided(src, ss, dst, ds, w, h)
+    rgb_to_bgr_strided(src, dst, width, height, src_stride, dst_stride)
 }
 
 // ===========================================================================
@@ -2501,7 +2544,7 @@ mod tests {
                 }
             }
             let orig = buf.clone();
-            rgba_to_bgra_inplace_strided(&mut buf, stride, w, h).unwrap();
+            rgba_to_bgra_inplace_strided(&mut buf, w, h, stride).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let i = y * stride + x * 4;
@@ -2534,7 +2577,7 @@ mod tests {
             let dst_stride = w * 4 + 8; // 8 bytes padding per row
             let src = make_3bpp(src_stride / 3 * h); // oversized, use stride
             let mut dst = vec![0xCCu8; dst_stride * h];
-            rgb_to_bgra_strided(&src, src_stride, &mut dst, dst_stride, w, h).unwrap();
+            rgb_to_bgra_strided(&src, &mut dst, w, h, src_stride, dst_stride).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let si = y * src_stride + x * 3;
@@ -2567,7 +2610,7 @@ mod tests {
                     buf[i + 3] = (x * 10) as u8; // varying alpha
                 }
             }
-            fill_alpha_strided(&mut buf, stride, w, h).unwrap();
+            fill_alpha_strided(&mut buf, w, h, stride).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let i = y * stride + x * 4;
@@ -2597,7 +2640,7 @@ mod tests {
             let dst_stride = w * 4 + 8;
             let src: Vec<u8> = (0..src_stride * h).map(|i| (i % 251) as u8).collect();
             let mut dst = vec![0u8; dst_stride * h];
-            gray_to_rgba_strided(&src, src_stride, &mut dst, dst_stride, w, h).unwrap();
+            gray_to_rgba_strided(&src, &mut dst, w, h, src_stride, dst_stride).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let g = src[y * src_stride + x];
@@ -2614,7 +2657,7 @@ mod tests {
             let src_stride2 = w * 2 + 6;
             let src2: Vec<u8> = (0..src_stride2 * h).map(|i| (i % 251) as u8).collect();
             let mut dst2 = vec![0u8; dst_stride * h];
-            gray_alpha_to_rgba_strided(&src2, src_stride2, &mut dst2, dst_stride, w, h).unwrap();
+            gray_alpha_to_rgba_strided(&src2, &mut dst2, w, h, src_stride2, dst_stride).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let si = y * src_stride2 + x * 2;
@@ -2739,7 +2782,7 @@ mod tests {
                 }
             }
             let orig = buf.clone();
-            rgb_to_bgr_inplace_strided(&mut buf, stride_3, w, h).unwrap();
+            rgb_to_bgr_inplace_strided(&mut buf, w, h, stride_3).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let i = y * stride_3 + x * 3;
@@ -2756,7 +2799,7 @@ mod tests {
             let dst_stride = w * 3 + 6;
             let src4: Vec<u8> = (0..src_stride * h).map(|i| (i % 251) as u8).collect();
             let mut dst3 = vec![0u8; dst_stride * h];
-            rgba_to_rgb_strided(&src4, src_stride, &mut dst3, dst_stride, w, h).unwrap();
+            rgba_to_rgb_strided(&src4, &mut dst3, w, h, src_stride, dst_stride).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let si = y * src_stride + x * 4;
@@ -2771,7 +2814,7 @@ mod tests {
 
             // 4→3 strided (BGRA→RGB)
             let mut dst3b = vec![0u8; dst_stride * h];
-            bgra_to_rgb_strided(&src4, src_stride, &mut dst3b, dst_stride, w, h).unwrap();
+            bgra_to_rgb_strided(&src4, &mut dst3b, w, h, src_stride, dst_stride).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let si = y * src_stride + x * 4;
@@ -2794,38 +2837,59 @@ mod tests {
     #[test]
     fn test_size_errors() {
         // Not pixel-aligned
-        assert_eq!(rgba_to_bgra_inplace(&mut [0; 5]), Err(SizeError::NotPixelAligned));
-        assert_eq!(rgba_to_bgra_inplace(&mut [0; 0]), Err(SizeError::NotPixelAligned));
-        assert_eq!(rgb_to_bgr_inplace(&mut [0; 5]), Err(SizeError::NotPixelAligned));
-        assert_eq!(gray_alpha_to_rgba(&[0; 3], &mut [0; 8]), Err(SizeError::NotPixelAligned));
+        assert_eq!(
+            rgba_to_bgra_inplace(&mut [0; 5]),
+            Err(SizeError::NotPixelAligned)
+        );
+        assert_eq!(
+            rgba_to_bgra_inplace(&mut [0; 0]),
+            Err(SizeError::NotPixelAligned)
+        );
+        assert_eq!(
+            rgb_to_bgr_inplace(&mut [0; 5]),
+            Err(SizeError::NotPixelAligned)
+        );
+        assert_eq!(
+            gray_alpha_to_rgba(&[0; 3], &mut [0; 8]),
+            Err(SizeError::NotPixelAligned)
+        );
         assert_eq!(fill_alpha(&mut [0; 5]), Err(SizeError::NotPixelAligned));
 
         // Pixel count mismatch (src aligned, dst too small)
-        assert_eq!(rgb_to_bgra(&[0; 6], &mut [0; 4]), Err(SizeError::PixelCountMismatch));
-        assert_eq!(gray_to_rgba(&[0; 3], &mut [0; 8]), Err(SizeError::PixelCountMismatch));
-        assert_eq!(rgba_to_rgb(&[0; 8], &mut [0; 3]), Err(SizeError::PixelCountMismatch));
+        assert_eq!(
+            rgb_to_bgra(&[0; 6], &mut [0; 4]),
+            Err(SizeError::PixelCountMismatch)
+        );
+        assert_eq!(
+            gray_to_rgba(&[0; 3], &mut [0; 8]),
+            Err(SizeError::PixelCountMismatch)
+        );
+        assert_eq!(
+            rgba_to_rgb(&[0; 8], &mut [0; 3]),
+            Err(SizeError::PixelCountMismatch)
+        );
     }
 
     #[test]
     fn test_strided_size_errors() {
         // stride < width * bpp
         assert_eq!(
-            rgba_to_bgra_inplace_strided(&mut [0; 32], 4, 2, 2),
+            rgba_to_bgra_inplace_strided(&mut [0; 32], 2, 2, 4),
             Err(SizeError::InvalidStride)
         );
         // buffer too small
         assert_eq!(
-            rgba_to_bgra_inplace_strided(&mut [0; 10], 8, 2, 2),
+            rgba_to_bgra_inplace_strided(&mut [0; 10], 2, 2, 8),
             Err(SizeError::InvalidStride)
         );
         // zero width
         assert_eq!(
-            rgba_to_bgra_inplace_strided(&mut [0; 8], 8, 0, 1),
+            rgba_to_bgra_inplace_strided(&mut [0; 8], 0, 1, 8),
             Err(SizeError::InvalidStride)
         );
         // zero height
         assert_eq!(
-            rgba_to_bgra_inplace_strided(&mut [0; 8], 8, 2, 0),
+            rgba_to_bgra_inplace_strided(&mut [0; 8], 2, 0, 8),
             Err(SizeError::InvalidStride)
         );
     }

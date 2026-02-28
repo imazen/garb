@@ -16,8 +16,28 @@
 //! `{src}_to_{dst}_inplace` for in-place mutations. Append `_strided` for
 //! multi-row buffers with stride.
 //!
+//! ## Strides
+//!
+//! A **stride** (also called "pitch" or "row pitch") is the number of bytes
+//! between the start of one row and the start of the next. When
+//! `stride == width × bytes_per_pixel` the image is contiguous (no padding).
+//! When `stride > width × bytes_per_pixel` the extra bytes at the end of each
+//! row are padding — garb never reads or writes them.
+//!
+//! For the `&[u8]` strided functions, stride is always measured in **bytes**.
+//! For the typed `imgref` API, stride is measured in units of the pixel type
+//! (e.g., pixel count for `ImgRef<Rgba<u8>>`).
+//!
+//! The required buffer size for a strided image is:
+//! `(height - 1) * stride + width * bytes_per_pixel`
+//!
+//! All `_strided` functions take dimensions *before* strides:
+//! - In-place: `(buf, width, height, stride)`
+//! - Copy: `(src, dst, width, height, src_stride, dst_stride)`
+//!
 //! ## Feature flags
 //!
+//! - **`std`** — Provides [`std::error::Error`] impl for [`SizeError`].
 //! - **`rgb`** — Type-safe conversions using [`rgb`] crate pixel types
 //!   via bytemuck. Zero-copy in-place swaps return reinterpreted references.
 //! - **`imgref`** — Multi-row conversions using `ImgRef` / `ImgRefMut`
@@ -61,7 +81,9 @@ impl core::fmt::Display for SizeError {
         match self {
             Self::NotPixelAligned => f.write_str("buffer length is not pixel-aligned"),
             Self::PixelCountMismatch => f.write_str("destination has fewer pixels than source"),
-            Self::InvalidStride => f.write_str("stride, dimensions, or buffer size are inconsistent"),
+            Self::InvalidStride => {
+                f.write_str("stride, dimensions, or buffer size are inconsistent")
+            }
         }
     }
 }

@@ -19,7 +19,7 @@ fn readme_strided() {
     use garb::rgba_to_bgra_inplace_strided;
 
     let mut buf = vec![0u8; 256 * 100];
-    rgba_to_bgra_inplace_strided(&mut buf, 256, 60, 100).unwrap();
+    rgba_to_bgra_inplace_strided(&mut buf, 60, 100, 256).unwrap();
 }
 
 #[cfg(feature = "rgb")]

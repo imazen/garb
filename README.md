@@ -70,13 +70,26 @@ assert_eq!(bgra, [128, 0, 255, 255]);
 
 ### Strided images
 
-For buffers where rows have padding (stride > width × bpp):
+A **stride** is the number of bytes between the start of one row and the
+start of the next. When `stride > width × bpp`, the extra bytes are padding
+(common in video frames, GPU textures, and memory-mapped images). garb never
+reads or writes padding bytes.
+
+All `_strided` functions take dimensions before strides:
+- In-place: `(buf, width, height, stride)`
+- Copy: `(src, dst, width, height, src_stride, dst_stride)`
 
 ```rust
-use garb::rgba_to_bgra_inplace_strided;
+use garb::{rgba_to_bgra_inplace_strided, rgb_to_bgra_strided};
 
-let mut buf = vec![0u8; 256 * 100]; // 60 pixels wide, stride=256, 100 rows
-rgba_to_bgra_inplace_strided(&mut buf, 256, 60, 100)?;
+// In-place: 60 pixels wide, stride=256 bytes, 100 rows
+let mut buf = vec![0u8; 256 * 100];
+rgba_to_bgra_inplace_strided(&mut buf, 60, 100, 256)?;
+
+// Copy with different strides: RGB (stride=192) → BGRA (stride=256)
+let rgb_buf = vec![0u8; 192 * 100];
+let mut bgra_buf = vec![0u8; 256 * 100];
+rgb_to_bgra_strided(&rgb_buf, &mut bgra_buf, 60, 100, 192, 256)?;
 # Ok::<(), garb::SizeError>(())
 ```
 
@@ -114,7 +127,7 @@ let bgra_img: ImgVec<Bgra<u8>> = imgref::swap_rgba_to_bgra(rgba_img);
 
 | Feature  | Default | What it adds |
 |----------|---------|--------------|
-| `std`    | yes     | Currently unused; reserved for future `std::error::Error` impl |
+| `std`    | yes     | `std::error::Error` impl for `SizeError` |
 | `rgb`    | no      | `garb::typed_rgb` — conversions on `Rgba<u8>`, `Bgra<u8>`, etc. |
 | `imgref` | no      | `garb::imgref` — whole-image conversions on `ImgVec` / `ImgRef` (implies `rgb`) |
 
