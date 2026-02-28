@@ -2,7 +2,7 @@
 
 #[test]
 fn readme_core_api() {
-    use garb::{rgb_to_bgra, rgba_to_bgra_inplace};
+    use garb::bytes::{rgb_to_bgra, rgba_to_bgra_inplace};
 
     let mut pixels = vec![255u8, 0, 128, 255, 0, 200, 100, 255];
     rgba_to_bgra_inplace(&mut pixels).unwrap();
@@ -16,7 +16,7 @@ fn readme_core_api() {
 
 #[test]
 fn readme_strided() {
-    use garb::rgba_to_bgra_inplace_strided;
+    use garb::bytes::rgba_to_bgra_inplace_strided;
 
     let mut buf = vec![0u8; 256 * 100];
     rgba_to_bgra_inplace_strided(&mut buf, 60, 100, 256).unwrap();

@@ -10,6 +10,12 @@
 //! operations. Supports x86-64 AVX2, ARM NEON, and WASM SIMD128 with
 //! automatic fallback to scalar code.
 //!
+//! ## Modules
+//!
+//! - [`bytes`] — Core `&[u8]` conversions (contiguous and strided).
+//! - [`typed_rgb`] — Type-safe wrappers using `rgb` crate pixel types (feature `rgb`).
+//! - [`imgref`] — Whole-image conversions on `ImgVec` / `ImgRef` (feature `imgref`).
+//!
 //! ## Naming convention
 //!
 //! All functions follow the pattern `{src}_to_{dst}` for copy operations and
@@ -52,8 +58,7 @@
 #[cfg(feature = "imgref")]
 extern crate alloc;
 
-mod swizzle;
-pub use swizzle::*;
+pub mod bytes;
 
 #[cfg(feature = "rgb")]
 pub mod typed_rgb;

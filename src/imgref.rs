@@ -60,7 +60,7 @@ pub fn swap_rgba_to_bgra(mut img: ImgVec<Rgba<u8>>) -> ImgVec<Bgra<u8>> {
     let stride = img.stride();
     for row in img.rows_mut() {
         let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
-        crate::rgba_to_bgra_inplace(bytes).expect("row is always valid");
+        crate::bytes::rgba_to_bgra_inplace(bytes).expect("row is always valid");
     }
     let buf: Vec<Bgra<u8>> = bytemuck::allocation::cast_vec(img.into_buf());
     ImgVec::new_stride(buf, w, h, stride)
@@ -73,7 +73,7 @@ pub fn swap_bgra_to_rgba(mut img: ImgVec<Bgra<u8>>) -> ImgVec<Rgba<u8>> {
     let stride = img.stride();
     for row in img.rows_mut() {
         let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
-        crate::bgra_to_rgba_inplace(bytes).expect("row is always valid");
+        crate::bytes::bgra_to_rgba_inplace(bytes).expect("row is always valid");
     }
     let buf: Vec<Rgba<u8>> = bytemuck::allocation::cast_vec(img.into_buf());
     ImgVec::new_stride(buf, w, h, stride)
@@ -92,7 +92,7 @@ pub fn convert_rgba_to_bgra(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::rgba_to_bgra(s, d)?;
+        crate::bytes::rgba_to_bgra(s, d)?;
     }
     Ok(())
 }
@@ -106,7 +106,7 @@ pub fn convert_bgra_to_rgba(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::bgra_to_rgba(s, d)?;
+        crate::bytes::bgra_to_rgba(s, d)?;
     }
     Ok(())
 }
@@ -124,7 +124,7 @@ pub fn convert_rgb_to_bgra(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::rgb_to_bgra(s, d)?;
+        crate::bytes::rgb_to_bgra(s, d)?;
     }
     Ok(())
 }
@@ -138,7 +138,7 @@ pub fn convert_rgb_to_rgba(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::rgb_to_rgba(s, d)?;
+        crate::bytes::rgb_to_rgba(s, d)?;
     }
     Ok(())
 }
@@ -152,7 +152,7 @@ pub fn convert_bgr_to_rgba(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::bgr_to_rgba(s, d)?;
+        crate::bytes::bgr_to_rgba(s, d)?;
     }
     Ok(())
 }
@@ -166,7 +166,7 @@ pub fn convert_bgr_to_bgra(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::bgr_to_bgra(s, d)?;
+        crate::bytes::bgr_to_bgra(s, d)?;
     }
     Ok(())
 }
@@ -184,7 +184,7 @@ pub fn convert_gray_to_rgba(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::gray_to_rgba(s, d)?;
+        crate::bytes::gray_to_rgba(s, d)?;
     }
     Ok(())
 }
@@ -198,7 +198,7 @@ pub fn convert_gray_to_bgra(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::gray_to_bgra(s, d)?;
+        crate::bytes::gray_to_bgra(s, d)?;
     }
     Ok(())
 }
@@ -212,7 +212,7 @@ pub fn convert_gray_alpha_to_rgba(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::gray_alpha_to_rgba(s, d)?;
+        crate::bytes::gray_alpha_to_rgba(s, d)?;
     }
     Ok(())
 }
@@ -226,7 +226,7 @@ pub fn convert_gray_alpha_to_bgra(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::gray_alpha_to_bgra(s, d)?;
+        crate::bytes::gray_alpha_to_bgra(s, d)?;
     }
     Ok(())
 }
@@ -244,7 +244,7 @@ pub fn convert_rgba_to_rgb(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::rgba_to_rgb(s, d)?;
+        crate::bytes::rgba_to_rgb(s, d)?;
     }
     Ok(())
 }
@@ -258,7 +258,7 @@ pub fn convert_bgra_to_rgb(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::bgra_to_rgb(s, d)?;
+        crate::bytes::bgra_to_rgb(s, d)?;
     }
     Ok(())
 }
@@ -272,7 +272,7 @@ pub fn convert_bgra_to_bgr(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::bgra_to_bgr(s, d)?;
+        crate::bytes::bgra_to_bgr(s, d)?;
     }
     Ok(())
 }
@@ -286,7 +286,7 @@ pub fn convert_rgba_to_bgr(
     for (src_row, dst_row) in src.rows().zip(dst.rows_mut()) {
         let s: &[u8] = bytemuck::cast_slice(src_row);
         let d: &mut [u8] = bytemuck::cast_slice_mut(dst_row);
-        crate::rgba_to_bgr(s, d)?;
+        crate::bytes::rgba_to_bgr(s, d)?;
     }
     Ok(())
 }

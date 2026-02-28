@@ -37,7 +37,7 @@ use rgb::{Bgr, Bgra, Gray, GrayAlpha, Rgb, Rgba};
 /// Returns a bytemuck-reinterpreted reference to the same memory.
 pub fn rgba_to_bgra_mut(pixels: &mut [Rgba<u8>]) -> &mut [Bgra<u8>] {
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-    crate::rgba_to_bgra_inplace(bytes).expect("typed slice is always valid");
+    crate::bytes::rgba_to_bgra_inplace(bytes).expect("typed slice is always valid");
     bytemuck::cast_slice_mut(bytes)
 }
 
@@ -46,21 +46,21 @@ pub fn rgba_to_bgra_mut(pixels: &mut [Rgba<u8>]) -> &mut [Bgra<u8>] {
 /// Returns a bytemuck-reinterpreted reference to the same memory.
 pub fn bgra_to_rgba_mut(pixels: &mut [Bgra<u8>]) -> &mut [Rgba<u8>] {
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-    crate::bgra_to_rgba_inplace(bytes).expect("typed slice is always valid");
+    crate::bytes::bgra_to_rgba_inplace(bytes).expect("typed slice is always valid");
     bytemuck::cast_slice_mut(bytes)
 }
 
 /// Convert `&mut [Rgb<u8>]` to `&mut [Bgr<u8>]` in-place by swapping R↔B.
 pub fn rgb_to_bgr_mut(pixels: &mut [Rgb<u8>]) -> &mut [Bgr<u8>] {
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-    crate::rgb_to_bgr_inplace(bytes).expect("typed slice is always valid");
+    crate::bytes::rgb_to_bgr_inplace(bytes).expect("typed slice is always valid");
     bytemuck::cast_slice_mut(bytes)
 }
 
 /// Convert `&mut [Bgr<u8>]` to `&mut [Rgb<u8>]` in-place by swapping B↔R.
 pub fn bgr_to_rgb_mut(pixels: &mut [Bgr<u8>]) -> &mut [Rgb<u8>] {
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-    crate::bgr_to_rgb_inplace(bytes).expect("typed slice is always valid");
+    crate::bytes::bgr_to_rgb_inplace(bytes).expect("typed slice is always valid");
     bytemuck::cast_slice_mut(bytes)
 }
 
@@ -72,14 +72,14 @@ pub fn bgr_to_rgb_mut(pixels: &mut [Bgr<u8>]) -> &mut [Rgb<u8>] {
 pub fn rgba_to_bgra_buf(src: &[Rgba<u8>], dst: &mut [Bgra<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::rgba_to_bgra(src_bytes, dst_bytes)
+    crate::bytes::rgba_to_bgra(src_bytes, dst_bytes)
 }
 
 /// Copy `&[Bgra<u8>]` into `&mut [Rgba<u8>]`, swapping B↔R.
 pub fn bgra_to_rgba_buf(src: &[Bgra<u8>], dst: &mut [Rgba<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::bgra_to_rgba(src_bytes, dst_bytes)
+    crate::bytes::bgra_to_rgba(src_bytes, dst_bytes)
 }
 
 // ---------------------------------------------------------------------------
@@ -90,14 +90,14 @@ pub fn bgra_to_rgba_buf(src: &[Bgra<u8>], dst: &mut [Rgba<u8>]) -> Result<(), Si
 pub fn rgb_to_bgra_buf(src: &[Rgb<u8>], dst: &mut [Bgra<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::rgb_to_bgra(src_bytes, dst_bytes)
+    crate::bytes::rgb_to_bgra(src_bytes, dst_bytes)
 }
 
 /// Copy `&[Rgb<u8>]` into `&mut [Rgba<u8>]`, adding alpha=255.
 pub fn rgb_to_rgba_buf(src: &[Rgb<u8>], dst: &mut [Rgba<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::rgb_to_rgba(src_bytes, dst_bytes)
+    crate::bytes::rgb_to_rgba(src_bytes, dst_bytes)
 }
 
 /// Copy `&[Bgr<u8>]` into `&mut [Rgba<u8>]`, reversing channels and adding alpha=255.
@@ -106,7 +106,7 @@ pub fn rgb_to_rgba_buf(src: &[Rgb<u8>], dst: &mut [Rgba<u8>]) -> Result<(), Size
 pub fn bgr_to_rgba_buf(src: &[Bgr<u8>], dst: &mut [Rgba<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::bgr_to_rgba(src_bytes, dst_bytes)
+    crate::bytes::bgr_to_rgba(src_bytes, dst_bytes)
 }
 
 /// Copy `&[Bgr<u8>]` into `&mut [Bgra<u8>]`, adding alpha=255.
@@ -115,7 +115,7 @@ pub fn bgr_to_rgba_buf(src: &[Bgr<u8>], dst: &mut [Rgba<u8>]) -> Result<(), Size
 pub fn bgr_to_bgra_buf(src: &[Bgr<u8>], dst: &mut [Bgra<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::bgr_to_bgra(src_bytes, dst_bytes)
+    crate::bytes::bgr_to_bgra(src_bytes, dst_bytes)
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +126,7 @@ pub fn bgr_to_bgra_buf(src: &[Bgr<u8>], dst: &mut [Bgra<u8>]) -> Result<(), Size
 pub fn gray_to_rgba_buf(src: &[Gray<u8>], dst: &mut [Rgba<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::gray_to_rgba(src_bytes, dst_bytes)
+    crate::bytes::gray_to_rgba(src_bytes, dst_bytes)
 }
 
 /// Copy `&[Gray<u8>]` into `&mut [Bgra<u8>]`, broadcasting gray to BGR with alpha=255.
@@ -135,7 +135,7 @@ pub fn gray_to_rgba_buf(src: &[Gray<u8>], dst: &mut [Rgba<u8>]) -> Result<(), Si
 pub fn gray_to_bgra_buf(src: &[Gray<u8>], dst: &mut [Bgra<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::gray_to_bgra(src_bytes, dst_bytes)
+    crate::bytes::gray_to_bgra(src_bytes, dst_bytes)
 }
 
 /// Copy `&[GrayAlpha<u8>]` into `&mut [Rgba<u8>]`, broadcasting gray to RGB.
@@ -145,7 +145,7 @@ pub fn gray_alpha_to_rgba_buf(
 ) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::gray_alpha_to_rgba(src_bytes, dst_bytes)
+    crate::bytes::gray_alpha_to_rgba(src_bytes, dst_bytes)
 }
 
 /// Copy `&[GrayAlpha<u8>]` into `&mut [Bgra<u8>]`, broadcasting gray to BGR.
@@ -157,7 +157,7 @@ pub fn gray_alpha_to_bgra_buf(
 ) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::gray_alpha_to_bgra(src_bytes, dst_bytes)
+    crate::bytes::gray_alpha_to_bgra(src_bytes, dst_bytes)
 }
 
 // ---------------------------------------------------------------------------
@@ -168,28 +168,28 @@ pub fn gray_alpha_to_bgra_buf(
 pub fn rgba_to_rgb_buf(src: &[Rgba<u8>], dst: &mut [Rgb<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::rgba_to_rgb(src_bytes, dst_bytes)
+    crate::bytes::rgba_to_rgb(src_bytes, dst_bytes)
 }
 
 /// Copy `&[Bgra<u8>]` into `&mut [Bgr<u8>]`, dropping alpha.
 pub fn bgra_to_bgr_buf(src: &[Bgra<u8>], dst: &mut [Bgr<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::bgra_to_bgr(src_bytes, dst_bytes)
+    crate::bytes::bgra_to_bgr(src_bytes, dst_bytes)
 }
 
 /// Copy `&[Bgra<u8>]` into `&mut [Rgb<u8>]`, dropping alpha and swapping B↔R.
 pub fn bgra_to_rgb_buf(src: &[Bgra<u8>], dst: &mut [Rgb<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::bgra_to_rgb(src_bytes, dst_bytes)
+    crate::bytes::bgra_to_rgb(src_bytes, dst_bytes)
 }
 
 /// Copy `&[Rgba<u8>]` into `&mut [Bgr<u8>]`, dropping alpha and swapping R↔B.
 pub fn rgba_to_bgr_buf(src: &[Rgba<u8>], dst: &mut [Bgr<u8>]) -> Result<(), SizeError> {
     let src_bytes: &[u8] = bytemuck::cast_slice(src);
     let dst_bytes: &mut [u8] = bytemuck::cast_slice_mut(dst);
-    crate::rgba_to_bgr(src_bytes, dst_bytes)
+    crate::bytes::rgba_to_bgr(src_bytes, dst_bytes)
 }
 
 // ---------------------------------------------------------------------------
@@ -199,13 +199,13 @@ pub fn rgba_to_bgr_buf(src: &[Rgba<u8>], dst: &mut [Bgr<u8>]) -> Result<(), Size
 /// Set alpha to 255 for all pixels in a `&mut [Rgba<u8>]`.
 pub fn fill_alpha_rgba(pixels: &mut [Rgba<u8>]) {
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-    crate::fill_alpha_rgba(bytes).expect("typed slice is always valid");
+    crate::bytes::fill_alpha_rgba(bytes).expect("typed slice is always valid");
 }
 
 /// Set alpha to 255 for all pixels in a `&mut [Bgra<u8>]`.
 pub fn fill_alpha_bgra(pixels: &mut [Bgra<u8>]) {
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-    crate::fill_alpha_rgba(bytes).expect("typed slice is always valid");
+    crate::bytes::fill_alpha_rgba(bytes).expect("typed slice is always valid");
 }
 
 // ---------------------------------------------------------------------------

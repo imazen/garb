@@ -49,11 +49,12 @@ Run `cargo bench` to reproduce.
 
 ## Usage
 
-The core API operates on `&[u8]` / `&mut [u8]` slices. Every function
-returns `Result<(), SizeError>` — no panics, no silent truncation.
+The core `&[u8]` / `&mut [u8]` API lives in [`garb::bytes`](https://docs.rs/garb/latest/garb/bytes/).
+Every function returns `Result<(), SizeError>` — no panics, no silent truncation.
 
 ```rust
-use garb::{rgba_to_bgra_inplace, rgb_to_bgra, SizeError};
+use garb::bytes::{rgba_to_bgra_inplace, rgb_to_bgra};
+use garb::SizeError;
 
 // In-place: swap R↔B in a 4bpp buffer
 let mut pixels = vec![255u8, 0, 128, 255,  0, 200, 100, 255];
@@ -81,7 +82,7 @@ All `_strided` functions take dimensions before strides:
 - Copy: `(src, dst, width, height, src_stride, dst_stride)`
 
 ```rust
-use garb::{rgba_to_bgra_inplace_strided, rgb_to_bgra_strided};
+use garb::bytes::{rgba_to_bgra_inplace_strided, rgb_to_bgra_strided};
 
 // In-place: 60 pixels wide, stride=256 bytes, 100 rows
 let mut buf = vec![0u8; 256 * 100];
@@ -155,7 +156,7 @@ Functions follow `{src}_to_{dst}` for copies, `{src}_to_{dst}_inplace` for
 mutations. Symmetric swaps (like RGBA↔BGRA) provide both names as aliases.
 Append `_strided` for padded row layouts.
 
-### Core API (`&[u8]`)
+### Core API — `garb::bytes` (`&[u8]`)
 
 Every function returns `Result<(), SizeError>`. All have `_strided` variants.
 

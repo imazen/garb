@@ -22,7 +22,7 @@ jobs:
             name: Linux aarch64
           - os: macos-latest
             name: macOS aarch64
-          - os: macos-15-intel
+          - os: macos-26-intel
             name: macOS x86_64
           - os: windows-latest
             name: Windows x86_64

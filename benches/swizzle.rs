@@ -67,7 +67,7 @@ fn bench_4bpp_inplace_swap(c: &mut Criterion) {
     group.bench_function("garb", |b| {
         let mut buf = src.clone();
         b.iter(|| {
-            garb::rgba_to_bgra_inplace(&mut buf).unwrap();
+            garb::bytes::rgba_to_bgra_inplace(&mut buf).unwrap();
         });
     });
 
@@ -91,7 +91,7 @@ fn bench_3bpp_inplace_swap(c: &mut Criterion) {
     group.bench_function("garb", |b| {
         let mut buf = src.clone();
         b.iter(|| {
-            garb::rgb_to_bgr_inplace(&mut buf).unwrap();
+            garb::bytes::rgb_to_bgr_inplace(&mut buf).unwrap();
         });
     });
 
@@ -115,7 +115,7 @@ fn bench_3bpp_copy_swap(c: &mut Criterion) {
 
     group.bench_function("garb", |b| {
         b.iter(|| {
-            garb::rgb_to_bgr(&src, &mut dst).unwrap();
+            garb::bytes::rgb_to_bgr(&src, &mut dst).unwrap();
         });
     });
 
@@ -139,7 +139,7 @@ fn bench_4to3_strip(c: &mut Criterion) {
 
     group.bench_function("garb", |b| {
         b.iter(|| {
-            garb::rgba_to_rgb(&src, &mut dst).unwrap();
+            garb::bytes::rgba_to_rgb(&src, &mut dst).unwrap();
         });
     });
 
@@ -163,7 +163,7 @@ fn bench_4to3_strip_swap(c: &mut Criterion) {
 
     group.bench_function("garb", |b| {
         b.iter(|| {
-            garb::bgra_to_rgb(&src, &mut dst).unwrap();
+            garb::bytes::bgra_to_rgb(&src, &mut dst).unwrap();
         });
     });
 
@@ -187,7 +187,7 @@ fn bench_3to4_expand(c: &mut Criterion) {
 
     group.bench_function("garb", |b| {
         b.iter(|| {
-            garb::rgb_to_rgba(&src, &mut dst).unwrap();
+            garb::bytes::rgb_to_rgba(&src, &mut dst).unwrap();
         });
     });
 
@@ -210,7 +210,7 @@ fn bench_fill_alpha(c: &mut Criterion) {
     group.bench_function("garb", |b| {
         let mut buf = src.clone();
         b.iter(|| {
-            garb::fill_alpha_rgba(&mut buf).unwrap();
+            garb::bytes::fill_alpha_rgba(&mut buf).unwrap();
         });
     });
 
