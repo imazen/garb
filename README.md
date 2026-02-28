@@ -70,10 +70,11 @@ assert_eq!(bgra, [128, 0, 255, 255]);
 
 ### Strided images
 
-A **stride** is the number of bytes between the start of one row and the
-start of the next. When `stride > width × bpp`, the extra bytes are padding
-(common in video frames, GPU textures, and memory-mapped images). garb never
-reads or writes padding bytes.
+A **stride** is the distance between the start of one row and the start of
+the next, measured in units of the slice's element type. For the core `&[u8]`
+API that means bytes; for the typed `imgref` API it means elements of the
+slice's item type (e.g. pixel count for `ImgRef<Rgba<u8>>`). When
+`stride > width` the gap is padding — garb never reads or writes it.
 
 All `_strided` functions take dimensions before strides:
 - In-place: `(buf, width, height, stride)`
@@ -127,7 +128,7 @@ let bgra_img: ImgVec<Bgra<u8>> = imgref::swap_rgba_to_bgra(rgba_img);
 
 | Feature  | Default | What it adds |
 |----------|---------|--------------|
-| `std`    | yes     | `std::error::Error` impl for `SizeError` |
+| `std`    | yes     | Currently a no-op; passed through to dependencies |
 | `rgb`    | no      | `garb::typed_rgb` — conversions on `Rgba<u8>`, `Bgra<u8>`, etc. |
 | `imgref` | no      | `garb::imgref` — whole-image conversions on `ImgVec` / `ImgRef` (implies `rgb`) |
 

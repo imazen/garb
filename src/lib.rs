@@ -18,18 +18,21 @@
 //!
 //! ## Strides
 //!
-//! A **stride** (also called "pitch" or "row pitch") is the number of bytes
-//! between the start of one row and the start of the next. When
-//! `stride == width × bytes_per_pixel` the image is contiguous (no padding).
-//! When `stride > width × bytes_per_pixel` the extra bytes at the end of each
-//! row are padding — garb never reads or writes them.
+//! A **stride** (also called "pitch" or "row pitch") is the distance between
+//! the start of one row and the start of the next, measured in units of the
+//! slice's element type:
 //!
-//! For the `&[u8]` strided functions, stride is always measured in **bytes**.
-//! For the typed `imgref` API, stride is measured in units of the pixel type
-//! (e.g., pixel count for `ImgRef<Rgba<u8>>`).
+//! - For `&[u8]` functions: stride is in **bytes**.
+//! - For typed APIs (`imgref`, `typed_rgb`): stride is in **elements** of the
+//!   slice's item type — e.g. pixel count for `ImgRef<Rgba<u8>>`, but byte
+//!   count for `ImgRef<u8>`.
 //!
-//! The required buffer size for a strided image is:
-//! `(height - 1) * stride + width * bytes_per_pixel`
+//! When `stride == width` (in the appropriate unit) the image is contiguous.
+//! When `stride > width` the gap at the end of each row is padding — garb
+//! never reads or writes it.
+//!
+//! The required buffer length (in elements) for a strided image is:
+//! `(height - 1) * stride + width`
 //!
 //! All `_strided` functions take dimensions *before* strides:
 //! - In-place: `(buf, width, height, stride)`
@@ -37,7 +40,7 @@
 //!
 //! ## Feature flags
 //!
-//! - **`std`** — Provides [`std::error::Error`] impl for [`SizeError`].
+//! - **`std`** — Currently a no-op; passed through to dependencies.
 //! - **`rgb`** — Type-safe conversions using [`rgb`] crate pixel types
 //!   via bytemuck. Zero-copy in-place swaps return reinterpreted references.
 //! - **`imgref`** — Multi-row conversions using `ImgRef` / `ImgRefMut`
@@ -45,9 +48,6 @@
 
 #![no_std]
 #![forbid(unsafe_code)]
-
-#[cfg(feature = "std")]
-extern crate std;
 
 #[cfg(feature = "imgref")]
 extern crate alloc;
@@ -88,5 +88,4 @@ impl core::fmt::Display for SizeError {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for SizeError {}
+impl core::error::Error for SizeError {}
