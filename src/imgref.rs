@@ -7,24 +7,24 @@
 //!
 //! ```rust
 //! use rgb::{Rgba, Bgra};
-//! use imgref::ImgVec;
-//! use garb::img;
+//! use ::imgref::ImgVec;
+//! use garb::imgref;
 //!
 //! let rgba_img = ImgVec::new(vec![Rgba::new(255u8, 0, 128, 200); 4], 2, 2);
-//! let bgra_img: ImgVec<Bgra<u8>> = img::swap_rgba_to_bgra(rgba_img);
+//! let bgra_img: ImgVec<Bgra<u8>> = imgref::swap_rgba_to_bgra(rgba_img);
 //! ```
 //!
 //! # Copy conversions (caller provides destination)
 //!
 //! ```rust
 //! use rgb::{Rgb, Bgra};
-//! use imgref::{ImgVec, ImgRefMut};
-//! use garb::img;
+//! use ::imgref::{ImgVec, ImgRefMut};
+//! use garb::imgref;
 //!
 //! let src = ImgVec::new(vec![Rgb::new(255u8, 0, 128); 4], 2, 2);
 //! let mut dst_buf = vec![Bgra::default(); 4];
 //! let mut dst = ImgRefMut::new(&mut dst_buf, 2, 2);
-//! img::convert_rgb_to_bgra(src.as_ref(), dst).unwrap();
+//! imgref::convert_rgb_to_bgra(src.as_ref(), dst).unwrap();
 //! ```
 
 use alloc::vec::Vec;

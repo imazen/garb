@@ -7,10 +7,10 @@
 //!
 //! ```rust
 //! use rgb::{Rgba, Bgra};
-//! use garb::typed;
+//! use garb::typed_rgb;
 //!
 //! let mut pixels: Vec<Rgba<u8>> = vec![Rgba::new(255, 0, 128, 255); 100];
-//! let bgra: &mut [Bgra<u8>] = typed::rgba_to_bgra_mut(&mut pixels);
+//! let bgra: &mut [Bgra<u8>] = typed_rgb::rgba_to_bgra_mut(&mut pixels);
 //! // bgra is now [Bgra { b: 128, g: 0, r: 255, a: 255 }; 100]
 //! ```
 //!
@@ -18,11 +18,11 @@
 //!
 //! ```rust
 //! use rgb::{Rgb, Bgra};
-//! use garb::typed;
+//! use garb::typed_rgb;
 //!
 //! let rgb_pixels: Vec<Rgb<u8>> = vec![Rgb::new(255, 0, 128); 100];
 //! let mut bgra_buf: Vec<Bgra<u8>> = vec![Bgra::default(); 100];
-//! typed::rgb_to_bgra_buf(&rgb_pixels, &mut bgra_buf).unwrap();
+//! typed_rgb::rgb_to_bgra_buf(&rgb_pixels, &mut bgra_buf).unwrap();
 //! ```
 
 use crate::SizeError;

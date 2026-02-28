@@ -36,10 +36,10 @@ mod swizzle;
 pub use swizzle::*;
 
 #[cfg(feature = "rgb")]
-pub mod typed;
+pub mod typed_rgb;
 
 #[cfg(feature = "imgref")]
-pub mod img;
+pub mod imgref;
 
 /// Pixel buffer size or alignment error.
 ///
