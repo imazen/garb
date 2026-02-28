@@ -18,18 +18,34 @@ stripping channels — so you can get back to the interesting work.
 
 **SIMD-optimized (contiguous and strided)**
 - RGBA ↔ BGRA (in-place and copy)
+- RGB ↔ BGR (in-place and copy)
 - RGB → RGBA / BGRA
 - BGR → BGRA / RGBA
+- RGBA / BGRA → RGB / BGR (drop alpha)
 - Gray → RGBA
 - GrayAlpha → RGBA
 - Fill alpha (set alpha=255 across a 4bpp buffer)
 
-**Scalar (still fast, just not vectorized)**
-- RGB ↔ BGR (in-place and copy)
-- RGBA / BGRA → RGB / BGR (drop alpha)
-
 All operations have `_strided` variants for images with padding between rows
 (common in video frames and GPU textures).
+
+## Performance
+
+Benchmarked on 1920×1080 buffers (x86-64 AVX2, Zen 4). "Naive" is the
+obvious `chunks_exact` + swap/copy loop — what the compiler autovectorizes
+on its own.
+
+| Operation | garb | naive | speedup | throughput |
+|---|---|---|---|---|
+| RGBA ↔ BGRA (in-place) | 81 µs | 644 µs | **8.0x** | 96 GiB/s |
+| RGB ↔ BGR (in-place) | 208 µs | 823 µs | **4.0x** | 28 GiB/s |
+| RGB ↔ BGR (copy) | 128 µs | 1,059 µs | **8.3x** | 45 GiB/s |
+| RGBA → RGB (strip alpha) | 147 µs | 857 µs | **5.8x** | 52 GiB/s |
+| BGRA → RGB (strip + swap) | 147 µs | 859 µs | **5.8x** | 52 GiB/s |
+| RGB → RGBA (expand) | 146 µs | 1,056 µs | **7.2x** | 53 GiB/s |
+| Fill alpha | 84 µs | 206 µs | **2.5x** | 92 GiB/s |
+
+Run `cargo bench` to reproduce.
 
 ## Usage
 
@@ -54,7 +70,7 @@ assert_eq!(bgra, [128, 0, 255, 255]);
 
 ### Strided images
 
-For buffers where rows have padding (stride > width * bpp):
+For buffers where rows have padding (stride > width × bpp):
 
 ```rust
 use garb::rgba_to_bgra_inplace_strided;

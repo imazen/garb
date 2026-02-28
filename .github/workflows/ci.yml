@@ -80,6 +80,10 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-features -- -D warnings
       - run: cargo clippy --no-default-features -- -D warnings
+      - name: Doc build (warnings as errors)
+        run: cargo doc --all-features --no-deps
+        env:
+          RUSTDOCFLAGS: "-D warnings"
 
   # MSRV check
   msrv:

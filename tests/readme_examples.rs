@@ -22,6 +22,7 @@ fn readme_strided() {
     rgba_to_bgra_inplace_strided(&mut buf, 256, 60, 100).unwrap();
 }
 
+#[cfg(feature = "rgb")]
 #[test]
 fn readme_typed_rgb() {
     use garb::typed_rgb;
@@ -40,6 +41,7 @@ fn readme_typed_rgb() {
     );
 }
 
+#[cfg(feature = "imgref")]
 #[test]
 fn readme_imgref() {
     use ::imgref::ImgVec;

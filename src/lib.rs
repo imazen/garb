@@ -2,9 +2,9 @@
 //!
 //! *Dress your pixels for the occasion.*
 //!
-//! You can't show up to a function in the wrong style! Get with the times and
-//! swap your BGR for your RGB, your ARGB for your RGBA, your BGRA for your
-//! BGRX, and tie up loose ends like that unreliable alpha.
+//! You can't show up to a function in the wrong style. Get with the times and
+//! swap your BGR for your RGB, your ARGB for your RGBA, your BGRX for your
+//! BGRA, and tie up loose ends like that unreliable alpha.
 //!
 //! SIMD-optimized pixel format conversions for row-level and whole-image
 //! operations. Supports x86-64 AVX2, ARM NEON, and WASM SIMD128 with
@@ -20,8 +20,8 @@
 //!
 //! - **`rgb`** — Type-safe conversions using [`rgb`] crate pixel types
 //!   via bytemuck. Zero-copy in-place swaps return reinterpreted references.
-//! - **`imgref`** — Multi-row conversions using [`imgref::ImgRef`] /
-//!   [`imgref::ImgRefMut`]. No allocation — caller owns all buffers.
+//! - **`imgref`** — Multi-row conversions using `ImgRef` / `ImgRefMut`
+//!   from the [`imgref`](https://docs.rs/imgref) crate. No allocation — caller owns all buffers.
 
 #![no_std]
 #![forbid(unsafe_code)]
