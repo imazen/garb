@@ -2317,11 +2317,9 @@ mod tests {
     use archmage::testing::{CompileTimePolicy, for_each_token_permutation};
 
     fn policy() -> CompileTimePolicy {
-        if std::env::var_os("CI").is_some() {
-            CompileTimePolicy::Fail
-        } else {
-            CompileTimePolicy::WarnStderr
-        }
+        // x86-64-v1 is unconditionally compile-time guaranteed in archmage
+        // (even with testable_dispatch), so Fail would always panic on x86-64.
+        CompileTimePolicy::WarnStderr
     }
 
     // --- Helpers to generate test data ---

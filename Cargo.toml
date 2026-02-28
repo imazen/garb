@@ -2,7 +2,7 @@
 name = "garb"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.89"
 authors = ["Lilith River <lilith@imazen.io>"]
 description = "Dress your pixels for the occasion — SIMD-optimized pixel format conversions"
 license = "MIT OR Apache-2.0"
