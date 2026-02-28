@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Native test matrix
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: Linux x86_64
+          - os: ubuntu-24.04-arm
+            name: Linux aarch64
+          - os: macos-latest
+            name: macOS aarch64
+          - os: macos-15-intel
+            name: macOS x86_64
+          - os: windows-latest
+            name: Windows x86_64
+          - os: windows-11-arm
+            name: Windows aarch64
+    name: test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --all-features
+      - run: cargo test --no-default-features
+
+  # Windows 32-bit cross test
+  test-win32:
+    name: test (Windows i686)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: i686-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --all-features --target i686-pc-windows-msvc
+      - run: cargo test --no-default-features --target i686-pc-windows-msvc
+
+  # WASM build checks (no test runner)
+  wasm:
+    name: check (wasm32)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Check wasm32 (no SIMD)
+        run: cargo check --target wasm32-unknown-unknown --no-default-features
+      - name: Check wasm32 (simd128)
+        run: cargo check --target wasm32-unknown-unknown --no-default-features
+        env:
+          RUSTFLAGS: "-C target-feature=+simd128"
+
+  # Lint
+  lint:
+    name: clippy + fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo clippy --all-features -- -D warnings
+      - run: cargo clippy --no-default-features -- -D warnings
+
+  # MSRV check
+  msrv:
+    name: MSRV (1.85)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.85"
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --all-features
+      - run: cargo check --no-default-features
