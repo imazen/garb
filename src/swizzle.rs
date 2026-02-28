@@ -16,7 +16,7 @@ use archmage::prelude::*;
 
 #[inline]
 fn check_inplace(len: usize, bpp: usize) -> Result<(), SizeError> {
-    if len == 0 || len % bpp != 0 {
+    if len == 0 || !len.is_multiple_of(bpp) {
         Err(SizeError::NotPixelAligned)
     } else {
         Ok(())
@@ -30,7 +30,7 @@ fn check_copy(
     dst_len: usize,
     dst_bpp: usize,
 ) -> Result<(), SizeError> {
-    if src_len == 0 || src_len % src_bpp != 0 {
+    if src_len == 0 || !src_len.is_multiple_of(src_bpp) {
         return Err(SizeError::NotPixelAligned);
     }
     if dst_len < (src_len / src_bpp) * dst_bpp {
