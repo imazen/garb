@@ -134,7 +134,13 @@ pub(super) fn bgra_to_rgb_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
 // Scalar strided wrappers
 // ===========================================================================
 
-pub(super) fn swap_br_strided_scalar(t: ScalarToken, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn swap_br_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
         swap_br_row_scalar(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -152,7 +158,13 @@ pub(super) fn copy_swap_br_strided_scalar(
         copy_swap_br_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
     }
 }
-pub(super) fn fill_alpha_strided_scalar(t: ScalarToken, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn fill_alpha_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
         fill_alpha_row_scalar(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -209,7 +221,13 @@ pub(super) fn gray_alpha_to_4bpp_strided_scalar(
         gray_alpha_to_4bpp_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
     }
 }
-pub(super) fn swap_bgr_strided_scalar(t: ScalarToken, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn swap_bgr_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
         swap_bgr_row_scalar(t, &mut buf[y * stride..][..w * 3]);
     }

@@ -103,14 +103,14 @@ fn swap_br_u32(v: u32) -> u32 {
 /// Swap B↔R channels in-place for 4bpp pixels (RGBA↔BGRA).
 pub fn rgba_to_bgra_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
     check_inplace(buf.len(), 4)?;
-    incant!(swap_br_impl(buf), [v3, arm_v2, wasm128, scalar]);
+    incant!(swap_br_impl(buf), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
 /// Copy 4bpp pixels, swapping B↔R (RGBA→BGRA or BGRA→RGBA).
 pub fn rgba_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 4)?;
-    incant!(copy_swap_br_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
+    incant!(copy_swap_br_impl(src, dst), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
@@ -119,7 +119,7 @@ pub fn rgba_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 /// Works for any alpha-last layout (RGBA, BGRA).
 pub fn fill_alpha_rgba(buf: &mut [u8]) -> Result<(), SizeError> {
     check_inplace(buf.len(), 4)?;
-    incant!(fill_alpha_impl(buf), [v3, arm_v2, wasm128, scalar]);
+    incant!(fill_alpha_impl(buf), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
@@ -131,21 +131,21 @@ pub fn fill_alpha_bgra(buf: &mut [u8]) -> Result<(), SizeError> {
 /// RGB (3 bytes/px) → BGRA (4 bytes/px). Reverses channel order, alpha=255.
 pub fn rgb_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 3, dst.len(), 4)?;
-    incant!(rgb_to_bgra_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
+    incant!(rgb_to_bgra_impl(src, dst), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
 /// RGB (3 bytes/px) → RGBA (4 bytes/px). Keeps channel order, alpha=255.
 pub fn rgb_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 3, dst.len(), 4)?;
-    incant!(rgb_to_rgba_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
+    incant!(rgb_to_rgba_impl(src, dst), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
 /// Gray (1 byte/px) → RGBA/BGRA (4 bytes/px). R=G=B=gray, alpha=255.
 pub fn gray_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 1, dst.len(), 4)?;
-    incant!(gray_to_4bpp_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
+    incant!(gray_to_4bpp_impl(src, dst), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
@@ -154,7 +154,7 @@ pub fn gray_alpha_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 2, dst.len(), 4)?;
     incant!(
         gray_alpha_to_4bpp_impl(src, dst),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -177,7 +177,7 @@ pub fn rgba_to_bgra_inplace_strided(
     check_strided(buf.len(), width, height, stride, 4)?;
     incant!(
         swap_br_strided(buf, width, height, stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -199,7 +199,7 @@ pub fn rgba_to_bgra_strided(
     check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
         copy_swap_br_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -218,7 +218,7 @@ pub fn fill_alpha_rgba_strided(
     check_strided(buf.len(), width, height, stride, 4)?;
     incant!(
         fill_alpha_strided(buf, width, height, stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -249,7 +249,7 @@ pub fn rgb_to_bgra_strided(
     check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
         rgb_to_bgra_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -270,7 +270,7 @@ pub fn rgb_to_rgba_strided(
     check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
         rgb_to_rgba_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -291,7 +291,7 @@ pub fn gray_to_rgba_strided(
     check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
         gray_to_4bpp_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -312,7 +312,7 @@ pub fn gray_alpha_to_rgba_strided(
     check_strided(dst.len(), width, height, dst_stride, 4)?;
     incant!(
         gray_alpha_to_4bpp_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -324,28 +324,28 @@ pub fn gray_alpha_to_rgba_strided(
 /// Swap R↔B in-place for 3bpp pixels (RGB↔BGR).
 pub fn rgb_to_bgr_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
     check_inplace(buf.len(), 3)?;
-    incant!(swap_bgr_impl(buf), [v3, arm_v2, wasm128, scalar]);
+    incant!(swap_bgr_impl(buf), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
 /// Copy 3bpp pixels, swapping R↔B (RGB→BGR or BGR→RGB).
 pub fn rgb_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 3, dst.len(), 3)?;
-    incant!(copy_swap_bgr_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
+    incant!(copy_swap_bgr_impl(src, dst), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
 /// 4bpp → 3bpp by dropping byte 3 (alpha). Keeps byte order.
 pub fn rgba_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 3)?;
-    incant!(rgba_to_rgb_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
+    incant!(rgba_to_rgb_impl(src, dst), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
 /// 4bpp → 3bpp, dropping alpha and reversing bytes 0↔2 (BGRA→RGB, RGBA→BGR).
 pub fn bgra_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 3)?;
-    incant!(bgra_to_rgb_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
+    incant!(bgra_to_rgb_impl(src, dst), [v3, neon, wasm128, scalar]);
     Ok(())
 }
 
@@ -362,7 +362,7 @@ pub fn rgb_to_bgr_inplace_strided(
     check_strided(buf.len(), width, height, stride, 3)?;
     incant!(
         swap_bgr_strided(buf, width, height, stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -383,7 +383,7 @@ pub fn rgb_to_bgr_strided(
     check_strided(dst.len(), width, height, dst_stride, 3)?;
     incant!(
         copy_swap_bgr_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -404,7 +404,7 @@ pub fn rgba_to_rgb_strided(
     check_strided(dst.len(), width, height, dst_stride, 3)?;
     incant!(
         rgba_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }
@@ -425,7 +425,7 @@ pub fn bgra_to_rgb_strided(
     check_strided(dst.len(), width, height, dst_stride, 3)?;
     incant!(
         bgra_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, arm_v2, wasm128, scalar]
+        [v3, neon, wasm128, scalar]
     );
     Ok(())
 }

@@ -1,6 +1,6 @@
 use archmage::prelude::*;
 use safe_unaligned_simd::x86_64::{
-    _mm256_loadu_si256, _mm256_storeu_si256, _mm_loadu_si128, _mm_storeu_si128,
+    _mm_loadu_si128, _mm_storeu_si128, _mm256_loadu_si256, _mm256_storeu_si256,
 };
 
 use super::swap_br_u32;
@@ -384,7 +384,13 @@ pub(super) fn copy_swap_br_strided_v3(
     }
 }
 #[arcane]
-pub(super) fn fill_alpha_strided_v3(t: X64V3Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn fill_alpha_strided_v3(
+    t: X64V3Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
         fill_alpha_row_v3(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -446,7 +452,13 @@ pub(super) fn gray_alpha_to_4bpp_strided_v3(
     }
 }
 #[arcane]
-pub(super) fn swap_bgr_strided_v3(t: X64V3Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn swap_bgr_strided_v3(
+    t: X64V3Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
         swap_bgr_row_v3(t, &mut buf[y * stride..][..w * 3]);
     }

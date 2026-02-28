@@ -72,13 +72,7 @@ pub(super) fn rgb_to_bgra_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
     while is + 16 <= slen && id + 16 <= dlen {
         let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
         let d: &mut [u8; 16] = (&mut dst[id..id + 16]).try_into().unwrap();
-        v128_store(
-            d,
-            v128_or(
-                i8x16_swizzle(v128_load(s), shuf),
-                alpha,
-            ),
-        );
+        v128_store(d, v128_or(i8x16_swizzle(v128_load(s), shuf), alpha));
         is += 12;
         id += 16;
     }
@@ -97,13 +91,7 @@ pub(super) fn rgb_to_rgba_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
     while is + 16 <= slen && id + 16 <= dlen {
         let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
         let d: &mut [u8; 16] = (&mut dst[id..id + 16]).try_into().unwrap();
-        v128_store(
-            d,
-            v128_or(
-                i8x16_swizzle(v128_load(s), shuf),
-                alpha,
-            ),
-        );
+        v128_store(d, v128_or(i8x16_swizzle(v128_load(s), shuf), alpha));
         is += 12;
         id += 16;
     }
@@ -305,7 +293,13 @@ pub(super) fn bgra_to_rgb_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) 
 // ===========================================================================
 
 #[arcane]
-pub(super) fn swap_br_strided_wasm128(t: Wasm128Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn swap_br_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
         swap_br_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -325,7 +319,13 @@ pub(super) fn copy_swap_br_strided_wasm128(
     }
 }
 #[arcane]
-pub(super) fn fill_alpha_strided_wasm128(t: Wasm128Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn fill_alpha_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
         fill_alpha_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
     }
@@ -387,7 +387,13 @@ pub(super) fn gray_alpha_to_4bpp_strided_wasm128(
     }
 }
 #[arcane]
-pub(super) fn swap_bgr_strided_wasm128(t: Wasm128Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn swap_bgr_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
         swap_bgr_row_wasm128(t, &mut buf[y * stride..][..w * 3]);
     }

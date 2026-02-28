@@ -10,7 +10,7 @@ use super::swap_br_u32;
 // ===========================================================================
 
 #[rite]
-pub(super) fn swap_br_row_arm_v2(_token: Arm64V2Token, row: &mut [u8]) {
+pub(super) fn swap_br_row_neon(_token: NeonToken, row: &mut [u8]) {
     let mask_bytes: [u8; 16] = [2, 1, 0, 3, 6, 5, 4, 7, 10, 9, 8, 11, 14, 13, 12, 15];
     let mask = vld1q_u8(&mask_bytes);
     let n = row.len();
@@ -29,7 +29,7 @@ pub(super) fn swap_br_row_arm_v2(_token: Arm64V2Token, row: &mut [u8]) {
 }
 
 #[rite]
-pub(super) fn copy_swap_br_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+pub(super) fn copy_swap_br_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
     let mask_bytes: [u8; 16] = [2, 1, 0, 3, 6, 5, 4, 7, 10, 9, 8, 11, 14, 13, 12, 15];
     let mask = vld1q_u8(&mask_bytes);
     let n = src.len().min(dst.len());
@@ -51,7 +51,7 @@ pub(super) fn copy_swap_br_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mu
 }
 
 #[rite]
-pub(super) fn fill_alpha_row_arm_v2(_token: Arm64V2Token, row: &mut [u8]) {
+pub(super) fn fill_alpha_row_neon(_token: NeonToken, row: &mut [u8]) {
     let ab: [u8; 16] = [0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF];
     let alpha = vld1q_u8(&ab);
     let n = row.len();
@@ -69,7 +69,7 @@ pub(super) fn fill_alpha_row_arm_v2(_token: Arm64V2Token, row: &mut [u8]) {
 }
 
 #[rite]
-pub(super) fn rgb_to_bgra_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+pub(super) fn rgb_to_bgra_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
     let sb: [u8; 16] = [2, 1, 0, 0x80, 5, 4, 3, 0x80, 8, 7, 6, 0x80, 11, 10, 9, 0x80];
     let shuf = vld1q_u8(&sb);
     let ab: [u8; 16] = [0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF];
@@ -91,7 +91,7 @@ pub(super) fn rgb_to_bgra_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut
 }
 
 #[rite]
-pub(super) fn rgb_to_rgba_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+pub(super) fn rgb_to_rgba_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
     let sb: [u8; 16] = [0, 1, 2, 0x80, 3, 4, 5, 0x80, 6, 7, 8, 0x80, 9, 10, 11, 0x80];
     let shuf = vld1q_u8(&sb);
     let ab: [u8; 16] = [0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF];
@@ -113,7 +113,7 @@ pub(super) fn rgb_to_rgba_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut
 }
 
 #[rite]
-pub(super) fn gray_to_4bpp_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+pub(super) fn gray_to_4bpp_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
     let masks: [[u8; 16]; 4] = [
         [0, 0, 0, 0x80, 1, 1, 1, 0x80, 2, 2, 2, 0x80, 3, 3, 3, 0x80],
         [4, 4, 4, 0x80, 5, 5, 5, 0x80, 6, 6, 6, 0x80, 7, 7, 7, 0x80],
@@ -149,7 +149,7 @@ pub(super) fn gray_to_4bpp_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mu
 }
 
 #[rite]
-pub(super) fn gray_alpha_to_4bpp_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+pub(super) fn gray_alpha_to_4bpp_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
     let masks: [[u8; 16]; 2] = [
         [0, 0, 0, 1, 2, 2, 2, 3, 4, 4, 4, 5, 6, 6, 6, 7],
         [8, 8, 8, 9, 10, 10, 10, 11, 12, 12, 12, 13, 14, 14, 14, 15],
@@ -177,7 +177,7 @@ pub(super) fn gray_alpha_to_4bpp_row_arm_v2(_token: Arm64V2Token, src: &[u8], ds
 
 // 3bpp swap in-place on NEON: 4 pixels per iter with passthrough
 #[rite]
-pub(super) fn swap_bgr_row_arm_v2(_token: Arm64V2Token, row: &mut [u8]) {
+pub(super) fn swap_bgr_row_neon(_token: NeonToken, row: &mut [u8]) {
     let mb: [u8; 16] = [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15];
     let mask = vld1q_u8(&mb);
     let n = row.len();
@@ -197,7 +197,7 @@ pub(super) fn swap_bgr_row_arm_v2(_token: Arm64V2Token, row: &mut [u8]) {
 
 // 3bpp swap copy on NEON
 #[rite]
-pub(super) fn copy_swap_bgr_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+pub(super) fn copy_swap_bgr_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
     let mb: [u8; 16] = [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15];
     let mask = vld1q_u8(&mb);
     let (slen, dlen) = (src.len(), dst.len());
@@ -218,7 +218,7 @@ pub(super) fn copy_swap_bgr_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &m
 
 // 4→3 strip alpha (keep order) on NEON
 #[rite]
-pub(super) fn rgba_to_rgb_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+pub(super) fn rgba_to_rgb_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
     let sb: [u8; 16] = [
         0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 0x80, 0x80, 0x80, 0x80,
     ];
@@ -243,7 +243,7 @@ pub(super) fn rgba_to_rgb_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut
 
 // 4→3 strip alpha + swap on NEON (BGRA→RGB)
 #[rite]
-pub(super) fn bgra_to_rgb_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+pub(super) fn bgra_to_rgb_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
     let sb: [u8; 16] = [
         2, 1, 0, 6, 5, 4, 10, 9, 8, 14, 13, 12, 0x80, 0x80, 0x80, 0x80,
     ];
@@ -271,48 +271,48 @@ pub(super) fn bgra_to_rgb_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut
 // ===========================================================================
 
 #[arcane]
-pub(super) fn swap_br_impl_arm_v2(t: Arm64V2Token, b: &mut [u8]) {
-    swap_br_row_arm_v2(t, b);
+pub(super) fn swap_br_impl_neon(t: NeonToken, b: &mut [u8]) {
+    swap_br_row_neon(t, b);
 }
 #[arcane]
-pub(super) fn copy_swap_br_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
-    copy_swap_br_row_arm_v2(t, s, d);
+pub(super) fn copy_swap_br_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    copy_swap_br_row_neon(t, s, d);
 }
 #[arcane]
-pub(super) fn fill_alpha_impl_arm_v2(t: Arm64V2Token, b: &mut [u8]) {
-    fill_alpha_row_arm_v2(t, b);
+pub(super) fn fill_alpha_impl_neon(t: NeonToken, b: &mut [u8]) {
+    fill_alpha_row_neon(t, b);
 }
 #[arcane]
-pub(super) fn rgb_to_bgra_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
-    rgb_to_bgra_row_arm_v2(t, s, d);
+pub(super) fn rgb_to_bgra_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    rgb_to_bgra_row_neon(t, s, d);
 }
 #[arcane]
-pub(super) fn rgb_to_rgba_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
-    rgb_to_rgba_row_arm_v2(t, s, d);
+pub(super) fn rgb_to_rgba_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    rgb_to_rgba_row_neon(t, s, d);
 }
 #[arcane]
-pub(super) fn gray_to_4bpp_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
-    gray_to_4bpp_row_arm_v2(t, s, d);
+pub(super) fn gray_to_4bpp_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    gray_to_4bpp_row_neon(t, s, d);
 }
 #[arcane]
-pub(super) fn gray_alpha_to_4bpp_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
-    gray_alpha_to_4bpp_row_arm_v2(t, s, d);
+pub(super) fn gray_alpha_to_4bpp_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    gray_alpha_to_4bpp_row_neon(t, s, d);
 }
 #[arcane]
-pub(super) fn swap_bgr_impl_arm_v2(t: Arm64V2Token, b: &mut [u8]) {
-    swap_bgr_row_arm_v2(t, b);
+pub(super) fn swap_bgr_impl_neon(t: NeonToken, b: &mut [u8]) {
+    swap_bgr_row_neon(t, b);
 }
 #[arcane]
-pub(super) fn copy_swap_bgr_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
-    copy_swap_bgr_row_arm_v2(t, s, d);
+pub(super) fn copy_swap_bgr_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    copy_swap_bgr_row_neon(t, s, d);
 }
 #[arcane]
-pub(super) fn rgba_to_rgb_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
-    rgba_to_rgb_row_arm_v2(t, s, d);
+pub(super) fn rgba_to_rgb_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    rgba_to_rgb_row_neon(t, s, d);
 }
 #[arcane]
-pub(super) fn bgra_to_rgb_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
-    bgra_to_rgb_row_arm_v2(t, s, d);
+pub(super) fn bgra_to_rgb_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    bgra_to_rgb_row_neon(t, s, d);
 }
 
 // ===========================================================================
@@ -320,14 +320,20 @@ pub(super) fn bgra_to_rgb_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
 // ===========================================================================
 
 #[arcane]
-pub(super) fn swap_br_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn swap_br_strided_neon(
+    t: NeonToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
-        swap_br_row_arm_v2(t, &mut buf[y * stride..][..w * 4]);
+        swap_br_row_neon(t, &mut buf[y * stride..][..w * 4]);
     }
 }
 #[arcane]
-pub(super) fn copy_swap_br_strided_arm_v2(
-    t: Arm64V2Token,
+pub(super) fn copy_swap_br_strided_neon(
+    t: NeonToken,
     src: &[u8],
     dst: &mut [u8],
     w: usize,
@@ -336,18 +342,24 @@ pub(super) fn copy_swap_br_strided_arm_v2(
     ds: usize,
 ) {
     for y in 0..h {
-        copy_swap_br_row_arm_v2(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+        copy_swap_br_row_neon(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
     }
 }
 #[arcane]
-pub(super) fn fill_alpha_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn fill_alpha_strided_neon(
+    t: NeonToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
-        fill_alpha_row_arm_v2(t, &mut buf[y * stride..][..w * 4]);
+        fill_alpha_row_neon(t, &mut buf[y * stride..][..w * 4]);
     }
 }
 #[arcane]
-pub(super) fn rgb_to_bgra_strided_arm_v2(
-    t: Arm64V2Token,
+pub(super) fn rgb_to_bgra_strided_neon(
+    t: NeonToken,
     src: &[u8],
     dst: &mut [u8],
     w: usize,
@@ -356,12 +368,12 @@ pub(super) fn rgb_to_bgra_strided_arm_v2(
     ds: usize,
 ) {
     for y in 0..h {
-        rgb_to_bgra_row_arm_v2(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
+        rgb_to_bgra_row_neon(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
     }
 }
 #[arcane]
-pub(super) fn rgb_to_rgba_strided_arm_v2(
-    t: Arm64V2Token,
+pub(super) fn rgb_to_rgba_strided_neon(
+    t: NeonToken,
     src: &[u8],
     dst: &mut [u8],
     w: usize,
@@ -370,12 +382,12 @@ pub(super) fn rgb_to_rgba_strided_arm_v2(
     ds: usize,
 ) {
     for y in 0..h {
-        rgb_to_rgba_row_arm_v2(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
+        rgb_to_rgba_row_neon(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
     }
 }
 #[arcane]
-pub(super) fn gray_to_4bpp_strided_arm_v2(
-    t: Arm64V2Token,
+pub(super) fn gray_to_4bpp_strided_neon(
+    t: NeonToken,
     src: &[u8],
     dst: &mut [u8],
     w: usize,
@@ -384,12 +396,12 @@ pub(super) fn gray_to_4bpp_strided_arm_v2(
     ds: usize,
 ) {
     for y in 0..h {
-        gray_to_4bpp_row_arm_v2(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
+        gray_to_4bpp_row_neon(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
     }
 }
 #[arcane]
-pub(super) fn gray_alpha_to_4bpp_strided_arm_v2(
-    t: Arm64V2Token,
+pub(super) fn gray_alpha_to_4bpp_strided_neon(
+    t: NeonToken,
     src: &[u8],
     dst: &mut [u8],
     w: usize,
@@ -398,18 +410,24 @@ pub(super) fn gray_alpha_to_4bpp_strided_arm_v2(
     ds: usize,
 ) {
     for y in 0..h {
-        gray_alpha_to_4bpp_row_arm_v2(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+        gray_alpha_to_4bpp_row_neon(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
     }
 }
 #[arcane]
-pub(super) fn swap_bgr_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], w: usize, h: usize, stride: usize) {
+pub(super) fn swap_bgr_strided_neon(
+    t: NeonToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
     for y in 0..h {
-        swap_bgr_row_arm_v2(t, &mut buf[y * stride..][..w * 3]);
+        swap_bgr_row_neon(t, &mut buf[y * stride..][..w * 3]);
     }
 }
 #[arcane]
-pub(super) fn copy_swap_bgr_strided_arm_v2(
-    t: Arm64V2Token,
+pub(super) fn copy_swap_bgr_strided_neon(
+    t: NeonToken,
     src: &[u8],
     dst: &mut [u8],
     w: usize,
@@ -418,12 +436,12 @@ pub(super) fn copy_swap_bgr_strided_arm_v2(
     ds: usize,
 ) {
     for y in 0..h {
-        copy_swap_bgr_row_arm_v2(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
+        copy_swap_bgr_row_neon(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
     }
 }
 #[arcane]
-pub(super) fn rgba_to_rgb_strided_arm_v2(
-    t: Arm64V2Token,
+pub(super) fn rgba_to_rgb_strided_neon(
+    t: NeonToken,
     src: &[u8],
     dst: &mut [u8],
     w: usize,
@@ -432,12 +450,12 @@ pub(super) fn rgba_to_rgb_strided_arm_v2(
     ds: usize,
 ) {
     for y in 0..h {
-        rgba_to_rgb_row_arm_v2(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+        rgba_to_rgb_row_neon(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
     }
 }
 #[arcane]
-pub(super) fn bgra_to_rgb_strided_arm_v2(
-    t: Arm64V2Token,
+pub(super) fn bgra_to_rgb_strided_neon(
+    t: NeonToken,
     src: &[u8],
     dst: &mut [u8],
     w: usize,
@@ -446,6 +464,6 @@ pub(super) fn bgra_to_rgb_strided_arm_v2(
     ds: usize,
 ) {
     for y in 0..h {
-        bgra_to_rgb_row_arm_v2(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+        bgra_to_rgb_row_neon(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
     }
 }
