@@ -356,6 +356,6 @@ mod tests {
     fn test_size_mismatch_returns_error() {
         let src = vec![Rgba::new(1u8, 2, 3, 4); 3];
         let mut dst = vec![Bgra::default(); 2]; // wrong size
-        assert_eq!(rgba_to_bgra_buf(&src, &mut dst), Err(SizeError));
+        assert_eq!(rgba_to_bgra_buf(&src, &mut dst), Err(SizeError::PixelCountMismatch));
     }
 }

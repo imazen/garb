@@ -17,7 +17,7 @@ use archmage::prelude::*;
 #[inline]
 fn check_inplace(len: usize, bpp: usize) -> Result<(), SizeError> {
     if len == 0 || len % bpp != 0 {
-        Err(SizeError)
+        Err(SizeError::NotPixelAligned)
     } else {
         Ok(())
     }
@@ -31,10 +31,10 @@ fn check_copy(
     dst_bpp: usize,
 ) -> Result<(), SizeError> {
     if src_len == 0 || src_len % src_bpp != 0 {
-        return Err(SizeError);
+        return Err(SizeError::NotPixelAligned);
     }
     if dst_len < (src_len / src_bpp) * dst_bpp {
-        return Err(SizeError);
+        return Err(SizeError::PixelCountMismatch);
     }
     Ok(())
 }
@@ -48,20 +48,20 @@ fn check_strided(
     bpp: usize,
 ) -> Result<(), SizeError> {
     if width == 0 || height == 0 {
-        return Err(SizeError);
+        return Err(SizeError::InvalidStride);
     }
-    let row_bytes = width.checked_mul(bpp).ok_or(SizeError)?;
+    let row_bytes = width.checked_mul(bpp).ok_or(SizeError::InvalidStride)?;
     if row_bytes > stride {
-        return Err(SizeError);
+        return Err(SizeError::InvalidStride);
     }
     if height > 0 {
         let total = (height - 1)
             .checked_mul(stride)
-            .ok_or(SizeError)?
+            .ok_or(SizeError::InvalidStride)?
             .checked_add(row_bytes)
-            .ok_or(SizeError)?;
+            .ok_or(SizeError::InvalidStride)?;
         if len < total {
-            return Err(SizeError);
+            return Err(SizeError::InvalidStride);
         }
     }
     Ok(())
@@ -2793,14 +2793,17 @@ mod tests {
 
     #[test]
     fn test_size_errors() {
-        assert_eq!(rgba_to_bgra_inplace(&mut [0; 5]), Err(SizeError));
-        assert_eq!(rgba_to_bgra_inplace(&mut [0; 0]), Err(SizeError));
-        assert_eq!(rgb_to_bgra(&[0; 6], &mut [0; 4]), Err(SizeError));
-        assert_eq!(rgb_to_bgr_inplace(&mut [0; 5]), Err(SizeError));
-        assert_eq!(gray_to_rgba(&[0; 3], &mut [0; 8]), Err(SizeError));
-        assert_eq!(gray_alpha_to_rgba(&[0; 3], &mut [0; 8]), Err(SizeError));
-        assert_eq!(fill_alpha(&mut [0; 5]), Err(SizeError));
-        assert_eq!(rgba_to_rgb(&[0; 8], &mut [0; 3]), Err(SizeError));
+        // Not pixel-aligned
+        assert_eq!(rgba_to_bgra_inplace(&mut [0; 5]), Err(SizeError::NotPixelAligned));
+        assert_eq!(rgba_to_bgra_inplace(&mut [0; 0]), Err(SizeError::NotPixelAligned));
+        assert_eq!(rgb_to_bgr_inplace(&mut [0; 5]), Err(SizeError::NotPixelAligned));
+        assert_eq!(gray_alpha_to_rgba(&[0; 3], &mut [0; 8]), Err(SizeError::NotPixelAligned));
+        assert_eq!(fill_alpha(&mut [0; 5]), Err(SizeError::NotPixelAligned));
+
+        // Pixel count mismatch (src aligned, dst too small)
+        assert_eq!(rgb_to_bgra(&[0; 6], &mut [0; 4]), Err(SizeError::PixelCountMismatch));
+        assert_eq!(gray_to_rgba(&[0; 3], &mut [0; 8]), Err(SizeError::PixelCountMismatch));
+        assert_eq!(rgba_to_rgb(&[0; 8], &mut [0; 3]), Err(SizeError::PixelCountMismatch));
     }
 
     #[test]
@@ -2808,22 +2811,22 @@ mod tests {
         // stride < width * bpp
         assert_eq!(
             rgba_to_bgra_inplace_strided(&mut [0; 32], 4, 2, 2),
-            Err(SizeError)
+            Err(SizeError::InvalidStride)
         );
         // buffer too small
         assert_eq!(
             rgba_to_bgra_inplace_strided(&mut [0; 10], 8, 2, 2),
-            Err(SizeError)
+            Err(SizeError::InvalidStride)
         );
         // zero width
         assert_eq!(
             rgba_to_bgra_inplace_strided(&mut [0; 8], 8, 0, 1),
-            Err(SizeError)
+            Err(SizeError::InvalidStride)
         );
         // zero height
         assert_eq!(
             rgba_to_bgra_inplace_strided(&mut [0; 8], 8, 2, 0),
-            Err(SizeError)
+            Err(SizeError::InvalidStride)
         );
     }
 

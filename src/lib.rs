@@ -44,12 +44,27 @@ pub mod imgref;
 /// Pixel buffer size or alignment error.
 ///
 /// Returned when a buffer's length is not a multiple of the pixel size,
-/// or a destination buffer is too small for the source pixel count.
+/// a destination buffer is too small, or stride/dimensions are inconsistent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SizeError;
+#[non_exhaustive]
+pub enum SizeError {
+    /// Buffer length is not a multiple of the expected bytes per pixel (or is empty).
+    NotPixelAligned,
+    /// Destination buffer has fewer pixels than the source.
+    PixelCountMismatch,
+    /// Stride, dimensions, or total buffer size are inconsistent.
+    InvalidStride,
+}
 
 impl core::fmt::Display for SizeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str("pixel buffer size mismatch")
+        match self {
+            Self::NotPixelAligned => f.write_str("buffer length is not pixel-aligned"),
+            Self::PixelCountMismatch => f.write_str("destination has fewer pixels than source"),
+            Self::InvalidStride => f.write_str("stride, dimensions, or buffer size are inconsistent"),
+        }
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for SizeError {}

@@ -40,7 +40,7 @@ use crate::SizeError;
 
 fn check_dims(sw: usize, sh: usize, dw: usize, dh: usize) -> Result<(), SizeError> {
     if sw != dw || sh != dh {
-        Err(SizeError)
+        Err(SizeError::PixelCountMismatch)
     } else {
         Ok(())
     }
@@ -387,6 +387,6 @@ mod tests {
         let src = ImgVec::new(vec![Rgba::new(1u8, 2, 3, 4); 4], 2, 2);
         let mut dst_buf = vec![Bgra::default(); 6];
         let dst = ImgRefMut::new(&mut dst_buf, 3, 2); // width mismatch
-        assert_eq!(convert_rgba_to_bgra(src.as_ref(), dst), Err(SizeError));
+        assert_eq!(convert_rgba_to_bgra(src.as_ref(), dst), Err(SizeError::PixelCountMismatch));
     }
 }
