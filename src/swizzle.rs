@@ -570,9 +570,11 @@ fn swap_bgr_row_v3(_token: X64V3Token, row: &mut [u8]) {
         let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
         let v = safe_unaligned_simd::x86_64::_mm_loadu_si128(arr);
         let shuffled = _mm_shuffle_epi8(v, mask);
-        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
-        safe_unaligned_simd::x86_64::_mm_storeu_si128(out, shuffled);
-        i += 12; // advance by 4 pixels (12 bytes); bytes 12-15 were passed through
+        // Store to temp and copy 12 bytes to avoid overlapping 16-byte store-forwarding stalls
+        let mut tmp = [0u8; 16];
+        safe_unaligned_simd::x86_64::_mm_storeu_si128(&mut tmp, shuffled);
+        row[i..i + 12].copy_from_slice(&tmp[..12]);
+        i += 12;
     }
     for px in row[i..].chunks_exact_mut(3) {
         px.swap(0, 2);
@@ -1049,8 +1051,9 @@ fn swap_bgr_row_arm_v2(_token: Arm64V2Token, row: &mut [u8]) {
     while i + 16 <= n {
         let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
         let v = safe_unaligned_simd::aarch64::vld1q_u8(arr);
-        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
-        safe_unaligned_simd::aarch64::vst1q_u8(out, vqtbl1q_u8(v, mask));
+        let mut tmp = [0u8; 16];
+        safe_unaligned_simd::aarch64::vst1q_u8(&mut tmp, vqtbl1q_u8(v, mask));
+        row[i..i + 12].copy_from_slice(&tmp[..12]);
         i += 12;
     }
     for px in row[i..].chunks_exact_mut(3) {
@@ -1523,8 +1526,9 @@ fn swap_bgr_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
     while i + 16 <= n {
         let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
         let v = safe_unaligned_simd::wasm32::v128_load(arr);
-        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
-        safe_unaligned_simd::wasm32::v128_store(out, i8x16_swizzle(v, mask));
+        let mut tmp = [0u8; 16];
+        safe_unaligned_simd::wasm32::v128_store(&mut tmp, i8x16_swizzle(v, mask));
+        row[i..i + 12].copy_from_slice(&tmp[..12]);
         i += 12;
     }
     for px in row[i..].chunks_exact_mut(3) {

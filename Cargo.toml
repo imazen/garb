@@ -22,6 +22,11 @@ imgref = { version = "1", optional = true }
 archmage = { version = "0.8", features = ["testable_dispatch"] }
 rgb = { version = "0.8", features = ["bytemuck"] }
 imgref = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "swizzle"
+harness = false
 
 [features]
 default = ["std"]
