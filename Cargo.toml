@@ -8,6 +8,8 @@ description = "Dress your pixels for the occasion — SIMD-optimized pixel forma
 license = "MIT OR Apache-2.0"
 keywords = ["pixel", "swizzle", "bgra", "rgba", "simd"]
 categories = ["graphics", "multimedia::images", "no-std"]
+repository = "https://github.com/imazen/garb"
+readme = "README.md"
 
 [dependencies]
 archmage = { version = "0.8", features = ["macros", "safe_unaligned_simd"] }
