@@ -210,7 +210,7 @@ fn bench_fill_alpha(c: &mut Criterion) {
     group.bench_function("garb", |b| {
         let mut buf = src.clone();
         b.iter(|| {
-            garb::fill_alpha(&mut buf).unwrap();
+            garb::fill_alpha_rgba(&mut buf).unwrap();
         });
     });
 

@@ -1825,10 +1825,17 @@ pub fn rgba_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 }
 
 /// Set the alpha channel (byte 3) to 255 for every 4bpp pixel.
-pub fn fill_alpha(buf: &mut [u8]) -> Result<(), SizeError> {
+///
+/// Works for any alpha-last layout (RGBA, BGRA).
+pub fn fill_alpha_rgba(buf: &mut [u8]) -> Result<(), SizeError> {
     check_inplace(buf.len(), 4)?;
     incant!(fill_alpha_impl(buf), [v3, arm_v2, wasm128, scalar]);
     Ok(())
+}
+
+/// Alias for [`fill_alpha_rgba`].
+pub fn fill_alpha_bgra(buf: &mut [u8]) -> Result<(), SizeError> {
+    fill_alpha_rgba(buf)
 }
 
 /// RGB (3 bytes/px) → BGRA (4 bytes/px). Reverses channel order, alpha=255.
@@ -1907,11 +1914,12 @@ pub fn rgba_to_bgra_strided(
     Ok(())
 }
 
-/// Set alpha to 255 for every 4bpp pixel in a strided buffer.
+/// Set alpha (byte 3) to 255 for every 4bpp pixel in a strided buffer.
 ///
+/// Works for any alpha-last layout (RGBA, BGRA).
 /// `stride` is the distance in bytes between the start of consecutive rows.
 /// Must be ≥ `width × 4`. Padding bytes between rows are never read or written.
-pub fn fill_alpha_strided(
+pub fn fill_alpha_rgba_strided(
     buf: &mut [u8],
     width: usize,
     height: usize,
@@ -1923,6 +1931,16 @@ pub fn fill_alpha_strided(
         [v3, arm_v2, wasm128, scalar]
     );
     Ok(())
+}
+
+/// Alias for [`fill_alpha_rgba_strided`].
+pub fn fill_alpha_bgra_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    fill_alpha_rgba_strided(buf, width, height, stride)
 }
 
 /// RGB (3 bytes/px) → BGRA (4 bytes/px) between strided buffers. Alpha=255.
@@ -2458,7 +2476,7 @@ mod tests {
             for &n in TEST_PIXEL_COUNTS {
                 let mut data = make_4bpp(n);
                 let expected = ref_fill_alpha(&data);
-                fill_alpha(&mut data).unwrap();
+                fill_alpha_rgba(&mut data).unwrap();
                 assert_eq!(data, expected, "fill_alpha n={n} tier={perm}");
             }
         });
@@ -2610,7 +2628,7 @@ mod tests {
                     buf[i + 3] = (x * 10) as u8; // varying alpha
                 }
             }
-            fill_alpha_strided(&mut buf, w, h, stride).unwrap();
+            fill_alpha_rgba_strided(&mut buf, w, h, stride).unwrap();
             for y in 0..h {
                 for x in 0..w {
                     let i = y * stride + x * 4;
@@ -2853,7 +2871,10 @@ mod tests {
             gray_alpha_to_rgba(&[0; 3], &mut [0; 8]),
             Err(SizeError::NotPixelAligned)
         );
-        assert_eq!(fill_alpha(&mut [0; 5]), Err(SizeError::NotPixelAligned));
+        assert_eq!(
+            fill_alpha_rgba(&mut [0; 5]),
+            Err(SizeError::NotPixelAligned)
+        );
 
         // Pixel count mismatch (src aligned, dst too small)
         assert_eq!(

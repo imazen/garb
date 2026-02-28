@@ -175,7 +175,7 @@ Every function returns `Result<(), SizeError>`. All have `_strided` variants.
 | `rgba_to_bgr` | 4bpp → 3bpp, swap R↔B, drop alpha |
 | `gray_to_rgba` | 1bpp → 4bpp (R=G=B=gray, A=255) |
 | `gray_alpha_to_rgba` | 2bpp → 4bpp (R=G=B=gray, A=alpha) |
-| `fill_alpha` | Set byte 3 to 255 in each 4-byte pixel (alpha-last: RGBA/BGRA) |
+| `fill_alpha_rgba` | Set byte 3 to 255 in each 4-byte pixel (alpha-last: RGBA/BGRA) |
 
 Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 `bgr_to_rgb`, `gray_to_bgra`, `gray_alpha_to_bgra` (same underlying

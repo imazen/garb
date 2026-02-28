@@ -199,13 +199,13 @@ pub fn rgba_to_bgr_buf(src: &[Rgba<u8>], dst: &mut [Bgr<u8>]) -> Result<(), Size
 /// Set alpha to 255 for all pixels in a `&mut [Rgba<u8>]`.
 pub fn fill_alpha_rgba(pixels: &mut [Rgba<u8>]) {
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-    crate::fill_alpha(bytes).expect("typed slice is always valid");
+    crate::fill_alpha_rgba(bytes).expect("typed slice is always valid");
 }
 
 /// Set alpha to 255 for all pixels in a `&mut [Bgra<u8>]`.
 pub fn fill_alpha_bgra(pixels: &mut [Bgra<u8>]) {
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-    crate::fill_alpha(bytes).expect("typed slice is always valid");
+    crate::fill_alpha_rgba(bytes).expect("typed slice is always valid");
 }
 
 // ---------------------------------------------------------------------------
