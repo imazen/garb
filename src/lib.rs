@@ -40,7 +40,7 @@
 //!
 //! ## Feature flags
 //!
-//! - **`std`** — Currently a no-op; passed through to dependencies.
+//! - **`std`** — Enables `std` on dependencies (e.g. `archmage`).
 //! - **`rgb`** — Type-safe conversions using [`rgb`] crate pixel types
 //!   via bytemuck. Zero-copy in-place swaps return reinterpreted references.
 //! - **`imgref`** — Multi-row conversions using `ImgRef` / `ImgRefMut`

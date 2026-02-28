@@ -30,6 +30,6 @@ harness = false
 
 [features]
 default = ["std"]
-std = []
+std = ["archmage/std"]
 rgb = ["dep:rgb"]
 imgref = ["dep:imgref", "rgb"]

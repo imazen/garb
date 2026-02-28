@@ -128,7 +128,7 @@ let bgra_img: ImgVec<Bgra<u8>> = imgref::swap_rgba_to_bgra(rgba_img);
 
 | Feature  | Default | What it adds |
 |----------|---------|--------------|
-| `std`    | yes     | Currently a no-op; passed through to dependencies |
+| `std`    | yes     | Enables `std` on dependencies (e.g. `archmage`) |
 | `rgb`    | no      | `garb::typed_rgb` — conversions on `Rgba<u8>`, `Bgra<u8>`, etc. |
 | `imgref` | no      | `garb::imgref` — whole-image conversions on `ImgVec` / `ImgRef` (implies `rgb`) |
 
