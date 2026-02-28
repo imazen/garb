@@ -33,3 +33,6 @@ default = ["std"]
 std = ["archmage/std"]
 rgb = ["dep:rgb"]
 imgref = ["dep:imgref", "rgb"]
+
+[patch.crates-io]
+safe_unaligned_simd = { git = "https://github.com/lilith/safe_unaligned_simd.git" }

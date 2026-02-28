@@ -430,8 +430,7 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 [[package]]
 name = "safe_unaligned_simd"
 version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1d612ce01a584cfab72164fb3f689112249fafeab7b4181c14601d19b34cb0a"
+source = "git+https://github.com/lilith/safe_unaligned_simd.git#18119f74c132443837aaabe8fadd680e8f137893"
 
 [[package]]
 name = "same-file"
