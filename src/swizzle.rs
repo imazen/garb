@@ -121,9 +121,64 @@ const RGB_ALIGN_PERM_AVX: [i8; 32] = [
     0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0,
 ];
 
+// 3bpp swap shuffle: reverse bytes 0↔2 in each 3-byte group (4 pixels per 16 bytes)
+// Bytes 12-15 pass through unchanged — safe for in-place 16-byte stores advancing by 12.
+#[cfg(target_arch = "x86_64")]
+const BGR_SWAP_SHUF_SSE: [i8; 16] = [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15];
+
+// RGBA→RGB shuffle: extract bytes 0,1,2 from each 4-byte pixel (4 pixels → 12 bytes)
+#[cfg(target_arch = "x86_64")]
+const RGBA_TO_RGB_SHUF_AVX: [i8; 32] = [
+    0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, -128, -128, -128, -128, 0, 1, 2, 4, 5, 6, 8, 9, 10, 12,
+    13, 14, -128, -128, -128, -128,
+];
+
+// BGRA→RGB shuffle: extract bytes 2,1,0 from each 4-byte pixel (swap + strip)
+#[cfg(target_arch = "x86_64")]
+const BGRA_TO_RGB_SHUF_AVX: [i8; 32] = [
+    2, 1, 0, 6, 5, 4, 10, 9, 8, 14, 13, 12, -128, -128, -128, -128, 2, 1, 0, 6, 5, 4, 10, 9, 8, 14,
+    13, 12, -128, -128, -128, -128,
+];
+
+// Pack permutation: merge 12 bytes from each 16-byte lane into contiguous 24 bytes
+#[cfg(target_arch = "x86_64")]
+const PACK_3X4_PERM_AVX: [i8; 32] = [
+    0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+
 // ===========================================================================
 // Scalar row implementations
 // ===========================================================================
+
+fn swap_bgr_row_scalar(_token: ScalarToken, row: &mut [u8]) {
+    for px in row.chunks_exact_mut(3) {
+        px.swap(0, 2);
+    }
+}
+
+fn copy_swap_bgr_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(3)) {
+        d[0] = s[2];
+        d[1] = s[1];
+        d[2] = s[0];
+    }
+}
+
+fn rgba_to_rgb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
+        d[0] = s[0];
+        d[1] = s[1];
+        d[2] = s[2];
+    }
+}
+
+fn bgra_to_rgb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
+        d[0] = s[2];
+        d[1] = s[1];
+        d[2] = s[0];
+    }
+}
 
 fn swap_br_row_scalar(_token: ScalarToken, row: &mut [u8]) {
     for px in row.chunks_exact_mut(4) {
@@ -206,6 +261,18 @@ fn gray_to_4bpp_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
 fn gray_alpha_to_4bpp_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
     gray_alpha_to_4bpp_row_scalar(t, s, d);
 }
+fn swap_bgr_impl_scalar(t: ScalarToken, b: &mut [u8]) {
+    swap_bgr_row_scalar(t, b);
+}
+fn copy_swap_bgr_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    copy_swap_bgr_row_scalar(t, s, d);
+}
+fn rgba_to_rgb_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    rgba_to_rgb_row_scalar(t, s, d);
+}
+fn bgra_to_rgb_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    bgra_to_rgb_row_scalar(t, s, d);
+}
 
 // ===========================================================================
 // Scalar strided wrappers
@@ -284,6 +351,50 @@ fn gray_alpha_to_4bpp_strided_scalar(
 ) {
     for y in 0..h {
         gray_alpha_to_4bpp_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+    }
+}
+fn swap_bgr_strided_scalar(t: ScalarToken, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+    for y in 0..h {
+        swap_bgr_row_scalar(t, &mut buf[y * stride..][..w * 3]);
+    }
+}
+fn copy_swap_bgr_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        copy_swap_bgr_row_scalar(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
+    }
+}
+fn rgba_to_rgb_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        rgba_to_rgb_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+fn bgra_to_rgb_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        bgra_to_rgb_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
     }
 }
 
@@ -448,6 +559,100 @@ fn gray_alpha_to_4bpp_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
     }
 }
 
+// 3bpp swap in-place: use 128-bit SSE pshufb with passthrough for safe 16-byte stores
+#[cfg(target_arch = "x86_64")]
+#[rite]
+fn swap_bgr_row_v3(_token: X64V3Token, row: &mut [u8]) {
+    let mask = safe_unaligned_simd::x86_64::_mm_loadu_si128(&BGR_SWAP_SHUF_SSE);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::x86_64::_mm_loadu_si128(arr);
+        let shuffled = _mm_shuffle_epi8(v, mask);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        safe_unaligned_simd::x86_64::_mm_storeu_si128(out, shuffled);
+        i += 12; // advance by 4 pixels (12 bytes); bytes 12-15 were passed through
+    }
+    for px in row[i..].chunks_exact_mut(3) {
+        px.swap(0, 2);
+    }
+}
+
+// 3bpp swap copy: same 128-bit approach, write to separate dst
+#[cfg(target_arch = "x86_64")]
+#[rite]
+fn copy_swap_bgr_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let mask = safe_unaligned_simd::x86_64::_mm_loadu_si128(&BGR_SWAP_SHUF_SSE);
+    let (slen, dlen) = (src.len(), dst.len());
+    let mut i = 0;
+    while i + 16 <= slen && i + 16 <= dlen {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::x86_64::_mm_loadu_si128(s);
+        let shuffled = _mm_shuffle_epi8(v, mask);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        safe_unaligned_simd::x86_64::_mm_storeu_si128(d, shuffled);
+        i += 12;
+    }
+    for (s, d) in src[i..].chunks_exact(3).zip(dst[i..].chunks_exact_mut(3)) {
+        d[0] = s[2];
+        d[1] = s[1];
+        d[2] = s[0];
+    }
+}
+
+// 4→3 strip alpha (keep order): AVX2 pshufb + vpermd pack
+#[cfg(target_arch = "x86_64")]
+#[rite]
+fn rgba_to_rgb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let shuf = safe_unaligned_simd::x86_64::_mm256_loadu_si256(&RGBA_TO_RGB_SHUF_AVX);
+    let pack = safe_unaligned_simd::x86_64::_mm256_loadu_si256(&PACK_3X4_PERM_AVX);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 32 <= slen && id + 24 <= dlen {
+        let s: &[u8; 32] = src[is..is + 32].try_into().unwrap();
+        let v = safe_unaligned_simd::x86_64::_mm256_loadu_si256(s);
+        let stripped = _mm256_shuffle_epi8(v, shuf);
+        let packed = _mm256_permutevar8x32_epi32(stripped, pack);
+        let mut tmp = [0u8; 32];
+        safe_unaligned_simd::x86_64::_mm256_storeu_si256(&mut tmp, packed);
+        dst[id..id + 24].copy_from_slice(&tmp[..24]);
+        is += 32;
+        id += 24;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[0];
+        d[1] = s[1];
+        d[2] = s[2];
+    }
+}
+
+// 4→3 strip alpha + swap: BGRA→RGB
+#[cfg(target_arch = "x86_64")]
+#[rite]
+fn bgra_to_rgb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let shuf = safe_unaligned_simd::x86_64::_mm256_loadu_si256(&BGRA_TO_RGB_SHUF_AVX);
+    let pack = safe_unaligned_simd::x86_64::_mm256_loadu_si256(&PACK_3X4_PERM_AVX);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 32 <= slen && id + 24 <= dlen {
+        let s: &[u8; 32] = src[is..is + 32].try_into().unwrap();
+        let v = safe_unaligned_simd::x86_64::_mm256_loadu_si256(s);
+        let stripped = _mm256_shuffle_epi8(v, shuf);
+        let packed = _mm256_permutevar8x32_epi32(stripped, pack);
+        let mut tmp = [0u8; 32];
+        safe_unaligned_simd::x86_64::_mm256_storeu_si256(&mut tmp, packed);
+        dst[id..id + 24].copy_from_slice(&tmp[..24]);
+        is += 32;
+        id += 24;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[2];
+        d[1] = s[1];
+        d[2] = s[0];
+    }
+}
+
 // x86-64 arcane contiguous wrappers
 #[cfg(target_arch = "x86_64")]
 #[arcane]
@@ -483,6 +688,26 @@ fn gray_to_4bpp_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
 #[arcane]
 fn gray_alpha_to_4bpp_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
     gray_alpha_to_4bpp_row_v3(t, s, d);
+}
+#[cfg(target_arch = "x86_64")]
+#[arcane]
+fn swap_bgr_impl_v3(t: X64V3Token, b: &mut [u8]) {
+    swap_bgr_row_v3(t, b);
+}
+#[cfg(target_arch = "x86_64")]
+#[arcane]
+fn copy_swap_bgr_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    copy_swap_bgr_row_v3(t, s, d);
+}
+#[cfg(target_arch = "x86_64")]
+#[arcane]
+fn rgba_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    rgba_to_rgb_row_v3(t, s, d);
+}
+#[cfg(target_arch = "x86_64")]
+#[arcane]
+fn bgra_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    bgra_to_rgb_row_v3(t, s, d);
 }
 
 // x86-64 arcane strided wrappers
@@ -573,6 +798,58 @@ fn gray_alpha_to_4bpp_strided_v3(
 ) {
     for y in 0..h {
         gray_alpha_to_4bpp_row_v3(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[cfg(target_arch = "x86_64")]
+#[arcane]
+fn swap_bgr_strided_v3(t: X64V3Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+    for y in 0..h {
+        swap_bgr_row_v3(t, &mut buf[y * stride..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "x86_64")]
+#[arcane]
+fn copy_swap_bgr_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        copy_swap_bgr_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "x86_64")]
+#[arcane]
+fn rgba_to_rgb_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        rgba_to_rgb_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "x86_64")]
+#[arcane]
+fn bgra_to_rgb_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        bgra_to_rgb_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
     }
 }
 
@@ -760,6 +1037,104 @@ fn gray_alpha_to_4bpp_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8
     }
 }
 
+// 3bpp swap in-place on NEON: 4 pixels per iter with passthrough
+#[cfg(target_arch = "aarch64")]
+#[rite]
+fn swap_bgr_row_arm_v2(_token: Arm64V2Token, row: &mut [u8]) {
+    use core::arch::aarch64::vqtbl1q_u8;
+    let mb: [u8; 16] = [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15];
+    let mask = safe_unaligned_simd::aarch64::vld1q_u8(&mb);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::aarch64::vld1q_u8(arr);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        safe_unaligned_simd::aarch64::vst1q_u8(out, vqtbl1q_u8(v, mask));
+        i += 12;
+    }
+    for px in row[i..].chunks_exact_mut(3) {
+        px.swap(0, 2);
+    }
+}
+
+// 3bpp swap copy on NEON
+#[cfg(target_arch = "aarch64")]
+#[rite]
+fn copy_swap_bgr_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+    use core::arch::aarch64::vqtbl1q_u8;
+    let mb: [u8; 16] = [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15];
+    let mask = safe_unaligned_simd::aarch64::vld1q_u8(&mb);
+    let (slen, dlen) = (src.len(), dst.len());
+    let mut i = 0;
+    while i + 16 <= slen && i + 16 <= dlen {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::aarch64::vld1q_u8(s);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        safe_unaligned_simd::aarch64::vst1q_u8(d, vqtbl1q_u8(v, mask));
+        i += 12;
+    }
+    for (s, d) in src[i..].chunks_exact(3).zip(dst[i..].chunks_exact_mut(3)) {
+        d[0] = s[2];
+        d[1] = s[1];
+        d[2] = s[0];
+    }
+}
+
+// 4→3 strip alpha (keep order) on NEON
+#[cfg(target_arch = "aarch64")]
+#[rite]
+fn rgba_to_rgb_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+    use core::arch::aarch64::vqtbl1q_u8;
+    let sb: [u8; 16] = [
+        0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 0x80, 0x80, 0x80, 0x80,
+    ];
+    let shuf = safe_unaligned_simd::aarch64::vld1q_u8(&sb);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 12 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::aarch64::vld1q_u8(s);
+        let mut tmp = [0u8; 16];
+        safe_unaligned_simd::aarch64::vst1q_u8(&mut tmp, vqtbl1q_u8(v, shuf));
+        dst[id..id + 12].copy_from_slice(&tmp[..12]);
+        is += 16;
+        id += 12;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[0];
+        d[1] = s[1];
+        d[2] = s[2];
+    }
+}
+
+// 4→3 strip alpha + swap on NEON (BGRA→RGB)
+#[cfg(target_arch = "aarch64")]
+#[rite]
+fn bgra_to_rgb_row_arm_v2(_token: Arm64V2Token, src: &[u8], dst: &mut [u8]) {
+    use core::arch::aarch64::vqtbl1q_u8;
+    let sb: [u8; 16] = [
+        2, 1, 0, 6, 5, 4, 10, 9, 8, 14, 13, 12, 0x80, 0x80, 0x80, 0x80,
+    ];
+    let shuf = safe_unaligned_simd::aarch64::vld1q_u8(&sb);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 12 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::aarch64::vld1q_u8(s);
+        let mut tmp = [0u8; 16];
+        safe_unaligned_simd::aarch64::vst1q_u8(&mut tmp, vqtbl1q_u8(v, shuf));
+        dst[id..id + 12].copy_from_slice(&tmp[..12]);
+        is += 16;
+        id += 12;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[2];
+        d[1] = s[1];
+        d[2] = s[0];
+    }
+}
+
 // ARM arcane contiguous wrappers
 #[cfg(target_arch = "aarch64")]
 #[arcane]
@@ -795,6 +1170,26 @@ fn gray_to_4bpp_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
 #[arcane]
 fn gray_alpha_to_4bpp_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
     gray_alpha_to_4bpp_row_arm_v2(t, s, d);
+}
+#[cfg(target_arch = "aarch64")]
+#[arcane]
+fn swap_bgr_impl_arm_v2(t: Arm64V2Token, b: &mut [u8]) {
+    swap_bgr_row_arm_v2(t, b);
+}
+#[cfg(target_arch = "aarch64")]
+#[arcane]
+fn copy_swap_bgr_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
+    copy_swap_bgr_row_arm_v2(t, s, d);
+}
+#[cfg(target_arch = "aarch64")]
+#[arcane]
+fn rgba_to_rgb_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
+    rgba_to_rgb_row_arm_v2(t, s, d);
+}
+#[cfg(target_arch = "aarch64")]
+#[arcane]
+fn bgra_to_rgb_impl_arm_v2(t: Arm64V2Token, s: &[u8], d: &mut [u8]) {
+    bgra_to_rgb_row_arm_v2(t, s, d);
 }
 
 // ARM arcane strided wrappers
@@ -885,6 +1280,58 @@ fn gray_alpha_to_4bpp_strided_arm_v2(
 ) {
     for y in 0..h {
         gray_alpha_to_4bpp_row_arm_v2(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[cfg(target_arch = "aarch64")]
+#[arcane]
+fn swap_bgr_strided_arm_v2(t: Arm64V2Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+    for y in 0..h {
+        swap_bgr_row_arm_v2(t, &mut buf[y * stride..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "aarch64")]
+#[arcane]
+fn copy_swap_bgr_strided_arm_v2(
+    t: Arm64V2Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        copy_swap_bgr_row_arm_v2(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "aarch64")]
+#[arcane]
+fn rgba_to_rgb_strided_arm_v2(
+    t: Arm64V2Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        rgba_to_rgb_row_arm_v2(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "aarch64")]
+#[arcane]
+fn bgra_to_rgb_strided_arm_v2(
+    t: Arm64V2Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        bgra_to_rgb_row_arm_v2(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
     }
 }
 
@@ -1065,6 +1512,96 @@ fn gray_alpha_to_4bpp_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u
     }
 }
 
+// 3bpp swap in-place on WASM: 4 pixels per iter with passthrough
+#[cfg(target_arch = "wasm32")]
+#[rite]
+fn swap_bgr_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    use core::arch::wasm32::{i8x16, i8x16_swizzle};
+    let mask = i8x16(2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::wasm32::v128_load(arr);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        safe_unaligned_simd::wasm32::v128_store(out, i8x16_swizzle(v, mask));
+        i += 12;
+    }
+    for px in row[i..].chunks_exact_mut(3) {
+        px.swap(0, 2);
+    }
+}
+
+// 3bpp swap copy on WASM
+#[cfg(target_arch = "wasm32")]
+#[rite]
+fn copy_swap_bgr_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    use core::arch::wasm32::{i8x16, i8x16_swizzle};
+    let mask = i8x16(2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15);
+    let (slen, dlen) = (src.len(), dst.len());
+    let mut i = 0;
+    while i + 16 <= slen && i + 16 <= dlen {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::wasm32::v128_load(s);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        safe_unaligned_simd::wasm32::v128_store(d, i8x16_swizzle(v, mask));
+        i += 12;
+    }
+    for (s, d) in src[i..].chunks_exact(3).zip(dst[i..].chunks_exact_mut(3)) {
+        d[0] = s[2];
+        d[1] = s[1];
+        d[2] = s[0];
+    }
+}
+
+// 4→3 strip alpha (keep order) on WASM
+#[cfg(target_arch = "wasm32")]
+#[rite]
+fn rgba_to_rgb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    use core::arch::wasm32::{i8x16, i8x16_swizzle};
+    let mask = i8x16(0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, -1, -1, -1, -1);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 12 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::wasm32::v128_load(s);
+        let mut tmp = [0u8; 16];
+        safe_unaligned_simd::wasm32::v128_store(&mut tmp, i8x16_swizzle(v, mask));
+        dst[id..id + 12].copy_from_slice(&tmp[..12]);
+        is += 16;
+        id += 12;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[0];
+        d[1] = s[1];
+        d[2] = s[2];
+    }
+}
+
+// 4→3 strip alpha + swap on WASM (BGRA→RGB)
+#[cfg(target_arch = "wasm32")]
+#[rite]
+fn bgra_to_rgb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    use core::arch::wasm32::{i8x16, i8x16_swizzle};
+    let mask = i8x16(2, 1, 0, 6, 5, 4, 10, 9, 8, 14, 13, 12, -1, -1, -1, -1);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 12 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let v = safe_unaligned_simd::wasm32::v128_load(s);
+        let mut tmp = [0u8; 16];
+        safe_unaligned_simd::wasm32::v128_store(&mut tmp, i8x16_swizzle(v, mask));
+        dst[id..id + 12].copy_from_slice(&tmp[..12]);
+        is += 16;
+        id += 12;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[2];
+        d[1] = s[1];
+        d[2] = s[0];
+    }
+}
+
 // WASM arcane contiguous wrappers
 #[cfg(target_arch = "wasm32")]
 #[arcane]
@@ -1100,6 +1637,26 @@ fn gray_to_4bpp_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
 #[arcane]
 fn gray_alpha_to_4bpp_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
     gray_alpha_to_4bpp_row_wasm128(t, s, d);
+}
+#[cfg(target_arch = "wasm32")]
+#[arcane]
+fn swap_bgr_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    swap_bgr_row_wasm128(t, b);
+}
+#[cfg(target_arch = "wasm32")]
+#[arcane]
+fn copy_swap_bgr_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    copy_swap_bgr_row_wasm128(t, s, d);
+}
+#[cfg(target_arch = "wasm32")]
+#[arcane]
+fn rgba_to_rgb_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    rgba_to_rgb_row_wasm128(t, s, d);
+}
+#[cfg(target_arch = "wasm32")]
+#[arcane]
+fn bgra_to_rgb_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    bgra_to_rgb_row_wasm128(t, s, d);
 }
 
 // WASM arcane strided wrappers
@@ -1190,6 +1747,58 @@ fn gray_alpha_to_4bpp_strided_wasm128(
 ) {
     for y in 0..h {
         gray_alpha_to_4bpp_row_wasm128(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[cfg(target_arch = "wasm32")]
+#[arcane]
+fn swap_bgr_strided_wasm128(t: Wasm128Token, buf: &mut [u8], stride: usize, w: usize, h: usize) {
+    for y in 0..h {
+        swap_bgr_row_wasm128(t, &mut buf[y * stride..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "wasm32")]
+#[arcane]
+fn copy_swap_bgr_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        copy_swap_bgr_row_wasm128(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "wasm32")]
+#[arcane]
+fn rgba_to_rgb_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        rgba_to_rgb_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[cfg(target_arch = "wasm32")]
+#[arcane]
+fn bgra_to_rgb_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) {
+    for y in 0..h {
+        bgra_to_rgb_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
     }
 }
 
@@ -1374,48 +1983,34 @@ pub fn gray_alpha_to_rgba_strided(
 }
 
 // ===========================================================================
-// Scalar-only operations
+// SIMD-dispatched 3bpp and 4→3 operations
 // ===========================================================================
 
 /// Swap R↔B in-place for 3bpp pixels (RGB↔BGR).
 pub fn rgb_to_bgr_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
     check_inplace(buf.len(), 3)?;
-    for px in buf.chunks_exact_mut(3) {
-        px.swap(0, 2);
-    }
+    incant!(swap_bgr_impl(buf), [v3, arm_v2, wasm128, scalar]);
     Ok(())
 }
 
 /// Copy 3bpp pixels, swapping R↔B (RGB→BGR or BGR→RGB).
 pub fn rgb_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 3, dst.len(), 3)?;
-    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(3)) {
-        d[0] = s[2];
-        d[1] = s[1];
-        d[2] = s[0];
-    }
+    incant!(copy_swap_bgr_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
     Ok(())
 }
 
 /// 4bpp → 3bpp by dropping byte 3 (alpha). Keeps byte order.
 pub fn rgba_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 3)?;
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
-        d[0] = s[0];
-        d[1] = s[1];
-        d[2] = s[2];
-    }
+    incant!(rgba_to_rgb_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
     Ok(())
 }
 
 /// 4bpp → 3bpp, dropping alpha and reversing bytes 0↔2 (BGRA→RGB, RGBA→BGR).
 pub fn bgra_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 3)?;
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
-        d[0] = s[2];
-        d[1] = s[1];
-        d[2] = s[0];
-    }
+    incant!(bgra_to_rgb_impl(src, dst), [v3, arm_v2, wasm128, scalar]);
     Ok(())
 }
 
@@ -1427,11 +2022,28 @@ pub fn rgb_to_bgr_inplace_strided(
     height: usize,
 ) -> Result<(), SizeError> {
     check_strided(buf.len(), stride, width, height, 3)?;
-    for y in 0..height {
-        for px in buf[y * stride..][..width * 3].chunks_exact_mut(3) {
-            px.swap(0, 2);
-        }
-    }
+    incant!(
+        swap_bgr_strided(buf, stride, width, height),
+        [v3, arm_v2, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Strided 3bpp copy R↔B swap.
+pub fn rgb_to_bgr_strided(
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), ss, w, h, 3)?;
+    check_strided(dst.len(), ds, w, h, 3)?;
+    incant!(
+        copy_swap_bgr_strided(src, ss, dst, ds, w, h),
+        [v3, arm_v2, wasm128, scalar]
+    );
     Ok(())
 }
 
@@ -1446,16 +2058,10 @@ pub fn rgba_to_rgb_strided(
 ) -> Result<(), SizeError> {
     check_strided(src.len(), ss, w, h, 4)?;
     check_strided(dst.len(), ds, w, h, 3)?;
-    for y in 0..h {
-        for (s, d) in src[y * ss..][..w * 4]
-            .chunks_exact(4)
-            .zip(dst[y * ds..][..w * 3].chunks_exact_mut(3))
-        {
-            d[0] = s[0];
-            d[1] = s[1];
-            d[2] = s[2];
-        }
-    }
+    incant!(
+        rgba_to_rgb_strided(src, ss, dst, ds, w, h),
+        [v3, arm_v2, wasm128, scalar]
+    );
     Ok(())
 }
 
@@ -1470,16 +2076,10 @@ pub fn bgra_to_rgb_strided(
 ) -> Result<(), SizeError> {
     check_strided(src.len(), ss, w, h, 4)?;
     check_strided(dst.len(), ds, w, h, 3)?;
-    for y in 0..h {
-        for (s, d) in src[y * ss..][..w * 4]
-            .chunks_exact(4)
-            .zip(dst[y * ds..][..w * 3].chunks_exact_mut(3))
-        {
-            d[0] = s[2];
-            d[1] = s[1];
-            d[2] = s[0];
-        }
-    }
+    incant!(
+        bgra_to_rgb_strided(src, ss, dst, ds, w, h),
+        [v3, arm_v2, wasm128, scalar]
+    );
     Ok(())
 }
 
@@ -1633,6 +2233,28 @@ pub fn rgba_to_bgr_strided(
     h: usize,
 ) -> Result<(), SizeError> {
     bgra_to_rgb_strided(src, ss, dst, ds, w, h)
+}
+/// Alias for [`rgb_to_bgr_inplace_strided`].
+#[inline(always)]
+pub fn bgr_to_rgb_inplace_strided(
+    buf: &mut [u8],
+    stride: usize,
+    w: usize,
+    h: usize,
+) -> Result<(), SizeError> {
+    rgb_to_bgr_inplace_strided(buf, stride, w, h)
+}
+/// Alias for [`rgb_to_bgr_strided`].
+#[inline(always)]
+pub fn bgr_to_rgb_strided(
+    src: &[u8],
+    ss: usize,
+    dst: &mut [u8],
+    ds: usize,
+    w: usize,
+    h: usize,
+) -> Result<(), SizeError> {
+    rgb_to_bgr_strided(src, ss, dst, ds, w, h)
 }
 
 // ===========================================================================
@@ -2007,69 +2629,158 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Scalar-only operations (no SIMD dispatch, basic correctness)
+    // 3bpp swap and 4→3 strip — SIMD-dispatched, tested at every tier
     // -----------------------------------------------------------------------
 
-    #[test]
-    fn test_rgb_to_bgr_inplace() {
-        let mut row = vec![10u8, 20, 30, 40, 50, 60];
-        rgb_to_bgr_inplace(&mut row).unwrap();
-        assert_eq!(row, [30, 20, 10, 60, 50, 40]);
-    }
-
-    #[test]
-    fn test_rgb_to_bgr_copy() {
-        let src = vec![10u8, 20, 30, 40, 50, 60];
-        let mut dst = vec![0u8; 6];
-        rgb_to_bgr(&src, &mut dst).unwrap();
-        assert_eq!(dst, [30, 20, 10, 60, 50, 40]);
-    }
-
-    #[test]
-    fn test_rgba_to_rgb() {
-        let src = vec![10u8, 20, 30, 255, 40, 50, 60, 128];
-        let mut dst = vec![0u8; 6];
-        rgba_to_rgb(&src, &mut dst).unwrap();
-        assert_eq!(dst, [10, 20, 30, 40, 50, 60]);
-    }
-
-    #[test]
-    fn test_bgra_to_rgb() {
-        let src = vec![10u8, 20, 30, 255, 40, 50, 60, 128];
-        let mut dst = vec![0u8; 6];
-        bgra_to_rgb(&src, &mut dst).unwrap();
-        assert_eq!(dst, [30, 20, 10, 60, 50, 40]);
-    }
-
-    #[test]
-    fn test_strided_scalar_ops() {
-        // rgb_to_bgr_inplace_strided
-        let mut buf = vec![
-            10u8, 20, 30, 40, 50, 60, 0, 0, 0, 70, 80, 90, 100, 110, 120, 0, 0, 0,
-        ];
-        rgb_to_bgr_inplace_strided(&mut buf, 9, 2, 2).unwrap();
-        assert_eq!(&buf[0..6], &[30, 20, 10, 60, 50, 40]);
-        assert_eq!(&buf[9..15], &[90, 80, 70, 120, 110, 100]);
-
-        // rgba_to_rgb_strided
-        let src = make_4bpp(3 * 2); // 3 wide, but arranged with stride
-        let stride_src = 3 * 4 + 4; // 16 bytes stride
-        let mut padded_src = vec![0u8; stride_src * 2];
-        padded_src[..12].copy_from_slice(&src[..12]);
-        padded_src[stride_src..stride_src + 12].copy_from_slice(&src[12..24]);
-        let stride_dst = 3 * 3 + 3;
-        let mut dst = vec![0u8; stride_dst * 2];
-        rgba_to_rgb_strided(&padded_src, stride_src, &mut dst, stride_dst, 3, 2).unwrap();
-        for y in 0..2 {
-            for x in 0..3 {
-                let si = y * stride_src + x * 4;
-                let di = y * stride_dst + x * 3;
-                assert_eq!(
-                    [dst[di], dst[di + 1], dst[di + 2]],
-                    [padded_src[si], padded_src[si + 1], padded_src[si + 2]]
-                );
-            }
+    fn ref_swap_bgr(data: &[u8]) -> Vec<u8> {
+        let mut out = data.to_vec();
+        for px in out.chunks_exact_mut(3) {
+            px.swap(0, 2);
         }
+        out
+    }
+
+    fn ref_rgba_to_rgb(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 4;
+        let mut out = vec![0u8; n * 3];
+        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(3)) {
+            d[0] = s[0];
+            d[1] = s[1];
+            d[2] = s[2];
+        }
+        out
+    }
+
+    fn ref_bgra_to_rgb(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 4;
+        let mut out = vec![0u8; n * 3];
+        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(3)) {
+            d[0] = s[2];
+            d[1] = s[1];
+            d[2] = s[0];
+        }
+        out
+    }
+
+    #[test]
+    fn permutation_swap_bgr_inplace() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for &n in TEST_PIXEL_COUNTS {
+                let mut data = make_3bpp(n);
+                let expected = ref_swap_bgr(&data);
+                rgb_to_bgr_inplace(&mut data).unwrap();
+                assert_eq!(data, expected, "swap_bgr_inplace n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("swap_bgr_inplace: {report}");
+    }
+
+    #[test]
+    fn permutation_copy_swap_bgr() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for &n in TEST_PIXEL_COUNTS {
+                let src = make_3bpp(n);
+                let expected = ref_swap_bgr(&src);
+                let mut dst = vec![0u8; n * 3];
+                rgb_to_bgr(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "copy_swap_bgr n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("copy_swap_bgr: {report}");
+    }
+
+    #[test]
+    fn permutation_rgba_to_rgb() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for &n in TEST_PIXEL_COUNTS {
+                let src = make_4bpp(n);
+                let expected = ref_rgba_to_rgb(&src);
+                let mut dst = vec![0u8; n * 3];
+                rgba_to_rgb(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "rgba_to_rgb n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("rgba_to_rgb: {report}");
+    }
+
+    #[test]
+    fn permutation_bgra_to_rgb() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for &n in TEST_PIXEL_COUNTS {
+                let src = make_4bpp(n);
+                let expected = ref_bgra_to_rgb(&src);
+                let mut dst = vec![0u8; n * 3];
+                bgra_to_rgb(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "bgra_to_rgb n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("bgra_to_rgb: {report}");
+    }
+
+    #[test]
+    fn permutation_strided_3bpp_and_strip() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            let w = 10;
+            let h = 3;
+
+            // 3bpp swap strided
+            let stride_3 = w * 3 + 6;
+            let mut buf = vec![0xCCu8; stride_3 * h];
+            for y in 0..h {
+                for x in 0..w {
+                    let i = y * stride_3 + x * 3;
+                    buf[i] = (y * w + x) as u8;
+                    buf[i + 1] = 100;
+                    buf[i + 2] = 200;
+                }
+            }
+            let orig = buf.clone();
+            rgb_to_bgr_inplace_strided(&mut buf, stride_3, w, h).unwrap();
+            for y in 0..h {
+                for x in 0..w {
+                    let i = y * stride_3 + x * 3;
+                    assert_eq!(
+                        [buf[i], buf[i + 1], buf[i + 2]],
+                        [orig[i + 2], orig[i + 1], orig[i]],
+                        "strided 3bpp swap y={y} x={x} tier={perm}"
+                    );
+                }
+            }
+
+            // 4→3 strided (RGBA→RGB)
+            let src_stride = w * 4 + 8;
+            let dst_stride = w * 3 + 6;
+            let src4: Vec<u8> = (0..src_stride * h).map(|i| (i % 251) as u8).collect();
+            let mut dst3 = vec![0u8; dst_stride * h];
+            rgba_to_rgb_strided(&src4, src_stride, &mut dst3, dst_stride, w, h).unwrap();
+            for y in 0..h {
+                for x in 0..w {
+                    let si = y * src_stride + x * 4;
+                    let di = y * dst_stride + x * 3;
+                    assert_eq!(
+                        [dst3[di], dst3[di + 1], dst3[di + 2]],
+                        [src4[si], src4[si + 1], src4[si + 2]],
+                        "strided rgba_to_rgb y={y} x={x} tier={perm}"
+                    );
+                }
+            }
+
+            // 4→3 strided (BGRA→RGB)
+            let mut dst3b = vec![0u8; dst_stride * h];
+            bgra_to_rgb_strided(&src4, src_stride, &mut dst3b, dst_stride, w, h).unwrap();
+            for y in 0..h {
+                for x in 0..w {
+                    let si = y * src_stride + x * 4;
+                    let di = y * dst_stride + x * 3;
+                    assert_eq!(
+                        [dst3b[di], dst3b[di + 1], dst3b[di + 2]],
+                        [src4[si + 2], src4[si + 1], src4[si]],
+                        "strided bgra_to_rgb y={y} x={x} tier={perm}"
+                    );
+                }
+            }
+        });
+        std::eprintln!("strided_3bpp_and_strip: {report}");
     }
 
     // -----------------------------------------------------------------------

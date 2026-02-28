@@ -29,13 +29,21 @@ fn readme_typed_rgb() {
 
     let mut pixels: Vec<Rgba<u8>> = vec![Rgba::new(255, 0, 128, 255); 100];
     let bgra: &mut [Bgra<u8>] = typed_rgb::rgba_to_bgra_mut(&mut pixels);
-    assert_eq!(bgra[0], Bgra { b: 128, g: 0, r: 255, a: 255 });
+    assert_eq!(
+        bgra[0],
+        Bgra {
+            b: 128,
+            g: 0,
+            r: 255,
+            a: 255
+        }
+    );
 }
 
 #[test]
 fn readme_imgref() {
-    use garb::imgref;
     use ::imgref::ImgVec;
+    use garb::imgref;
     use rgb::{Bgra, Rgba};
 
     let rgba_img = ImgVec::new(vec![Rgba::new(255, 0, 128, 200); 640 * 480], 640, 480);
