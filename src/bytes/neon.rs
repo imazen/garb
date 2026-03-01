@@ -1,9 +1,7 @@
 use core::arch::aarch64::{uint8x16x3_t, uint8x16x4_t, vorrq_u8, vqtbl1q_u8};
 
 use archmage::prelude::*;
-use safe_unaligned_simd::aarch64::{
-    vld1q_u8, vld3q_u8, vld4q_u8, vst1q_u8, vst3q_u8, vst4q_u8,
-};
+use safe_unaligned_simd::aarch64::{vld1q_u8, vld3q_u8, vld4q_u8, vst1q_u8, vst3q_u8, vst4q_u8};
 
 use super::swap_br_u32;
 
