@@ -519,6 +519,128 @@ fn permutation_strided_3bpp_and_strip() {
 }
 
 // -----------------------------------------------------------------------
+// Gray layout conversions (no luma weights)
+// -----------------------------------------------------------------------
+
+#[test]
+fn permutation_gray_to_rgb() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_1bpp(n);
+            let mut dst = vec![0u8; n * 3];
+            gray_to_rgb(&src, &mut dst).unwrap();
+            for (i, &g) in src.iter().enumerate() {
+                let d = &dst[i * 3..i * 3 + 3];
+                assert_eq!(d, &[g, g, g], "gray_to_rgb n={n} i={i} tier={perm}");
+            }
+        }
+    });
+    std::eprintln!("gray_to_rgb: {report}");
+}
+
+#[test]
+fn permutation_gray_alpha_to_rgb() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_2bpp(n);
+            let mut dst = vec![0u8; n * 3];
+            gray_alpha_to_rgb(&src, &mut dst).unwrap();
+            for i in 0..n {
+                let g = src[i * 2];
+                let d = &dst[i * 3..i * 3 + 3];
+                assert_eq!(d, &[g, g, g], "gray_alpha_to_rgb n={n} i={i} tier={perm}");
+            }
+        }
+    });
+    std::eprintln!("gray_alpha_to_rgb: {report}");
+}
+
+#[test]
+fn permutation_gray_to_gray_alpha() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_1bpp(n);
+            let mut dst = vec![0u8; n * 2];
+            gray_to_gray_alpha(&src, &mut dst).unwrap();
+            for (i, &g) in src.iter().enumerate() {
+                assert_eq!(dst[i * 2], g, "gray_to_ga gray n={n} i={i} tier={perm}");
+                assert_eq!(
+                    dst[i * 2 + 1],
+                    255,
+                    "gray_to_ga alpha n={n} i={i} tier={perm}"
+                );
+            }
+        }
+    });
+    std::eprintln!("gray_to_gray_alpha: {report}");
+}
+
+#[test]
+fn permutation_gray_alpha_to_gray() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_2bpp(n);
+            let mut dst = vec![0u8; n];
+            gray_alpha_to_gray(&src, &mut dst).unwrap();
+            for i in 0..n {
+                assert_eq!(dst[i], src[i * 2], "ga_to_gray n={n} i={i} tier={perm}");
+            }
+        }
+    });
+    std::eprintln!("gray_alpha_to_gray: {report}");
+}
+
+#[test]
+fn identity_gray_roundtrip_rgb() {
+    let src: Vec<u8> = (0..=255).collect();
+    let mut rgb = vec![0u8; 256 * 3];
+    let mut dst = vec![0u8; 256];
+    gray_to_rgb(&src, &mut rgb).unwrap();
+    rgb_to_gray_identity(&rgb, &mut dst).unwrap();
+    assert_eq!(src, dst, "gray→rgb→gray_identity roundtrip failed");
+}
+
+#[test]
+fn identity_gray_roundtrip_rgba() {
+    let src: Vec<u8> = (0..=255).collect();
+    let mut rgba = vec![0u8; 256 * 4];
+    let mut dst = vec![0u8; 256];
+    gray_to_rgba(&src, &mut rgba).unwrap();
+    rgba_to_gray_identity(&rgba, &mut dst).unwrap();
+    assert_eq!(src, dst, "gray→rgba→gray_identity roundtrip failed");
+}
+
+#[test]
+fn permutation_rgba_to_gray_identity() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let mut dst = vec![0u8; n];
+            rgba_to_gray_identity(&src, &mut dst).unwrap();
+            for i in 0..n {
+                assert_eq!(dst[i], src[i * 4], "rgba_to_gray n={n} i={i} tier={perm}");
+            }
+        }
+    });
+    std::eprintln!("rgba_to_gray_identity: {report}");
+}
+
+#[test]
+fn permutation_rgb_to_gray_identity() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_3bpp(n);
+            let mut dst = vec![0u8; n];
+            rgb_to_gray_identity(&src, &mut dst).unwrap();
+            for i in 0..n {
+                assert_eq!(dst[i], src[i * 3], "rgb_to_gray n={n} i={i} tier={perm}");
+            }
+        }
+    });
+    std::eprintln!("rgb_to_gray_identity: {report}");
+}
+
+// -----------------------------------------------------------------------
 // Depth conversions
 // -----------------------------------------------------------------------
 

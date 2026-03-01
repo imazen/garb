@@ -340,6 +340,153 @@ pub(super) fn convert_f32_to_u16_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [
     convert_f32_to_u16_row_scalar(t, s, d);
 }
 
+// ===========================================================================
+// Gray layout conversion row implementations
+// ===========================================================================
+
+pub(super) fn gray_to_rgb_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (&g, d) in src.iter().zip(dst.chunks_exact_mut(3)) {
+        d[0] = g;
+        d[1] = g;
+        d[2] = g;
+    }
+}
+
+pub(super) fn gray_alpha_to_rgb_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (ga, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(3)) {
+        d[0] = ga[0];
+        d[1] = ga[0];
+        d[2] = ga[0];
+    }
+}
+
+pub(super) fn gray_to_gray_alpha_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (&g, d) in src.iter().zip(dst.chunks_exact_mut(2)) {
+        d[0] = g;
+        d[1] = 0xFF;
+    }
+}
+
+pub(super) fn gray_alpha_to_gray_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (ga, d) in src.chunks_exact(2).zip(dst.iter_mut()) {
+        *d = ga[0];
+    }
+}
+
+/// Identity gray extraction from 3bpp — takes byte 0 from each pixel.
+pub(super) fn rgb_to_gray_identity_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (px, d) in src.chunks_exact(3).zip(dst.iter_mut()) {
+        *d = px[0];
+    }
+}
+
+/// Identity gray extraction from 4bpp — takes byte 0 from each pixel.
+pub(super) fn rgba_to_gray_identity_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (px, d) in src.chunks_exact(4).zip(dst.iter_mut()) {
+        *d = px[0];
+    }
+}
+
+// Gray layout contiguous wrappers
+pub(super) fn gray_to_rgb_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    gray_to_rgb_row_scalar(t, s, d);
+}
+pub(super) fn gray_alpha_to_rgb_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    gray_alpha_to_rgb_row_scalar(t, s, d);
+}
+pub(super) fn gray_to_gray_alpha_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    gray_to_gray_alpha_row_scalar(t, s, d);
+}
+pub(super) fn gray_alpha_to_gray_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    gray_alpha_to_gray_row_scalar(t, s, d);
+}
+pub(super) fn rgb_to_gray_identity_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    rgb_to_gray_identity_row_scalar(t, s, d);
+}
+pub(super) fn rgba_to_gray_identity_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    rgba_to_gray_identity_row_scalar(t, s, d);
+}
+
+// Gray layout strided wrappers
+pub(super) fn gray_to_rgb_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_to_rgb_row_scalar(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 3]);
+    }
+}
+pub(super) fn gray_alpha_to_rgb_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_alpha_to_rgb_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 3]);
+    }
+}
+pub(super) fn gray_to_gray_alpha_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_to_gray_alpha_row_scalar(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 2]);
+    }
+}
+pub(super) fn gray_alpha_to_gray_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_alpha_to_gray_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w]);
+    }
+}
+pub(super) fn rgb_to_gray_identity_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        rgb_to_gray_identity_row_scalar(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w]);
+    }
+}
+pub(super) fn rgba_to_gray_identity_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        rgba_to_gray_identity_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w]);
+    }
+}
+
 // Depth conversion strided wrappers
 pub(super) fn convert_u8_to_u16_strided_scalar(
     t: ScalarToken,

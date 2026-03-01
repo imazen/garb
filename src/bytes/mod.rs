@@ -498,6 +498,250 @@ pub fn convert_f32_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     Ok(())
 }
 
+// ===========================================================================
+// Gray layout conversions — no luma weights
+// ===========================================================================
+
+/// Gray (1 byte/px) → RGB/BGR (3 bytes/px). R=G=B=gray.
+pub fn gray_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    if src.is_empty() {
+        return Err(SizeError::NotPixelAligned);
+    }
+    check_copy(src.len(), 1, dst.len(), 3)?;
+    incant!(gray_to_rgb_impl(src, dst), [scalar]);
+    Ok(())
+}
+
+/// GrayAlpha (2 bytes/px) → RGB/BGR (3 bytes/px). R=G=B=gray, alpha dropped.
+pub fn gray_alpha_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 2, dst.len(), 3)?;
+    incant!(gray_alpha_to_rgb_impl(src, dst), [scalar]);
+    Ok(())
+}
+
+/// Gray (1 byte/px) → GrayAlpha (2 bytes/px). Alpha set to 255.
+pub fn gray_to_gray_alpha(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    if src.is_empty() {
+        return Err(SizeError::NotPixelAligned);
+    }
+    check_copy(src.len(), 1, dst.len(), 2)?;
+    incant!(gray_to_gray_alpha_impl(src, dst), [scalar]);
+    Ok(())
+}
+
+/// GrayAlpha (2 bytes/px) → Gray (1 byte/px). Drops alpha.
+pub fn gray_alpha_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 2, dst.len(), 1)?;
+    incant!(gray_alpha_to_gray_impl(src, dst), [scalar]);
+    Ok(())
+}
+
+/// RGB (3 bytes/px) → Gray (1 byte/px). Identity extraction — takes the R channel.
+///
+/// Use this for roundtripping gray data that was expanded to RGB (where R=G=B).
+/// For perceptual luminance conversion, use `rgb_to_gray_bt709` instead.
+pub fn rgb_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 3, dst.len(), 1)?;
+    incant!(rgb_to_gray_identity_impl(src, dst), [scalar]);
+    Ok(())
+}
+
+/// RGBA (4 bytes/px) → Gray (1 byte/px). Identity extraction — takes the R channel.
+///
+/// Use this for roundtripping gray data that was expanded to RGBA (where R=G=B).
+/// For perceptual luminance conversion, use `rgba_to_gray_bt709` instead.
+pub fn rgba_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 1)?;
+    incant!(rgba_to_gray_identity_impl(src, dst), [scalar]);
+    Ok(())
+}
+
+/// Alias for [`gray_to_rgb`] — R=G=B so output is identical.
+#[inline(always)]
+pub fn gray_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    gray_to_rgb(src, dst)
+}
+
+/// Alias for [`gray_alpha_to_rgb`] — R=G=B so output is identical.
+#[inline(always)]
+pub fn gray_alpha_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    gray_alpha_to_rgb(src, dst)
+}
+
+/// Alias for [`rgb_to_gray_identity`] — R=G=B so any channel works.
+#[inline(always)]
+pub fn bgr_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    rgb_to_gray_identity(src, dst)
+}
+
+/// Alias for [`rgba_to_gray_identity`] — R=G=B so any channel works.
+#[inline(always)]
+pub fn bgra_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    rgba_to_gray_identity(src, dst)
+}
+
+// Strided gray layout conversions
+
+/// Gray (1 byte/px) → RGB (3 bytes/px) between strided buffers.
+pub fn gray_to_rgb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 1)?;
+    check_strided(dst.len(), width, height, dst_stride, 3)?;
+    incant!(
+        gray_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
+        [scalar]
+    );
+    Ok(())
+}
+
+/// GrayAlpha (2 bytes/px) → RGB (3 bytes/px) between strided buffers.
+pub fn gray_alpha_to_rgb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 2)?;
+    check_strided(dst.len(), width, height, dst_stride, 3)?;
+    incant!(
+        gray_alpha_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
+        [scalar]
+    );
+    Ok(())
+}
+
+/// Gray (1 byte/px) → GrayAlpha (2 bytes/px) between strided buffers.
+pub fn gray_to_gray_alpha_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 1)?;
+    check_strided(dst.len(), width, height, dst_stride, 2)?;
+    incant!(
+        gray_to_gray_alpha_strided(src, dst, width, height, src_stride, dst_stride),
+        [scalar]
+    );
+    Ok(())
+}
+
+/// GrayAlpha (2 bytes/px) → Gray (1 byte/px) between strided buffers.
+pub fn gray_alpha_to_gray_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 2)?;
+    check_strided(dst.len(), width, height, dst_stride, 1)?;
+    incant!(
+        gray_alpha_to_gray_strided(src, dst, width, height, src_stride, dst_stride),
+        [scalar]
+    );
+    Ok(())
+}
+
+/// RGB (3 bytes/px) → Gray (1 byte/px) identity extraction between strided buffers.
+pub fn rgb_to_gray_identity_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 3)?;
+    check_strided(dst.len(), width, height, dst_stride, 1)?;
+    incant!(
+        rgb_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride),
+        [scalar]
+    );
+    Ok(())
+}
+
+/// RGBA (4 bytes/px) → Gray (1 byte/px) identity extraction between strided buffers.
+pub fn rgba_to_gray_identity_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 1)?;
+    incant!(
+        rgba_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride),
+        [scalar]
+    );
+    Ok(())
+}
+
+/// Alias for [`gray_to_rgb_strided`].
+#[inline(always)]
+pub fn gray_to_bgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    gray_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`gray_alpha_to_rgb_strided`].
+#[inline(always)]
+pub fn gray_alpha_to_bgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    gray_alpha_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`rgb_to_gray_identity_strided`].
+#[inline(always)]
+pub fn bgr_to_gray_identity_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    rgb_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`rgba_to_gray_identity_strided`].
+#[inline(always)]
+pub fn bgra_to_gray_identity_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    rgba_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
 // Strided depth conversions
 
 /// Convert u8→u16 between strided buffers. `width_elements` is element count per row.
