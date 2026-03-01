@@ -53,17 +53,16 @@ Actions CI; run `cargo bench` locally for hardware-specific results.
 |---|---|---|---|
 | RGBA ↔ BGRA (in-place) | 243 µs | 865 µs | **3.6x** |
 | RGB ↔ BGR (in-place) | 369 µs | 857 µs | **2.3x** |
-| RGB ↔ BGR (copy) | 228 µs | 219 µs | ~1x |
-| RGBA → RGB (strip alpha) | 435 µs | 278 µs | 0.6x |
-| BGRA → RGB (strip + swap) | 435 µs | 278 µs | 0.6x |
-| RGB → RGBA (expand) | 375 µs | 313 µs | 0.8x |
 | Fill alpha | 242 µs | 495 µs | **2.0x** |
+| RGB ↔ BGR (copy) | 221 µs | 219 µs | ~1x |
+| RGBA → RGB (strip alpha) | 279 µs | 278 µs | ~1x |
+| BGRA → RGB (strip + swap) | 277 µs | 278 µs | ~1x |
+| RGB → RGBA (expand) | 316 µs | 313 µs | ~1x |
 
-In-place swaps and fill are 2–3.6x faster on all ARM hardware tested
-(Ampere Altra, Apple Silicon, Snapdragon X). Cross-bpp copies (3↔4 channel)
-don't yet benefit from the hand-written NEON shuffles — the compiler's
-autovectorizer matches or beats them. These will be improved in a future
-release.
+In-place swaps and fill use hand-written NEON and are 2–3.6x faster on all
+ARM hardware tested (Ampere Altra, Apple Silicon, Snapdragon X). Cross-bpp
+operations (3↔4 channel, 3bpp copy) use LLVM's autovectorizer, which
+generates optimal code for these patterns on AArch64.
 
 ### WASM (SIMD128) — wasmtime
 
