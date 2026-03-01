@@ -495,16 +495,16 @@ pub(super) fn luma_4bpp_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8], w0: u
     // Shuffle masks: extract channel bytes from each 4-byte RGBA pixel.
     // Within each 128-bit lane (4 pixels), gather one channel into bytes 0-3.
     let r_shuf = _mm256_set_epi8(
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 8, 4, 0,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 8, 4, 0,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 8, 4, 0, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, 12, 8, 4, 0,
     );
     let g_shuf = _mm256_set_epi8(
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, 9, 5, 1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, 9, 5, 1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, 9, 5, 1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, 13, 9, 5, 1,
     );
     let b_shuf = _mm256_set_epi8(
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 10, 6, 2,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 10, 6, 2,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 10, 6, 2, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, 14, 10, 6, 2,
     );
     let w_r = _mm256_set1_epi16(w0 as i16);
     let w_g = _mm256_set1_epi16(w1 as i16);
@@ -529,10 +529,7 @@ pub(super) fn luma_4bpp_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8], w0: u
 
         // Weighted sum: R*wR + G*wG + B*wB + 128
         let sum = _mm256_add_epi16(
-            _mm256_add_epi16(
-                _mm256_mullo_epi16(r16, w_r),
-                _mm256_mullo_epi16(g16, w_g),
-            ),
+            _mm256_add_epi16(_mm256_mullo_epi16(r16, w_r), _mm256_mullo_epi16(g16, w_g)),
             _mm256_add_epi16(_mm256_mullo_epi16(b16, w_b), add128),
         );
 
@@ -625,6 +622,215 @@ macro_rules! luma_v3_wrappers {
 luma_v3_wrappers!(bt709, 54, 183, 19);
 luma_v3_wrappers!(bt601, 77, 150, 29);
 luma_v3_wrappers!(bt2020, 67, 174, 15);
+
+// ===========================================================================
+// f32 alpha premultiplication — AVX2 rite row implementations
+// ===========================================================================
+
+/// In-place f32 premultiply: C' = C * A, alpha preserved. 2 pixels per iteration.
+#[rite]
+pub(super) fn premul_f32_row_v3(_t: X64V3Token, buf: &mut [u8]) {
+    let n = buf.len() / 16;
+    let mut i = 0;
+    while i + 2 <= n {
+        let s: &[u8; 32] = buf[i * 16..i * 16 + 32].try_into().unwrap();
+        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+        let alpha = _mm256_permute_ps::<0xFF>(v); // broadcast A to all lanes
+        let premul = _mm256_mul_ps(v, alpha);
+        let result = _mm256_blend_ps::<0b1000_1000>(premul, v); // keep original alpha
+        let d: &mut [u8; 32] = (&mut buf[i * 16..i * 16 + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, _mm256_castps_si256(result));
+        i += 2;
+    }
+    if i < n {
+        let floats: &mut [f32] = bytemuck::cast_slice_mut(&mut buf[i * 16..]);
+        for px in floats.chunks_exact_mut(4) {
+            let a = px[3];
+            px[0] *= a;
+            px[1] *= a;
+            px[2] *= a;
+        }
+    }
+}
+
+/// Copy f32 premultiply: C' = C * A, alpha copied. 2 pixels per iteration.
+#[rite]
+pub(super) fn premul_f32_copy_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let n = src.len() / 16;
+    let mut i = 0;
+    while i + 2 <= n {
+        let s: &[u8; 32] = src[i * 16..i * 16 + 32].try_into().unwrap();
+        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+        let alpha = _mm256_permute_ps::<0xFF>(v);
+        let premul = _mm256_mul_ps(v, alpha);
+        let result = _mm256_blend_ps::<0b1000_1000>(premul, v);
+        let d: &mut [u8; 32] = (&mut dst[i * 16..i * 16 + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, _mm256_castps_si256(result));
+        i += 2;
+    }
+    if i < n {
+        let src_f: &[f32] = bytemuck::cast_slice(&src[i * 16..]);
+        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(&mut dst[i * 16..]);
+        for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
+            let a = s[3];
+            d[0] = s[0] * a;
+            d[1] = s[1] * a;
+            d[2] = s[2] * a;
+            d[3] = a;
+        }
+    }
+}
+
+/// In-place f32 unpremultiply: C' = C / A, zero alpha → all zero. 2 pixels per iteration.
+#[rite]
+pub(super) fn unpremul_f32_row_v3(_t: X64V3Token, buf: &mut [u8]) {
+    let zero = _mm256_setzero_ps();
+    let one = _mm256_set1_ps(1.0);
+    let n = buf.len() / 16;
+    let mut i = 0;
+    while i + 2 <= n {
+        let s: &[u8; 32] = buf[i * 16..i * 16 + 32].try_into().unwrap();
+        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+        let alpha = _mm256_permute_ps::<0xFF>(v);
+        let zero_mask = _mm256_cmp_ps::<0>(alpha, zero); // _CMP_EQ_OQ
+        let inv_alpha = _mm256_div_ps(one, alpha);
+        let unpremul = _mm256_mul_ps(v, inv_alpha);
+        let blended = _mm256_blend_ps::<0b1000_1000>(unpremul, v); // keep original alpha
+        let result = _mm256_andnot_ps(zero_mask, blended); // zero where alpha was 0
+        let d: &mut [u8; 32] = (&mut buf[i * 16..i * 16 + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, _mm256_castps_si256(result));
+        i += 2;
+    }
+    if i < n {
+        let floats: &mut [f32] = bytemuck::cast_slice_mut(&mut buf[i * 16..]);
+        for px in floats.chunks_exact_mut(4) {
+            let a = px[3];
+            if a == 0.0 {
+                px[0] = 0.0;
+                px[1] = 0.0;
+                px[2] = 0.0;
+            } else {
+                let inv_a = 1.0 / a;
+                px[0] *= inv_a;
+                px[1] *= inv_a;
+                px[2] *= inv_a;
+            }
+        }
+    }
+}
+
+/// Copy f32 unpremultiply: C' = C / A, zero alpha → all zero. 2 pixels per iteration.
+#[rite]
+pub(super) fn unpremul_f32_copy_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let zero = _mm256_setzero_ps();
+    let one = _mm256_set1_ps(1.0);
+    let n = src.len() / 16;
+    let mut i = 0;
+    while i + 2 <= n {
+        let s: &[u8; 32] = src[i * 16..i * 16 + 32].try_into().unwrap();
+        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+        let alpha = _mm256_permute_ps::<0xFF>(v);
+        let zero_mask = _mm256_cmp_ps::<0>(alpha, zero);
+        let inv_alpha = _mm256_div_ps(one, alpha);
+        let unpremul = _mm256_mul_ps(v, inv_alpha);
+        let blended = _mm256_blend_ps::<0b1000_1000>(unpremul, v);
+        let result = _mm256_andnot_ps(zero_mask, blended);
+        let d: &mut [u8; 32] = (&mut dst[i * 16..i * 16 + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, _mm256_castps_si256(result));
+        i += 2;
+    }
+    if i < n {
+        let src_f: &[f32] = bytemuck::cast_slice(&src[i * 16..]);
+        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(&mut dst[i * 16..]);
+        for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
+            let a = s[3];
+            if a == 0.0 {
+                d[0] = 0.0;
+                d[1] = 0.0;
+                d[2] = 0.0;
+                d[3] = 0.0;
+            } else {
+                let inv_a = 1.0 / a;
+                d[0] = s[0] * inv_a;
+                d[1] = s[1] * inv_a;
+                d[2] = s[2] * inv_a;
+                d[3] = a;
+            }
+        }
+    }
+}
+
+// Premul arcane contiguous wrappers
+#[arcane]
+pub(super) fn premul_f32_impl_v3(t: X64V3Token, b: &mut [u8]) {
+    premul_f32_row_v3(t, b);
+}
+#[arcane]
+pub(super) fn premul_f32_copy_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    premul_f32_copy_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn unpremul_f32_impl_v3(t: X64V3Token, b: &mut [u8]) {
+    unpremul_f32_row_v3(t, b);
+}
+#[arcane]
+pub(super) fn unpremul_f32_copy_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    unpremul_f32_copy_row_v3(t, s, d);
+}
+
+// Premul arcane strided wrappers
+#[arcane]
+pub(super) fn premul_f32_strided_v3(
+    t: X64V3Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        premul_f32_row_v3(t, &mut buf[y * stride..][..w * 16]);
+    }
+}
+#[arcane]
+pub(super) fn premul_f32_copy_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        premul_f32_copy_row_v3(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
+    }
+}
+#[arcane]
+pub(super) fn unpremul_f32_strided_v3(
+    t: X64V3Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        unpremul_f32_row_v3(t, &mut buf[y * stride..][..w * 16]);
+    }
+}
+#[arcane]
+pub(super) fn unpremul_f32_copy_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        unpremul_f32_copy_row_v3(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
+    }
+}
 
 // ===========================================================================
 // x86-64 arcane contiguous wrappers

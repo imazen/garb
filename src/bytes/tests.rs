@@ -1034,3 +1034,215 @@ fn test_aliases_match() {
     gray_to_rgba(&gray, &mut dst_f).unwrap();
     assert_eq!(dst_e, dst_f);
 }
+
+// -----------------------------------------------------------------------
+// f32 alpha premultiplication
+// -----------------------------------------------------------------------
+
+/// Build f32 RGBA test pixels: R=r, G=g, B=b, A=a packed as bytes.
+fn make_f32_rgba(pixels: &[[f32; 4]]) -> Vec<u8> {
+    let mut buf = Vec::with_capacity(pixels.len() * 16);
+    for px in pixels {
+        for &v in px {
+            buf.extend_from_slice(&v.to_ne_bytes());
+        }
+    }
+    buf
+}
+
+/// Read f32 RGBA pixels back from byte buffer.
+fn read_f32_rgba(buf: &[u8]) -> Vec<[f32; 4]> {
+    let floats: &[f32] = bytemuck::cast_slice(buf);
+    floats
+        .chunks_exact(4)
+        .map(|c| [c[0], c[1], c[2], c[3]])
+        .collect()
+}
+
+#[test]
+fn premul_f32_known_values() {
+    // [0.5, 0.3, 0.1, 0.5] → premul → [0.25, 0.15, 0.05, 0.5]
+    let mut buf = make_f32_rgba(&[[0.5, 0.3, 0.1, 0.5]]);
+    premultiply_alpha_f32(&mut buf).unwrap();
+    let result = read_f32_rgba(&buf);
+    assert!((result[0][0] - 0.25).abs() < 1e-6, "R premul");
+    assert!((result[0][1] - 0.15).abs() < 1e-6, "G premul");
+    assert!((result[0][2] - 0.05).abs() < 1e-6, "B premul");
+    assert_eq!(result[0][3], 0.5, "A preserved");
+
+    // Full alpha: no change
+    let mut buf2 = make_f32_rgba(&[[0.8, 0.6, 0.4, 1.0]]);
+    premultiply_alpha_f32(&mut buf2).unwrap();
+    let r2 = read_f32_rgba(&buf2);
+    assert!((r2[0][0] - 0.8).abs() < 1e-6);
+    assert!((r2[0][1] - 0.6).abs() < 1e-6);
+    assert!((r2[0][2] - 0.4).abs() < 1e-6);
+
+    // Zero alpha: all zero
+    let mut buf3 = make_f32_rgba(&[[0.5, 0.3, 0.1, 0.0]]);
+    premultiply_alpha_f32(&mut buf3).unwrap();
+    let r3 = read_f32_rgba(&buf3);
+    assert_eq!(r3[0], [0.0, 0.0, 0.0, 0.0]);
+}
+
+#[test]
+fn premul_unpremul_f32_roundtrip() {
+    let original = vec![
+        [0.8, 0.6, 0.2, 0.7],
+        [1.0, 0.0, 0.5, 0.3],
+        [0.0, 1.0, 1.0, 1.0],
+        [0.1, 0.2, 0.3, 0.0], // zero alpha
+    ];
+    let mut buf = make_f32_rgba(&original);
+    premultiply_alpha_f32(&mut buf).unwrap();
+    unpremultiply_alpha_f32(&mut buf).unwrap();
+    let result = read_f32_rgba(&buf);
+    for (i, (r, o)) in result.iter().zip(original.iter()).enumerate() {
+        if o[3] == 0.0 {
+            // Zero alpha: all channels become 0
+            assert_eq!(*r, [0.0, 0.0, 0.0, 0.0], "zero-alpha pixel {i}");
+        } else {
+            for c in 0..4 {
+                assert!(
+                    (r[c] - o[c]).abs() < 1e-6,
+                    "pixel {i} channel {c}: {:.8} != {:.8}",
+                    r[c],
+                    o[c]
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn premul_unpremul_f32_copy_roundtrip() {
+    let original = vec![
+        [0.5, 0.3, 0.1, 0.5],
+        [1.0, 1.0, 1.0, 0.25],
+        [0.0, 0.0, 0.0, 0.0],
+    ];
+    let src = make_f32_rgba(&original);
+    let mut mid = vec![0u8; src.len()];
+    let mut dst = vec![0u8; src.len()];
+    premultiply_alpha_f32_copy(&src, &mut mid).unwrap();
+    unpremultiply_alpha_f32_copy(&mid, &mut dst).unwrap();
+    let result = read_f32_rgba(&dst);
+    for (i, (r, o)) in result.iter().zip(original.iter()).enumerate() {
+        if o[3] == 0.0 {
+            assert_eq!(*r, [0.0, 0.0, 0.0, 0.0], "zero-alpha pixel {i}");
+        } else {
+            for c in 0..4 {
+                assert!(
+                    (r[c] - o[c]).abs() < 1e-6,
+                    "copy pixel {i} channel {c}: {:.8} != {:.8}",
+                    r[c],
+                    o[c]
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn premul_f32_size_errors() {
+    // Not 16-byte aligned
+    assert_eq!(
+        premultiply_alpha_f32(&mut [0; 15]),
+        Err(SizeError::NotPixelAligned)
+    );
+    assert_eq!(
+        premultiply_alpha_f32(&mut [0; 0]),
+        Err(SizeError::NotPixelAligned)
+    );
+    // Copy: dst too small
+    assert_eq!(
+        premultiply_alpha_f32_copy(&[0; 32], &mut [0; 16]),
+        Err(SizeError::PixelCountMismatch)
+    );
+}
+
+#[test]
+fn permutation_premul_f32() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        // Test with various pixel counts to exercise SIMD and scalar paths
+        for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33] {
+            let pixels: Vec<[f32; 4]> = (0..n)
+                .map(|i| {
+                    let t = i as f32 / n.max(1) as f32;
+                    [t, 1.0 - t, t * 0.5, (i % 3) as f32 * 0.5]
+                })
+                .collect();
+
+            // In-place premul
+            let mut buf = make_f32_rgba(&pixels);
+            premultiply_alpha_f32(&mut buf).unwrap();
+            let premul_result = read_f32_rgba(&buf);
+            for (i, (r, p)) in premul_result.iter().zip(pixels.iter()).enumerate() {
+                let expected_r = p[0] * p[3];
+                let expected_g = p[1] * p[3];
+                let expected_b = p[2] * p[3];
+                assert!(
+                    (r[0] - expected_r).abs() < 1e-6
+                        && (r[1] - expected_g).abs() < 1e-6
+                        && (r[2] - expected_b).abs() < 1e-6
+                        && r[3] == p[3],
+                    "premul n={n} i={i} tier={perm}: got {:?}, expected [{expected_r}, {expected_g}, {expected_b}, {}]",
+                    r,
+                    p[3]
+                );
+            }
+
+            // In-place unpremul (roundtrip)
+            unpremultiply_alpha_f32(&mut buf).unwrap();
+            let result = read_f32_rgba(&buf);
+            for (i, (r, p)) in result.iter().zip(pixels.iter()).enumerate() {
+                if p[3] == 0.0 {
+                    assert_eq!(
+                        *r,
+                        [0.0, 0.0, 0.0, 0.0],
+                        "zero-alpha n={n} i={i} tier={perm}"
+                    );
+                } else {
+                    for c in 0..4 {
+                        assert!(
+                            (r[c] - p[c]).abs() < 1e-6,
+                            "roundtrip n={n} i={i} c={c} tier={perm}: {:.8} != {:.8}",
+                            r[c],
+                            p[c]
+                        );
+                    }
+                }
+            }
+
+            // Copy premul
+            let src = make_f32_rgba(&pixels);
+            let mut dst = vec![0u8; src.len()];
+            premultiply_alpha_f32_copy(&src, &mut dst).unwrap();
+            let copy_result = read_f32_rgba(&dst);
+            assert_eq!(
+                copy_result, premul_result,
+                "copy vs inplace n={n} tier={perm}"
+            );
+
+            // Copy unpremul roundtrip
+            let mut dst2 = vec![0u8; src.len()];
+            unpremultiply_alpha_f32_copy(&dst, &mut dst2).unwrap();
+            let copy_rt = read_f32_rgba(&dst2);
+            assert_eq!(copy_rt, result, "copy roundtrip n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("premul_f32: {report}");
+}
+
+#[test]
+fn premul_f32_aliases() {
+    let mut a = make_f32_rgba(&[[0.5, 0.3, 0.1, 0.5]]);
+    let mut b = a.clone();
+    premultiply_alpha_f32(&mut a).unwrap();
+    premultiply_alpha_rgba_f32(&mut b).unwrap();
+    assert_eq!(a, b, "rgba alias should match");
+
+    unpremultiply_alpha_f32(&mut a).unwrap();
+    unpremultiply_alpha_rgba_f32(&mut b).unwrap();
+    assert_eq!(a, b, "rgba unpremul alias should match");
+}

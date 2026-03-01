@@ -963,6 +963,146 @@ pub fn convert_f32_to_u16_strided(
 }
 
 // ===========================================================================
+// f32 alpha premultiplication
+// ===========================================================================
+
+/// Premultiply alpha for f32 RGBA pixels in-place: `C' = C * A`, alpha preserved.
+///
+/// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
+pub fn premultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 16)?;
+    incant!(premul_f32_impl(buf), [v3, scalar]);
+    Ok(())
+}
+
+/// Premultiply alpha for f32 RGBA pixels, copying from `src` to `dst`.
+///
+/// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
+pub fn premultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 16, dst.len(), 16)?;
+    incant!(premul_f32_copy_impl(src, dst), [v3, scalar]);
+    Ok(())
+}
+
+/// Unpremultiply alpha for f32 RGBA pixels in-place: `C' = C / A`.
+///
+/// Where alpha is zero, all channels are set to zero.
+/// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
+pub fn unpremultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 16)?;
+    incant!(unpremul_f32_impl(buf), [v3, scalar]);
+    Ok(())
+}
+
+/// Unpremultiply alpha for f32 RGBA pixels, copying from `src` to `dst`.
+///
+/// Where alpha is zero, all channels are set to zero.
+/// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
+pub fn unpremultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 16, dst.len(), 16)?;
+    incant!(unpremul_f32_copy_impl(src, dst), [v3, scalar]);
+    Ok(())
+}
+
+/// Alias for [`premultiply_alpha_f32`].
+#[inline(always)]
+pub fn premultiply_alpha_rgba_f32(buf: &mut [u8]) -> Result<(), SizeError> {
+    premultiply_alpha_f32(buf)
+}
+
+/// Alias for [`premultiply_alpha_f32_copy`].
+#[inline(always)]
+pub fn premultiply_alpha_rgba_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    premultiply_alpha_f32_copy(src, dst)
+}
+
+/// Alias for [`unpremultiply_alpha_f32`].
+#[inline(always)]
+pub fn unpremultiply_alpha_rgba_f32(buf: &mut [u8]) -> Result<(), SizeError> {
+    unpremultiply_alpha_f32(buf)
+}
+
+/// Alias for [`unpremultiply_alpha_f32_copy`].
+#[inline(always)]
+pub fn unpremultiply_alpha_rgba_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    unpremultiply_alpha_f32_copy(src, dst)
+}
+
+// Strided f32 premul
+
+/// Premultiply alpha for f32 RGBA pixels in a strided buffer.
+///
+/// `width` is the number of pixels per row. `stride` is bytes between row starts.
+/// Must be ≥ `width × 16`. Each pixel is 4 × f32 (16 bytes).
+pub fn premultiply_alpha_f32_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 16)?;
+    incant!(premul_f32_strided(buf, width, height, stride), [v3, scalar]);
+    Ok(())
+}
+
+/// Premultiply alpha for f32 RGBA pixels between strided buffers.
+pub fn premultiply_alpha_f32_copy_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 16)?;
+    check_strided(dst.len(), width, height, dst_stride, 16)?;
+    incant!(
+        premul_f32_copy_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+/// Unpremultiply alpha for f32 RGBA pixels in a strided buffer.
+///
+/// Where alpha is zero, all channels are set to zero.
+/// `width` is the number of pixels per row. `stride` is bytes between row starts.
+/// Must be ≥ `width × 16`. Each pixel is 4 × f32 (16 bytes).
+pub fn unpremultiply_alpha_f32_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 16)?;
+    incant!(
+        unpremul_f32_strided(buf, width, height, stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+/// Unpremultiply alpha for f32 RGBA pixels between strided buffers.
+///
+/// Where alpha is zero, all channels are set to zero.
+pub fn unpremultiply_alpha_f32_copy_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 16)?;
+    check_strided(dst.len(), width, height, dst_stride, 16)?;
+    incant!(
+        unpremul_f32_copy_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+// ===========================================================================
 // Aliases — symmetric operations get both names
 // ===========================================================================
 

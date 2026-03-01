@@ -752,3 +752,130 @@ pub(super) fn convert_f32_to_u16_strided_scalar(
         convert_f32_to_u16_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 2]);
     }
 }
+
+// ===========================================================================
+// f32 alpha premultiplication
+// ===========================================================================
+
+pub(super) fn premul_f32_row_scalar(_t: ScalarToken, buf: &mut [u8]) {
+    let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
+    for px in floats.chunks_exact_mut(4) {
+        let a = px[3];
+        px[0] *= a;
+        px[1] *= a;
+        px[2] *= a;
+    }
+}
+
+pub(super) fn premul_f32_copy_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    let src_f: &[f32] = bytemuck::cast_slice(src);
+    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
+    for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
+        let a = s[3];
+        d[0] = s[0] * a;
+        d[1] = s[1] * a;
+        d[2] = s[2] * a;
+        d[3] = a;
+    }
+}
+
+pub(super) fn unpremul_f32_row_scalar(_t: ScalarToken, buf: &mut [u8]) {
+    let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
+    for px in floats.chunks_exact_mut(4) {
+        let a = px[3];
+        if a == 0.0 {
+            px[0] = 0.0;
+            px[1] = 0.0;
+            px[2] = 0.0;
+        } else {
+            let inv_a = 1.0 / a;
+            px[0] *= inv_a;
+            px[1] *= inv_a;
+            px[2] *= inv_a;
+        }
+    }
+}
+
+pub(super) fn unpremul_f32_copy_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    let src_f: &[f32] = bytemuck::cast_slice(src);
+    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
+    for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
+        let a = s[3];
+        if a == 0.0 {
+            d[0] = 0.0;
+            d[1] = 0.0;
+            d[2] = 0.0;
+            d[3] = 0.0;
+        } else {
+            let inv_a = 1.0 / a;
+            d[0] = s[0] * inv_a;
+            d[1] = s[1] * inv_a;
+            d[2] = s[2] * inv_a;
+            d[3] = a;
+        }
+    }
+}
+
+// Premul contiguous wrappers
+pub(super) fn premul_f32_impl_scalar(t: ScalarToken, b: &mut [u8]) {
+    premul_f32_row_scalar(t, b);
+}
+pub(super) fn premul_f32_copy_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    premul_f32_copy_row_scalar(t, s, d);
+}
+pub(super) fn unpremul_f32_impl_scalar(t: ScalarToken, b: &mut [u8]) {
+    unpremul_f32_row_scalar(t, b);
+}
+pub(super) fn unpremul_f32_copy_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    unpremul_f32_copy_row_scalar(t, s, d);
+}
+
+// Premul strided wrappers
+pub(super) fn premul_f32_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        premul_f32_row_scalar(t, &mut buf[y * stride..][..w * 16]);
+    }
+}
+pub(super) fn premul_f32_copy_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        premul_f32_copy_row_scalar(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
+    }
+}
+pub(super) fn unpremul_f32_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        unpremul_f32_row_scalar(t, &mut buf[y * stride..][..w * 16]);
+    }
+}
+pub(super) fn unpremul_f32_copy_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        unpremul_f32_copy_row_scalar(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
+    }
+}
