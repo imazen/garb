@@ -311,6 +311,177 @@ pub(super) fn bgra_to_rgb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
 }
 
 // ===========================================================================
+// Depth conversions — AVX2 rite row implementations
+// ===========================================================================
+
+#[rite]
+pub(super) fn convert_u8_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let mul257 = _mm256_set1_epi16(257);
+    let n = src.len();
+    let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
+    let mut i = 0;
+    // Process 16 u8 → 16 u16 per iteration
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = _mm_loadu_si128(s);
+        let wide = _mm256_cvtepu8_epi16(v);
+        let result = _mm256_mullo_epi16(wide, mul257);
+        let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst16[i..i + 16])
+            .try_into()
+            .unwrap();
+        _mm256_storeu_si256(d, result);
+        i += 16;
+    }
+    for j in i..n {
+        dst16[j] = (src[j] as u16) * 257;
+    }
+}
+
+#[rite]
+pub(super) fn convert_u16_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let src16: &[u16] = bytemuck::cast_slice(src);
+    let mul255 = _mm256_set1_epi32(255);
+    let add_half = _mm256_set1_epi32(32768);
+    let n = src16.len();
+    let mut i = 0;
+    // Process 8 u16 → 8 u8 per iteration (need to widen to u32 for multiply)
+    while i + 8 <= n {
+        let s: &[u8; 16] = bytemuck::cast_slice(&src16[i..i + 8]).try_into().unwrap();
+        let v = _mm_loadu_si128(s);
+        let wide = _mm256_cvtepu16_epi32(v);
+        let prod = _mm256_add_epi32(_mm256_mullo_epi32(wide, mul255), add_half);
+        let shifted = _mm256_srli_epi32::<16>(prod);
+        // Pack i32 → i16 → u8
+        let packed16 = _mm256_packus_epi32(shifted, shifted); // [0..3,0..3,4..7,4..7]
+        let packed8 = _mm256_packus_epi16(packed16, packed16); // [0..3,0..3,0..3,0..3,4..7,...]
+        // Extract the 8 bytes we need
+        let lo = _mm256_extracti128_si256::<0>(packed8);
+        let hi = _mm256_extracti128_si256::<1>(packed8);
+        let combined = _mm_unpacklo_epi32(lo, hi);
+        let mut tmp = [0u8; 16];
+        _mm_storeu_si128(&mut tmp, combined);
+        dst[i..i + 8].copy_from_slice(&tmp[..8]);
+        i += 8;
+    }
+    for j in i..n {
+        dst[j] = ((src16[j] as u32 * 255 + 32768) >> 16) as u8;
+    }
+}
+
+#[rite]
+pub(super) fn convert_u8_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let scale = _mm256_set1_ps(1.0 / 255.0);
+    let n = src.len();
+    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
+    let mut i = 0;
+    // Process 8 u8 → 8 f32 per iteration
+    while i + 8 <= n {
+        let mut tmp = [0u8; 16];
+        tmp[..8].copy_from_slice(&src[i..i + 8]);
+        let v = _mm_loadu_si128(&tmp);
+        let wide32 = _mm256_cvtepu8_epi32(v);
+        let floats = _mm256_cvtepi32_ps(wide32);
+        let result = _mm256_mul_ps(floats, scale);
+        let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst_f[i..i + 8])
+            .try_into()
+            .unwrap();
+        _mm256_storeu_si256(d, _mm256_castps_si256(result));
+        i += 8;
+    }
+    for j in i..n {
+        dst_f[j] = src[j] as f32 / 255.0;
+    }
+}
+
+#[rite]
+pub(super) fn convert_f32_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let src_f: &[f32] = bytemuck::cast_slice(src);
+    let scale = _mm256_set1_ps(255.0);
+    let half = _mm256_set1_ps(0.5);
+    let zero = _mm256_setzero_ps();
+    let one = _mm256_set1_ps(1.0);
+    let n = src_f.len();
+    let mut i = 0;
+    // Process 8 f32 → 8 u8 per iteration
+    while i + 8 <= n {
+        let s: &[u8; 32] = bytemuck::cast_slice(&src_f[i..i + 8]).try_into().unwrap();
+        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+        let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
+        let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
+        let ints = _mm256_cvttps_epi32(scaled);
+        // Pack i32 → i16 → u8
+        let packed16 = _mm256_packus_epi32(ints, ints);
+        let packed8 = _mm256_packus_epi16(packed16, packed16);
+        let lo = _mm256_extracti128_si256::<0>(packed8);
+        let hi = _mm256_extracti128_si256::<1>(packed8);
+        let combined = _mm_unpacklo_epi32(lo, hi);
+        let mut tmp = [0u8; 16];
+        _mm_storeu_si128(&mut tmp, combined);
+        dst[i..i + 8].copy_from_slice(&tmp[..8]);
+        i += 8;
+    }
+    for j in i..n {
+        dst[j] = (src_f[j].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    }
+}
+
+#[rite]
+pub(super) fn convert_u16_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let src16: &[u16] = bytemuck::cast_slice(src);
+    let scale = _mm256_set1_ps(1.0 / 65535.0);
+    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
+    let n = src16.len();
+    let mut i = 0;
+    // Process 8 u16 → 8 f32 per iteration
+    while i + 8 <= n {
+        let s: &[u8; 16] = bytemuck::cast_slice(&src16[i..i + 8]).try_into().unwrap();
+        let v = _mm_loadu_si128(s);
+        let wide32 = _mm256_cvtepu16_epi32(v);
+        let floats = _mm256_cvtepi32_ps(wide32);
+        let result = _mm256_mul_ps(floats, scale);
+        let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst_f[i..i + 8])
+            .try_into()
+            .unwrap();
+        _mm256_storeu_si256(d, _mm256_castps_si256(result));
+        i += 8;
+    }
+    for j in i..n {
+        dst_f[j] = src16[j] as f32 / 65535.0;
+    }
+}
+
+#[rite]
+pub(super) fn convert_f32_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let src_f: &[f32] = bytemuck::cast_slice(src);
+    let scale = _mm256_set1_ps(65535.0);
+    let half = _mm256_set1_ps(0.5);
+    let zero = _mm256_setzero_ps();
+    let one = _mm256_set1_ps(1.0);
+    let n = src_f.len();
+    let mut i = 0;
+    // Process 8 f32 → 8 u16 per iteration
+    while i + 8 <= n {
+        let s: &[u8; 32] = bytemuck::cast_slice(&src_f[i..i + 8]).try_into().unwrap();
+        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+        let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
+        let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
+        let ints = _mm256_cvttps_epi32(scaled);
+        // Pack i32 → u16
+        let packed16 = _mm256_packus_epi32(ints, ints); // [0..3,0..3,4..7,4..7]
+        // Permute to get contiguous 8 u16
+        let perm = _mm256_permute4x64_epi64::<0b00_00_10_00>(packed16);
+        let mut tmp = [0u8; 32];
+        _mm256_storeu_si256(&mut tmp, perm);
+        dst[i * 2..i * 2 + 16].copy_from_slice(&tmp[..16]);
+        i += 8;
+    }
+    let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
+    for j in i..n {
+        dst16[j] = (src_f[j].clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+    }
+}
+
+// ===========================================================================
 // x86-64 arcane contiguous wrappers
 // ===========================================================================
 
@@ -357,6 +528,32 @@ pub(super) fn rgba_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
 #[arcane]
 pub(super) fn bgra_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
     bgra_to_rgb_row_v3(t, s, d);
+}
+
+// Depth conversion arcane contiguous wrappers
+#[arcane]
+pub(super) fn convert_u8_to_u16_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    convert_u8_to_u16_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn convert_u16_to_u8_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    convert_u16_to_u8_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn convert_u8_to_f32_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    convert_u8_to_f32_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn convert_f32_to_u8_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    convert_f32_to_u8_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn convert_u16_to_f32_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    convert_u16_to_f32_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn convert_f32_to_u16_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    convert_f32_to_u16_row_v3(t, s, d);
 }
 
 // ===========================================================================
@@ -503,5 +700,91 @@ pub(super) fn bgra_to_rgb_strided_v3(
 ) {
     for y in 0..h {
         bgra_to_rgb_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+
+// Depth conversion strided wrappers
+#[arcane]
+pub(super) fn convert_u8_to_u16_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_u8_to_u16_row_v3(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 2]);
+    }
+}
+#[arcane]
+pub(super) fn convert_u16_to_u8_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_u16_to_u8_row_v3(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w]);
+    }
+}
+#[arcane]
+pub(super) fn convert_u8_to_f32_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_u8_to_f32_row_v3(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn convert_f32_to_u8_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_f32_to_u8_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w]);
+    }
+}
+#[arcane]
+pub(super) fn convert_u16_to_f32_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_u16_to_f32_row_v3(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn convert_f32_to_u16_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_f32_to_u16_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 2]);
     }
 }

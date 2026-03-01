@@ -519,6 +519,173 @@ fn permutation_strided_3bpp_and_strip() {
 }
 
 // -----------------------------------------------------------------------
+// Depth conversions
+// -----------------------------------------------------------------------
+
+const TEST_ELEMENT_COUNTS: &[usize] =
+    &[1, 2, 3, 7, 8, 15, 16, 31, 32, 33, 63, 64, 65, 100, 255, 256];
+
+#[test]
+fn depth_u8_to_u16_roundtrip_exhaustive() {
+    // u8 → u16 → u8 must be exact identity for all 256 values
+    let src: Vec<u8> = (0..=255).collect();
+    let mut mid = vec![0u8; 256 * 2];
+    let mut dst = vec![0u8; 256];
+    convert_u8_to_u16(&src, &mut mid).unwrap();
+    convert_u16_to_u8(&mid, &mut dst).unwrap();
+    assert_eq!(src, dst, "u8→u16→u8 roundtrip failed");
+
+    // Check boundary values
+    let mid16: &[u16] = bytemuck::cast_slice(&mid);
+    assert_eq!(mid16[0], 0);
+    assert_eq!(mid16[255], 65535);
+}
+
+#[test]
+fn depth_u8_to_f32_roundtrip_exhaustive() {
+    // u8 → f32 → u8 must be exact identity for all 256 values
+    let src: Vec<u8> = (0..=255).collect();
+    let mut mid = vec![0u8; 256 * 4];
+    let mut dst = vec![0u8; 256];
+    convert_u8_to_f32(&src, &mut mid).unwrap();
+    convert_f32_to_u8(&mid, &mut dst).unwrap();
+    assert_eq!(src, dst, "u8→f32→u8 roundtrip failed");
+
+    // Check boundary values
+    let mid_f: &[f32] = bytemuck::cast_slice(&mid);
+    assert_eq!(mid_f[0], 0.0);
+    assert_eq!(mid_f[255], 1.0);
+}
+
+#[test]
+fn depth_u16_to_f32_roundtrip_exhaustive() {
+    // u16 → f32 → u16 must be exact identity for all 65536 values
+    let src16: Vec<u16> = (0..=65535u16).collect();
+    let src: &[u8] = bytemuck::cast_slice(&src16);
+    let mut mid = vec![0u8; 65536 * 4];
+    let mut dst_bytes = vec![0u8; 65536 * 2];
+    convert_u16_to_f32(src, &mut mid).unwrap();
+    convert_f32_to_u16(&mid, &mut dst_bytes).unwrap();
+    let dst16: &[u16] = bytemuck::cast_slice(&dst_bytes);
+    assert_eq!(src16.as_slice(), dst16, "u16→f32→u16 roundtrip failed");
+
+    // Check boundary values
+    let mid_f: &[f32] = bytemuck::cast_slice(&mid);
+    assert_eq!(mid_f[0], 0.0);
+    assert_eq!(mid_f[65535], 1.0);
+}
+
+#[test]
+fn depth_f32_clamping() {
+    // Out-of-range f32 → u8 should clamp
+    let src_vals: Vec<f32> = vec![-0.5, -0.001, 0.0, 0.5, 1.0, 1.001, 1.5, 100.0];
+    let src: &[u8] = bytemuck::cast_slice(&src_vals);
+    let mut dst = vec![0u8; 8];
+    convert_f32_to_u8(src, &mut dst).unwrap();
+    assert_eq!(dst[0], 0, "negative should clamp to 0");
+    assert_eq!(dst[1], 0, "small negative should clamp to 0");
+    assert_eq!(dst[2], 0, "zero should stay 0");
+    assert_eq!(dst[3], 128, "0.5 should be 128");
+    assert_eq!(dst[4], 255, "1.0 should be 255");
+    assert_eq!(dst[5], 255, "slightly over 1.0 should clamp to 255");
+    assert_eq!(dst[6], 255, "1.5 should clamp to 255");
+    assert_eq!(dst[7], 255, "100.0 should clamp to 255");
+
+    // Out-of-range f32 → u16 should clamp
+    let mut dst16_bytes = vec![0u8; 16];
+    convert_f32_to_u16(src, &mut dst16_bytes).unwrap();
+    let dst16: &[u16] = bytemuck::cast_slice(&dst16_bytes);
+    assert_eq!(dst16[0], 0);
+    assert_eq!(dst16[4], 65535);
+    assert_eq!(dst16[7], 65535);
+}
+
+#[test]
+fn permutation_depth_u8_u16() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_ELEMENT_COUNTS {
+            let src: Vec<u8> = (0..n).map(|i| (i % 256) as u8).collect();
+            let mut mid = vec![0u8; n * 2];
+            convert_u8_to_u16(&src, &mut mid).unwrap();
+            // Check each value
+            let mid16: &[u16] = bytemuck::cast_slice(&mid);
+            for (j, &s) in src.iter().enumerate() {
+                assert_eq!(mid16[j], s as u16 * 257, "u8→u16 n={n} i={j} tier={perm}");
+            }
+            // Roundtrip
+            let mut dst = vec![0u8; n];
+            convert_u16_to_u8(&mid, &mut dst).unwrap();
+            assert_eq!(src, dst, "u8→u16→u8 roundtrip n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("depth_u8_u16: {report}");
+}
+
+#[test]
+fn permutation_depth_u8_f32() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_ELEMENT_COUNTS {
+            let src: Vec<u8> = (0..n).map(|i| (i % 256) as u8).collect();
+            let mut mid = vec![0u8; n * 4];
+            convert_u8_to_f32(&src, &mut mid).unwrap();
+            let mut dst = vec![0u8; n];
+            convert_f32_to_u8(&mid, &mut dst).unwrap();
+            assert_eq!(src, dst, "u8→f32→u8 roundtrip n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("depth_u8_f32: {report}");
+}
+
+#[test]
+fn permutation_depth_u16_f32() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_ELEMENT_COUNTS {
+            let src16: Vec<u16> = (0..n).map(|i| (i * 257) as u16).collect();
+            let src: Vec<u8> = bytemuck::cast_slice(&src16).to_vec();
+            let mut mid = vec![0u8; n * 4];
+            convert_u16_to_f32(&src, &mut mid).unwrap();
+            let mut dst = vec![0u8; n * 2];
+            convert_f32_to_u16(&mid, &mut dst).unwrap();
+            let dst16: &[u16] = bytemuck::cast_slice(&dst);
+            assert_eq!(
+                src16.as_slice(),
+                dst16,
+                "u16→f32→u16 roundtrip n={n} tier={perm}"
+            );
+        }
+    });
+    std::eprintln!("depth_u16_f32: {report}");
+}
+
+#[test]
+fn depth_size_errors() {
+    // Empty source
+    assert_eq!(
+        convert_u8_to_u16(&[], &mut [0; 2]),
+        Err(SizeError::NotPixelAligned)
+    );
+    // Source not aligned (u16 needs even bytes)
+    assert_eq!(
+        convert_u16_to_u8(&[0; 3], &mut [0; 2]),
+        Err(SizeError::NotPixelAligned)
+    );
+    // Source not aligned (f32 needs 4-byte multiple)
+    assert_eq!(
+        convert_f32_to_u8(&[0; 5], &mut [0; 2]),
+        Err(SizeError::NotPixelAligned)
+    );
+    // Dest too small
+    assert_eq!(
+        convert_u8_to_u16(&[0; 4], &mut [0; 6]),
+        Err(SizeError::PixelCountMismatch)
+    );
+    assert_eq!(
+        convert_u8_to_f32(&[0; 4], &mut [0; 12]),
+        Err(SizeError::PixelCountMismatch)
+    );
+}
+
+// -----------------------------------------------------------------------
 // Size validation
 // -----------------------------------------------------------------------
 

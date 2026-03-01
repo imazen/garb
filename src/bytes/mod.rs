@@ -431,6 +431,184 @@ pub fn bgra_to_rgb_strided(
 }
 
 // ===========================================================================
+// Depth conversions — element-level, channel-agnostic
+// ===========================================================================
+
+/// Convert u8 elements to u16 elements. Maps [0,255] → [0,65535] via `v * 257`.
+///
+/// `src` contains u8 values. `dst` must have at least `src.len() * 2` bytes.
+pub fn convert_u8_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    if src.is_empty() {
+        return Err(SizeError::NotPixelAligned);
+    }
+    check_copy(src.len(), 1, dst.len(), 2)?;
+    incant!(convert_u8_to_u16_impl(src, dst), [v3, scalar]);
+    Ok(())
+}
+
+/// Convert u16 elements to u8 elements. Rounded: `(v * 255 + 32768) >> 16`.
+///
+/// `src` contains u16 values (must be a multiple of 2 bytes).
+/// `dst` must have at least `src.len() / 2` bytes.
+pub fn convert_u16_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 2, dst.len(), 1)?;
+    incant!(convert_u16_to_u8_impl(src, dst), [v3, scalar]);
+    Ok(())
+}
+
+/// Convert u8 elements to f32 elements. Maps [0,255] → [0.0, 1.0] via `v / 255.0`.
+///
+/// `src` contains u8 values. `dst` must have at least `src.len() * 4` bytes.
+pub fn convert_u8_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    if src.is_empty() {
+        return Err(SizeError::NotPixelAligned);
+    }
+    check_copy(src.len(), 1, dst.len(), 4)?;
+    incant!(convert_u8_to_f32_impl(src, dst), [v3, scalar]);
+    Ok(())
+}
+
+/// Convert f32 elements to u8 elements. Clamped to [0,1], then `v * 255 + 0.5`.
+///
+/// `src` contains f32 values (must be a multiple of 4 bytes).
+/// `dst` must have at least `src.len() / 4` bytes.
+pub fn convert_f32_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 1)?;
+    incant!(convert_f32_to_u8_impl(src, dst), [v3, scalar]);
+    Ok(())
+}
+
+/// Convert u16 elements to f32 elements. Maps [0,65535] → [0.0, 1.0] via `v / 65535.0`.
+///
+/// `src` contains u16 values (must be a multiple of 2 bytes).
+/// `dst` must have at least `src.len() * 2` bytes (u16→f32 doubles byte count).
+pub fn convert_u16_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 2, dst.len(), 4)?;
+    incant!(convert_u16_to_f32_impl(src, dst), [v3, scalar]);
+    Ok(())
+}
+
+/// Convert f32 elements to u16 elements. Clamped to [0,1], then `v * 65535 + 0.5`.
+///
+/// `src` contains f32 values (must be a multiple of 4 bytes).
+/// `dst` must have at least `src.len() / 2` bytes (f32→u16 halves byte count).
+pub fn convert_f32_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 2)?;
+    incant!(convert_f32_to_u16_impl(src, dst), [v3, scalar]);
+    Ok(())
+}
+
+// Strided depth conversions
+
+/// Convert u8→u16 between strided buffers. `width_elements` is element count per row.
+pub fn convert_u8_to_u16_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 1)?;
+    check_strided(dst.len(), width, height, dst_stride, 2)?;
+    incant!(
+        convert_u8_to_u16_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+/// Convert u16→u8 between strided buffers. `width` is element count per row.
+pub fn convert_u16_to_u8_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 2)?;
+    check_strided(dst.len(), width, height, dst_stride, 1)?;
+    incant!(
+        convert_u16_to_u8_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+/// Convert u8→f32 between strided buffers. `width` is element count per row.
+pub fn convert_u8_to_f32_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 1)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        convert_u8_to_f32_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+/// Convert f32→u8 between strided buffers. `width` is element count per row.
+pub fn convert_f32_to_u8_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 1)?;
+    incant!(
+        convert_f32_to_u8_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+/// Convert u16→f32 between strided buffers. `width` is element count per row.
+pub fn convert_u16_to_f32_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 2)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        convert_u16_to_f32_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+/// Convert f32→u16 between strided buffers. `width` is element count per row.
+pub fn convert_f32_to_u16_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 2)?;
+    incant!(
+        convert_f32_to_u16_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, scalar]
+    );
+    Ok(())
+}
+
+// ===========================================================================
 // Aliases — symmetric operations get both names
 // ===========================================================================
 

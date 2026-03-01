@@ -271,3 +271,151 @@ pub(super) fn bgra_to_rgb_strided_scalar(
         bgra_to_rgb_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
     }
 }
+
+// ===========================================================================
+// Depth conversion row implementations
+// ===========================================================================
+
+pub(super) fn convert_u8_to_u16_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
+    for (s, d) in src.iter().zip(dst16.iter_mut()) {
+        *d = (*s as u16) * 257;
+    }
+}
+
+pub(super) fn convert_u16_to_u8_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    let src16: &[u16] = bytemuck::cast_slice(src);
+    for (s, d) in src16.iter().zip(dst.iter_mut()) {
+        *d = ((*s as u32 * 255 + 32768) >> 16) as u8;
+    }
+}
+
+pub(super) fn convert_u8_to_f32_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
+    for (s, d) in src.iter().zip(dst_f.iter_mut()) {
+        *d = *s as f32 / 255.0;
+    }
+}
+
+pub(super) fn convert_f32_to_u8_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    let src_f: &[f32] = bytemuck::cast_slice(src);
+    for (s, d) in src_f.iter().zip(dst.iter_mut()) {
+        *d = (s.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    }
+}
+
+pub(super) fn convert_u16_to_f32_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    let src16: &[u16] = bytemuck::cast_slice(src);
+    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
+    for (s, d) in src16.iter().zip(dst_f.iter_mut()) {
+        *d = *s as f32 / 65535.0;
+    }
+}
+
+pub(super) fn convert_f32_to_u16_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    let src_f: &[f32] = bytemuck::cast_slice(src);
+    let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
+    for (s, d) in src_f.iter().zip(dst16.iter_mut()) {
+        *d = (s.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+    }
+}
+
+// Depth conversion contiguous wrappers
+pub(super) fn convert_u8_to_u16_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    convert_u8_to_u16_row_scalar(t, s, d);
+}
+pub(super) fn convert_u16_to_u8_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    convert_u16_to_u8_row_scalar(t, s, d);
+}
+pub(super) fn convert_u8_to_f32_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    convert_u8_to_f32_row_scalar(t, s, d);
+}
+pub(super) fn convert_f32_to_u8_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    convert_f32_to_u8_row_scalar(t, s, d);
+}
+pub(super) fn convert_u16_to_f32_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    convert_u16_to_f32_row_scalar(t, s, d);
+}
+pub(super) fn convert_f32_to_u16_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    convert_f32_to_u16_row_scalar(t, s, d);
+}
+
+// Depth conversion strided wrappers
+pub(super) fn convert_u8_to_u16_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_u8_to_u16_row_scalar(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 2]);
+    }
+}
+pub(super) fn convert_u16_to_u8_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_u16_to_u8_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w]);
+    }
+}
+pub(super) fn convert_u8_to_f32_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_u8_to_f32_row_scalar(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
+    }
+}
+pub(super) fn convert_f32_to_u8_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_f32_to_u8_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w]);
+    }
+}
+pub(super) fn convert_u16_to_f32_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_u16_to_f32_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+    }
+}
+pub(super) fn convert_f32_to_u16_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        convert_f32_to_u16_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 2]);
+    }
+}
