@@ -50,20 +50,28 @@ jobs:
       - run: cargo test --all-features --target i686-pc-windows-msvc -- --test-threads=1
       - run: cargo test --no-default-features --target i686-pc-windows-msvc -- --test-threads=1
 
-  # WASM build checks (no test runner)
+  # WASM tests via wasmtime
   wasm:
-    name: check (wasm32)
+    name: test (wasm32-wasip1)
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_WASM32_WASIP1_RUNNER: "wasmtime run --dir . --"
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32-wasip1, wasm32-unknown-unknown
+      - name: Install wasmtime
+        run: |
+          curl https://wasmtime.dev/install.sh -sSf | bash
+          echo "$HOME/.wasmtime/bin" >> $GITHUB_PATH
       - uses: Swatinem/rust-cache@v2
-      - name: Check wasm32 (no SIMD)
+      - name: Check wasm32-unknown-unknown (no SIMD)
         run: cargo check --target wasm32-unknown-unknown --no-default-features
-      - name: Check wasm32 (simd128)
-        run: cargo check --target wasm32-unknown-unknown --no-default-features
+      - name: Test wasm32-wasip1 (no SIMD)
+        run: cargo test --target wasm32-wasip1 --no-default-features -- --test-threads=1
+      - name: Test wasm32-wasip1 (simd128)
+        run: cargo test --target wasm32-wasip1 --no-default-features -- --test-threads=1
         env:
           RUSTFLAGS: "-C target-feature=+simd128"
 
