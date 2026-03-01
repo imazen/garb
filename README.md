@@ -31,21 +31,55 @@ All operations have `_strided` variants for images with padding between rows
 
 ## Performance
 
-Benchmarked on 1920×1080 buffers (x86-64 AVX2, Zen 4). "Naive" is the
-obvious `chunks_exact` + swap/copy loop — what the compiler autovectorizes
-on its own.
+All benchmarks on 1920×1080 buffers. "Naive" is the obvious `chunks_exact`
+loop — what the compiler autovectorizes on its own. Numbers from GitHub
+Actions CI; run `cargo bench` locally for hardware-specific results.
 
-| Operation | garb | naive | speedup | throughput |
-|---|---|---|---|---|
-| RGBA ↔ BGRA (in-place) | 81 µs | 644 µs | **8.0x** | 96 GiB/s |
-| RGB ↔ BGR (in-place) | 208 µs | 823 µs | **4.0x** | 28 GiB/s |
-| RGB ↔ BGR (copy) | 128 µs | 1,059 µs | **8.3x** | 45 GiB/s |
-| RGBA → RGB (strip alpha) | 147 µs | 857 µs | **5.8x** | 52 GiB/s |
-| BGRA → RGB (strip + swap) | 147 µs | 859 µs | **5.8x** | 52 GiB/s |
-| RGB → RGBA (expand) | 146 µs | 1,056 µs | **7.2x** | 53 GiB/s |
-| Fill alpha | 84 µs | 206 µs | **2.5x** | 92 GiB/s |
+### x86-64 (AVX2) — Linux, Zen 4
 
-Run `cargo bench` to reproduce.
+| Operation | garb | naive | speedup |
+|---|---|---|---|
+| RGBA ↔ BGRA (in-place) | 150 µs | 1,078 µs | **7.2x** |
+| RGB ↔ BGR (in-place) | 329 µs | 1,038 µs | **3.2x** |
+| RGB ↔ BGR (copy) | 209 µs | 1,509 µs | **7.2x** |
+| RGBA → RGB (strip alpha) | 255 µs | 1,556 µs | **6.1x** |
+| BGRA → RGB (strip + swap) | 260 µs | 1,556 µs | **6.0x** |
+| RGB → RGBA (expand) | 328 µs | 1,764 µs | **5.4x** |
+| Fill alpha | 138 µs | 329 µs | **2.4x** |
+
+### aarch64 (NEON) — Linux, Ampere Altra
+
+| Operation | garb | naive | speedup |
+|---|---|---|---|
+| RGBA ↔ BGRA (in-place) | 243 µs | 865 µs | **3.6x** |
+| RGB ↔ BGR (in-place) | 369 µs | 857 µs | **2.3x** |
+| RGB ↔ BGR (copy) | 228 µs | 219 µs | ~1x |
+| RGBA → RGB (strip alpha) | 435 µs | 278 µs | 0.6x |
+| BGRA → RGB (strip + swap) | 435 µs | 278 µs | 0.6x |
+| RGB → RGBA (expand) | 375 µs | 313 µs | 0.8x |
+| Fill alpha | 242 µs | 495 µs | **2.0x** |
+
+In-place swaps and fill are 2–3.6x faster on all ARM hardware tested
+(Ampere Altra, Apple Silicon, Snapdragon X). Cross-bpp copies (3↔4 channel)
+don't yet benefit from the hand-written NEON shuffles — the compiler's
+autovectorizer matches or beats them. These will be improved in a future
+release.
+
+### WASM (SIMD128) — wasmtime
+
+| Operation | garb | naive | speedup |
+|---|---|---|---|
+| RGBA ↔ BGRA (in-place) | 230 µs | 1,041 µs | **4.5x** |
+| RGB ↔ BGR (in-place) | 494 µs | 1,027 µs | **2.1x** |
+| RGB ↔ BGR (copy) | 333 µs | 2,753 µs | **8.3x** |
+| RGBA → RGB (strip alpha) | 506 µs | 1,623 µs | **3.2x** |
+| BGRA → RGB (strip + swap) | 659 µs | 2,309 µs | **3.5x** |
+| RGB → RGBA (expand) | 998 µs | 2,271 µs | **2.3x** |
+| Fill alpha | 193 µs | 650 µs | **3.4x** |
+
+Full benchmark results for all six native platforms plus WASM are available
+in the [CI artifacts](https://github.com/imazen/garb/actions/workflows/bench.yml).
+Run `cargo bench` to reproduce locally.
 
 ## Usage
 
