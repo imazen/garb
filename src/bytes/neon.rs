@@ -1,7 +1,9 @@
-use core::arch::aarch64::{vorrq_u8, vqtbl1q_u8};
+use core::arch::aarch64::{uint8x16x3_t, uint8x16x4_t, vorrq_u8, vqtbl1q_u8};
 
 use archmage::prelude::*;
-use safe_unaligned_simd::aarch64::{vld1q_u8, vst1q_u8};
+use safe_unaligned_simd::aarch64::{
+    vld1q_u8, vld3q_u8, vld4q_u8, vst1q_u8, vst3q_u8, vst4q_u8,
+};
 
 use super::swap_br_u32;
 
@@ -70,19 +72,16 @@ pub(super) fn fill_alpha_row_neon(_token: NeonToken, row: &mut [u8]) {
 
 #[rite]
 pub(super) fn rgb_to_bgra_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let sb: [u8; 16] = [2, 1, 0, 0x80, 5, 4, 3, 0x80, 8, 7, 6, 0x80, 11, 10, 9, 0x80];
-    let shuf = vld1q_u8(&sb);
-    let ab: [u8; 16] = [0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF];
-    let alpha = vld1q_u8(&ab);
+    let alpha = vld1q_u8(&[0xFFu8; 16]);
     let (slen, dlen) = (src.len(), dst.len());
     let (mut is, mut id) = (0, 0);
-    while is + 16 <= slen && id + 16 <= dlen {
-        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
-        let v = vld1q_u8(s);
-        let d: &mut [u8; 16] = (&mut dst[id..id + 16]).try_into().unwrap();
-        vst1q_u8(d, vorrq_u8(vqtbl1q_u8(v, shuf), alpha));
-        is += 12;
-        id += 16;
+    while is + 48 <= slen && id + 64 <= dlen {
+        let s: &[u8; 48] = src[is..is + 48].try_into().unwrap();
+        let uint8x16x3_t(r, g, b) = vld3q_u8(s);
+        let d: &mut [u8; 64] = (&mut dst[id..id + 64]).try_into().unwrap();
+        vst4q_u8(d, uint8x16x4_t(b, g, r, alpha));
+        is += 48;
+        id += 64;
     }
     let d32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
     for (s, d) in src[is..].chunks_exact(3).zip(d32.iter_mut()) {
@@ -92,19 +91,16 @@ pub(super) fn rgb_to_bgra_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]
 
 #[rite]
 pub(super) fn rgb_to_rgba_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let sb: [u8; 16] = [0, 1, 2, 0x80, 3, 4, 5, 0x80, 6, 7, 8, 0x80, 9, 10, 11, 0x80];
-    let shuf = vld1q_u8(&sb);
-    let ab: [u8; 16] = [0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF];
-    let alpha = vld1q_u8(&ab);
+    let alpha = vld1q_u8(&[0xFFu8; 16]);
     let (slen, dlen) = (src.len(), dst.len());
     let (mut is, mut id) = (0, 0);
-    while is + 16 <= slen && id + 16 <= dlen {
-        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
-        let v = vld1q_u8(s);
-        let d: &mut [u8; 16] = (&mut dst[id..id + 16]).try_into().unwrap();
-        vst1q_u8(d, vorrq_u8(vqtbl1q_u8(v, shuf), alpha));
-        is += 12;
-        id += 16;
+    while is + 48 <= slen && id + 64 <= dlen {
+        let s: &[u8; 48] = src[is..is + 48].try_into().unwrap();
+        let uint8x16x3_t(r, g, b) = vld3q_u8(s);
+        let d: &mut [u8; 64] = (&mut dst[id..id + 64]).try_into().unwrap();
+        vst4q_u8(d, uint8x16x4_t(r, g, b, alpha));
+        is += 48;
+        id += 64;
     }
     let d32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
     for (s, d) in src[is..].chunks_exact(3).zip(d32.iter_mut()) {
@@ -175,39 +171,34 @@ pub(super) fn gray_alpha_to_4bpp_row_neon(_token: NeonToken, src: &[u8], dst: &m
     }
 }
 
-// 3bpp swap in-place on NEON: 4 pixels per iter with passthrough
+// 3bpp swap in-place: vld3q deinterleaves channels, swap, vst3q reinterleaves
 #[rite]
 pub(super) fn swap_bgr_row_neon(_token: NeonToken, row: &mut [u8]) {
-    let mb: [u8; 16] = [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15];
-    let mask = vld1q_u8(&mb);
     let n = row.len();
     let mut i = 0;
-    while i + 16 <= n {
-        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
-        let v = vld1q_u8(arr);
-        let mut tmp = [0u8; 16];
-        vst1q_u8(&mut tmp, vqtbl1q_u8(v, mask));
-        row[i..i + 12].copy_from_slice(&tmp[..12]);
-        i += 12;
+    while i + 48 <= n {
+        let s: &[u8; 48] = row[i..i + 48].try_into().unwrap();
+        let uint8x16x3_t(c0, c1, c2) = vld3q_u8(s);
+        let d: &mut [u8; 48] = (&mut row[i..i + 48]).try_into().unwrap();
+        vst3q_u8(d, uint8x16x3_t(c2, c1, c0));
+        i += 48;
     }
     for px in row[i..].chunks_exact_mut(3) {
         px.swap(0, 2);
     }
 }
 
-// 3bpp swap copy on NEON
+// 3bpp swap copy: vld3q deinterleaves, swap channels, vst3q reinterleaves
 #[rite]
 pub(super) fn copy_swap_bgr_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let mb: [u8; 16] = [2, 1, 0, 5, 4, 3, 8, 7, 6, 11, 10, 9, 12, 13, 14, 15];
-    let mask = vld1q_u8(&mb);
     let (slen, dlen) = (src.len(), dst.len());
     let mut i = 0;
-    while i + 16 <= slen && i + 16 <= dlen {
-        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
-        let v = vld1q_u8(s);
-        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
-        vst1q_u8(d, vqtbl1q_u8(v, mask));
-        i += 12;
+    while i + 48 <= slen && i + 48 <= dlen {
+        let s: &[u8; 48] = src[i..i + 48].try_into().unwrap();
+        let uint8x16x3_t(c0, c1, c2) = vld3q_u8(s);
+        let d: &mut [u8; 48] = (&mut dst[i..i + 48]).try_into().unwrap();
+        vst3q_u8(d, uint8x16x3_t(c2, c1, c0));
+        i += 48;
     }
     for (s, d) in src[i..].chunks_exact(3).zip(dst[i..].chunks_exact_mut(3)) {
         d[0] = s[2];
@@ -216,23 +207,18 @@ pub(super) fn copy_swap_bgr_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u
     }
 }
 
-// 4→3 strip alpha (keep order) on NEON
+// 4→3 strip alpha (keep order): vld4q deinterleaves RGBA, drop A, vst3q interleaves RGB
 #[rite]
 pub(super) fn rgba_to_rgb_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let sb: [u8; 16] = [
-        0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 0x80, 0x80, 0x80, 0x80,
-    ];
-    let shuf = vld1q_u8(&sb);
     let (slen, dlen) = (src.len(), dst.len());
     let (mut is, mut id) = (0, 0);
-    while is + 16 <= slen && id + 12 <= dlen {
-        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
-        let v = vld1q_u8(s);
-        let mut tmp = [0u8; 16];
-        vst1q_u8(&mut tmp, vqtbl1q_u8(v, shuf));
-        dst[id..id + 12].copy_from_slice(&tmp[..12]);
-        is += 16;
-        id += 12;
+    while is + 64 <= slen && id + 48 <= dlen {
+        let s: &[u8; 64] = src[is..is + 64].try_into().unwrap();
+        let uint8x16x4_t(r, g, b, _a) = vld4q_u8(s);
+        let d: &mut [u8; 48] = (&mut dst[id..id + 48]).try_into().unwrap();
+        vst3q_u8(d, uint8x16x3_t(r, g, b));
+        is += 64;
+        id += 48;
     }
     for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
         d[0] = s[0];
@@ -241,23 +227,18 @@ pub(super) fn rgba_to_rgb_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]
     }
 }
 
-// 4→3 strip alpha + swap on NEON (BGRA→RGB)
+// 4→3 strip alpha + swap (BGRA→RGB): vld4q deinterleaves BGRA, swap+drop, vst3q
 #[rite]
 pub(super) fn bgra_to_rgb_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let sb: [u8; 16] = [
-        2, 1, 0, 6, 5, 4, 10, 9, 8, 14, 13, 12, 0x80, 0x80, 0x80, 0x80,
-    ];
-    let shuf = vld1q_u8(&sb);
     let (slen, dlen) = (src.len(), dst.len());
     let (mut is, mut id) = (0, 0);
-    while is + 16 <= slen && id + 12 <= dlen {
-        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
-        let v = vld1q_u8(s);
-        let mut tmp = [0u8; 16];
-        vst1q_u8(&mut tmp, vqtbl1q_u8(v, shuf));
-        dst[id..id + 12].copy_from_slice(&tmp[..12]);
-        is += 16;
-        id += 12;
+    while is + 64 <= slen && id + 48 <= dlen {
+        let s: &[u8; 64] = src[is..is + 64].try_into().unwrap();
+        let uint8x16x4_t(b, g, r, _a) = vld4q_u8(s);
+        let d: &mut [u8; 48] = (&mut dst[id..id + 48]).try_into().unwrap();
+        vst3q_u8(d, uint8x16x3_t(r, g, b));
+        is += 64;
+        id += 48;
     }
     for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
         d[0] = s[2];
