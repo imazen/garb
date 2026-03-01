@@ -1,12 +1,17 @@
-use core::arch::aarch64::{uint8x16x3_t, uint8x16x4_t, vorrq_u8, vqtbl1q_u8};
+use core::arch::aarch64::{uint8x16x3_t, vorrq_u8, vqtbl1q_u8};
 
 use archmage::prelude::*;
-use safe_unaligned_simd::aarch64::{vld1q_u8, vld3q_u8, vld4q_u8, vst1q_u8, vst3q_u8, vst4q_u8};
+use safe_unaligned_simd::aarch64::{vld1q_u8, vld3q_u8, vst1q_u8, vst3q_u8};
 
 use super::swap_br_u32;
 
 // ===========================================================================
 // ARM NEON — rite row implementations
+//
+// Cross-bpp operations (3↔4 channel, 3bpp copy+swap) are intentionally
+// omitted: LLVM's autovectorizer generates faster code than explicit
+// vld3q/vld4q/vst3q/vst4q structure loads on all tested aarch64 platforms
+// (Ampere, Apple Silicon, Snapdragon). Those ops dispatch directly to scalar.
 // ===========================================================================
 
 #[rite]
@@ -65,44 +70,6 @@ pub(super) fn fill_alpha_row_neon(_token: NeonToken, row: &mut [u8]) {
     }
     for v in bytemuck::cast_slice_mut::<u8, u32>(&mut row[i..]) {
         *v |= 0xFF00_0000;
-    }
-}
-
-#[rite]
-pub(super) fn rgb_to_bgra_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let alpha = vld1q_u8(&[0xFFu8; 16]);
-    let (slen, dlen) = (src.len(), dst.len());
-    let (mut is, mut id) = (0, 0);
-    while is + 48 <= slen && id + 64 <= dlen {
-        let s: &[u8; 48] = src[is..is + 48].try_into().unwrap();
-        let uint8x16x3_t(r, g, b) = vld3q_u8(s);
-        let d: &mut [u8; 64] = (&mut dst[id..id + 64]).try_into().unwrap();
-        vst4q_u8(d, uint8x16x4_t(b, g, r, alpha));
-        is += 48;
-        id += 64;
-    }
-    let d32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (s, d) in src[is..].chunks_exact(3).zip(d32.iter_mut()) {
-        *d = s[2] as u32 | ((s[1] as u32) << 8) | ((s[0] as u32) << 16) | 0xFF00_0000;
-    }
-}
-
-#[rite]
-pub(super) fn rgb_to_rgba_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let alpha = vld1q_u8(&[0xFFu8; 16]);
-    let (slen, dlen) = (src.len(), dst.len());
-    let (mut is, mut id) = (0, 0);
-    while is + 48 <= slen && id + 64 <= dlen {
-        let s: &[u8; 48] = src[is..is + 48].try_into().unwrap();
-        let uint8x16x3_t(r, g, b) = vld3q_u8(s);
-        let d: &mut [u8; 64] = (&mut dst[id..id + 64]).try_into().unwrap();
-        vst4q_u8(d, uint8x16x4_t(r, g, b, alpha));
-        is += 48;
-        id += 64;
-    }
-    let d32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (s, d) in src[is..].chunks_exact(3).zip(d32.iter_mut()) {
-        *d = s[0] as u32 | ((s[1] as u32) << 8) | ((s[2] as u32) << 16) | 0xFF00_0000;
     }
 }
 
@@ -169,7 +136,9 @@ pub(super) fn gray_alpha_to_4bpp_row_neon(_token: NeonToken, src: &[u8], dst: &m
     }
 }
 
-// 3bpp swap in-place: vld3q deinterleaves channels, swap, vst3q reinterleaves
+// 3bpp swap in-place: vld3q deinterleaves channels, swap, vst3q reinterleaves.
+// This is 2.3x faster than scalar because LLVM can't autovectorize an inplace
+// 3-byte element swap (overlapping reads/writes with non-power-of-2 stride).
 #[rite]
 pub(super) fn swap_bgr_row_neon(_token: NeonToken, row: &mut [u8]) {
     let n = row.len();
@@ -183,65 +152,6 @@ pub(super) fn swap_bgr_row_neon(_token: NeonToken, row: &mut [u8]) {
     }
     for px in row[i..].chunks_exact_mut(3) {
         px.swap(0, 2);
-    }
-}
-
-// 3bpp swap copy: vld3q deinterleaves, swap channels, vst3q reinterleaves
-#[rite]
-pub(super) fn copy_swap_bgr_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let (slen, dlen) = (src.len(), dst.len());
-    let mut i = 0;
-    while i + 48 <= slen && i + 48 <= dlen {
-        let s: &[u8; 48] = src[i..i + 48].try_into().unwrap();
-        let uint8x16x3_t(c0, c1, c2) = vld3q_u8(s);
-        let d: &mut [u8; 48] = (&mut dst[i..i + 48]).try_into().unwrap();
-        vst3q_u8(d, uint8x16x3_t(c2, c1, c0));
-        i += 48;
-    }
-    for (s, d) in src[i..].chunks_exact(3).zip(dst[i..].chunks_exact_mut(3)) {
-        d[0] = s[2];
-        d[1] = s[1];
-        d[2] = s[0];
-    }
-}
-
-// 4→3 strip alpha (keep order): vld4q deinterleaves RGBA, drop A, vst3q interleaves RGB
-#[rite]
-pub(super) fn rgba_to_rgb_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let (slen, dlen) = (src.len(), dst.len());
-    let (mut is, mut id) = (0, 0);
-    while is + 64 <= slen && id + 48 <= dlen {
-        let s: &[u8; 64] = src[is..is + 64].try_into().unwrap();
-        let uint8x16x4_t(r, g, b, _a) = vld4q_u8(s);
-        let d: &mut [u8; 48] = (&mut dst[id..id + 48]).try_into().unwrap();
-        vst3q_u8(d, uint8x16x3_t(r, g, b));
-        is += 64;
-        id += 48;
-    }
-    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
-        d[0] = s[0];
-        d[1] = s[1];
-        d[2] = s[2];
-    }
-}
-
-// 4→3 strip alpha + swap (BGRA→RGB): vld4q deinterleaves BGRA, swap+drop, vst3q
-#[rite]
-pub(super) fn bgra_to_rgb_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
-    let (slen, dlen) = (src.len(), dst.len());
-    let (mut is, mut id) = (0, 0);
-    while is + 64 <= slen && id + 48 <= dlen {
-        let s: &[u8; 64] = src[is..is + 64].try_into().unwrap();
-        let uint8x16x4_t(b, g, r, _a) = vld4q_u8(s);
-        let d: &mut [u8; 48] = (&mut dst[id..id + 48]).try_into().unwrap();
-        vst3q_u8(d, uint8x16x3_t(r, g, b));
-        is += 64;
-        id += 48;
-    }
-    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
-        d[0] = s[2];
-        d[1] = s[1];
-        d[2] = s[0];
     }
 }
 
@@ -262,14 +172,6 @@ pub(super) fn fill_alpha_impl_neon(t: NeonToken, b: &mut [u8]) {
     fill_alpha_row_neon(t, b);
 }
 #[arcane]
-pub(super) fn rgb_to_bgra_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
-    rgb_to_bgra_row_neon(t, s, d);
-}
-#[arcane]
-pub(super) fn rgb_to_rgba_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
-    rgb_to_rgba_row_neon(t, s, d);
-}
-#[arcane]
 pub(super) fn gray_to_4bpp_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
     gray_to_4bpp_row_neon(t, s, d);
 }
@@ -280,18 +182,6 @@ pub(super) fn gray_alpha_to_4bpp_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8])
 #[arcane]
 pub(super) fn swap_bgr_impl_neon(t: NeonToken, b: &mut [u8]) {
     swap_bgr_row_neon(t, b);
-}
-#[arcane]
-pub(super) fn copy_swap_bgr_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
-    copy_swap_bgr_row_neon(t, s, d);
-}
-#[arcane]
-pub(super) fn rgba_to_rgb_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
-    rgba_to_rgb_row_neon(t, s, d);
-}
-#[arcane]
-pub(super) fn bgra_to_rgb_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
-    bgra_to_rgb_row_neon(t, s, d);
 }
 
 // ===========================================================================
@@ -337,34 +227,6 @@ pub(super) fn fill_alpha_strided_neon(
     }
 }
 #[arcane]
-pub(super) fn rgb_to_bgra_strided_neon(
-    t: NeonToken,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        rgb_to_bgra_row_neon(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
-    }
-}
-#[arcane]
-pub(super) fn rgb_to_rgba_strided_neon(
-    t: NeonToken,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        rgb_to_rgba_row_neon(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
-    }
-}
-#[arcane]
 pub(super) fn gray_to_4bpp_strided_neon(
     t: NeonToken,
     src: &[u8],
@@ -402,47 +264,5 @@ pub(super) fn swap_bgr_strided_neon(
 ) {
     for y in 0..h {
         swap_bgr_row_neon(t, &mut buf[y * stride..][..w * 3]);
-    }
-}
-#[arcane]
-pub(super) fn copy_swap_bgr_strided_neon(
-    t: NeonToken,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        copy_swap_bgr_row_neon(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 3]);
-    }
-}
-#[arcane]
-pub(super) fn rgba_to_rgb_strided_neon(
-    t: NeonToken,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        rgba_to_rgb_row_neon(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
-    }
-}
-#[arcane]
-pub(super) fn bgra_to_rgb_strided_neon(
-    t: NeonToken,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        bgra_to_rgb_row_neon(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
     }
 }
