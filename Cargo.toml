@@ -15,6 +15,7 @@ readme = "README.md"
 archmage = { version = "0.8", features = ["macros", "safe_unaligned_simd"] }
 safe_unaligned_simd = "0.2"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
+paste = "1"
 rgb = { version = "0.8", features = ["bytemuck"], optional = true }
 imgref = { version = "1", optional = true }
 

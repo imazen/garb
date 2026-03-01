@@ -641,6 +641,128 @@ fn permutation_rgb_to_gray_identity() {
 }
 
 // -----------------------------------------------------------------------
+// Weighted luma conversions
+// -----------------------------------------------------------------------
+
+fn ref_luma_3bpp(src: &[u8], w_r: u16, w_g: u16, w_b: u16) -> Vec<u8> {
+    src.chunks_exact(3)
+        .map(|px| ((px[0] as u16 * w_r + px[1] as u16 * w_g + px[2] as u16 * w_b + 128) >> 8) as u8)
+        .collect()
+}
+
+fn ref_luma_4bpp(src: &[u8], w_r: u16, w_g: u16, w_b: u16) -> Vec<u8> {
+    src.chunks_exact(4)
+        .map(|px| ((px[0] as u16 * w_r + px[1] as u16 * w_g + px[2] as u16 * w_b + 128) >> 8) as u8)
+        .collect()
+}
+
+/// Verify that for each matrix, gray→rgb→gray is identity (weights sum to 256).
+#[test]
+fn luma_roundtrip_identity() {
+    let matrices: &[(
+        fn(&[u8], &mut [u8]) -> Result<(), SizeError>,
+        &str,
+        u16,
+        u16,
+        u16,
+    )] = &[
+        (rgb_to_gray_bt709, "BT.709", 54, 183, 19),
+        (rgb_to_gray_bt601, "BT.601", 77, 150, 29),
+        (rgb_to_gray_bt2020, "BT.2020", 67, 174, 15),
+    ];
+    for &(luma_fn, name, wr, wg, wb) in matrices {
+        assert_eq!(wr + wg + wb, 256, "weights for {name} don't sum to 256");
+        // gray → rgb (R=G=B=v) → luma should give back v
+        let src: Vec<u8> = (0..=255).collect();
+        let mut rgb = vec![0u8; 256 * 3];
+        gray_to_rgb(&src, &mut rgb).unwrap();
+        let mut dst = vec![0u8; 256];
+        luma_fn(&rgb, &mut dst).unwrap();
+        assert_eq!(src, dst, "gray→rgb→gray roundtrip failed for {name}");
+    }
+}
+
+#[test]
+fn permutation_rgba_to_gray_bt709() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_luma_4bpp(&src, 54, 183, 19);
+            let mut dst = vec![0u8; n];
+            rgba_to_gray_bt709(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "rgba_to_gray_bt709 n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgba_to_gray_bt709: {report}");
+}
+
+#[test]
+fn permutation_bgra_to_gray_bt709() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_luma_4bpp(&src, 19, 183, 54);
+            let mut dst = vec![0u8; n];
+            bgra_to_gray_bt709(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "bgra_to_gray_bt709 n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("bgra_to_gray_bt709: {report}");
+}
+
+#[test]
+fn permutation_rgb_to_gray_bt709() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_3bpp(n);
+            let expected = ref_luma_3bpp(&src, 54, 183, 19);
+            let mut dst = vec![0u8; n];
+            rgb_to_gray_bt709(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "rgb_to_gray_bt709 n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgb_to_gray_bt709: {report}");
+}
+
+#[test]
+fn permutation_rgba_to_gray_bt601() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_luma_4bpp(&src, 77, 150, 29);
+            let mut dst = vec![0u8; n];
+            rgba_to_gray_bt601(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "rgba_to_gray_bt601 n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgba_to_gray_bt601: {report}");
+}
+
+#[test]
+fn permutation_rgba_to_gray_bt2020() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_luma_4bpp(&src, 67, 174, 15);
+            let mut dst = vec![0u8; n];
+            rgba_to_gray_bt2020(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "rgba_to_gray_bt2020 n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgba_to_gray_bt2020: {report}");
+}
+
+#[test]
+fn luma_default_aliases() {
+    let src = make_4bpp(16);
+    let mut a = vec![0u8; 16];
+    let mut b = vec![0u8; 16];
+    rgba_to_gray(&src, &mut a).unwrap();
+    rgba_to_gray_bt709(&src, &mut b).unwrap();
+    assert_eq!(a, b, "rgba_to_gray should default to bt709");
+}
+
+// -----------------------------------------------------------------------
 // Depth conversions
 // -----------------------------------------------------------------------
 

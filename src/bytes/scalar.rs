@@ -407,6 +407,192 @@ pub(super) fn rgba_to_gray_identity_impl_scalar(t: ScalarToken, s: &[u8], d: &mu
     rgba_to_gray_identity_row_scalar(t, s, d);
 }
 
+// ===========================================================================
+// Weighted luma conversion row implementations
+// ===========================================================================
+
+/// Parametric 3bpp→gray luma: gray = (R*w_r + G*w_g + B*w_b + 128) >> 8
+#[inline(always)]
+fn luma_3bpp_row(src: &[u8], dst: &mut [u8], w_r: u16, w_g: u16, w_b: u16) {
+    for (px, d) in src.chunks_exact(3).zip(dst.iter_mut()) {
+        *d = ((px[0] as u16 * w_r + px[1] as u16 * w_g + px[2] as u16 * w_b + 128) >> 8) as u8;
+    }
+}
+
+/// Parametric 4bpp→gray luma: gray = (R*w_r + G*w_g + B*w_b + 128) >> 8, alpha ignored
+#[inline(always)]
+fn luma_4bpp_row(src: &[u8], dst: &mut [u8], w_r: u16, w_g: u16, w_b: u16) {
+    for (px, d) in src.chunks_exact(4).zip(dst.iter_mut()) {
+        *d = ((px[0] as u16 * w_r + px[1] as u16 * w_g + px[2] as u16 * w_b + 128) >> 8) as u8;
+    }
+}
+
+// BT.709: [54, 183, 19]
+pub(super) fn rgb_to_gray_bt709_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_3bpp_row(s, d, 54, 183, 19);
+}
+pub(super) fn bgr_to_gray_bt709_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_3bpp_row(s, d, 19, 183, 54);
+}
+pub(super) fn rgba_to_gray_bt709_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_4bpp_row(s, d, 54, 183, 19);
+}
+pub(super) fn bgra_to_gray_bt709_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_4bpp_row(s, d, 19, 183, 54);
+}
+
+// BT.601: [77, 150, 29]
+pub(super) fn rgb_to_gray_bt601_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_3bpp_row(s, d, 77, 150, 29);
+}
+pub(super) fn bgr_to_gray_bt601_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_3bpp_row(s, d, 29, 150, 77);
+}
+pub(super) fn rgba_to_gray_bt601_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_4bpp_row(s, d, 77, 150, 29);
+}
+pub(super) fn bgra_to_gray_bt601_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_4bpp_row(s, d, 29, 150, 77);
+}
+
+// BT.2020: [67, 174, 15]
+pub(super) fn rgb_to_gray_bt2020_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_3bpp_row(s, d, 67, 174, 15);
+}
+pub(super) fn bgr_to_gray_bt2020_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_3bpp_row(s, d, 15, 174, 67);
+}
+pub(super) fn rgba_to_gray_bt2020_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_4bpp_row(s, d, 67, 174, 15);
+}
+pub(super) fn bgra_to_gray_bt2020_row_scalar(_t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    luma_4bpp_row(s, d, 15, 174, 67);
+}
+
+// Luma contiguous wrappers — macro to reduce repetition
+macro_rules! luma_impl_scalar {
+    ($name:ident, $row:ident) => {
+        pub(super) fn $name(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+            $row(t, s, d);
+        }
+    };
+}
+luma_impl_scalar!(rgb_to_gray_bt709_impl_scalar, rgb_to_gray_bt709_row_scalar);
+luma_impl_scalar!(bgr_to_gray_bt709_impl_scalar, bgr_to_gray_bt709_row_scalar);
+luma_impl_scalar!(
+    rgba_to_gray_bt709_impl_scalar,
+    rgba_to_gray_bt709_row_scalar
+);
+luma_impl_scalar!(
+    bgra_to_gray_bt709_impl_scalar,
+    bgra_to_gray_bt709_row_scalar
+);
+luma_impl_scalar!(rgb_to_gray_bt601_impl_scalar, rgb_to_gray_bt601_row_scalar);
+luma_impl_scalar!(bgr_to_gray_bt601_impl_scalar, bgr_to_gray_bt601_row_scalar);
+luma_impl_scalar!(
+    rgba_to_gray_bt601_impl_scalar,
+    rgba_to_gray_bt601_row_scalar
+);
+luma_impl_scalar!(
+    bgra_to_gray_bt601_impl_scalar,
+    bgra_to_gray_bt601_row_scalar
+);
+luma_impl_scalar!(
+    rgb_to_gray_bt2020_impl_scalar,
+    rgb_to_gray_bt2020_row_scalar
+);
+luma_impl_scalar!(
+    bgr_to_gray_bt2020_impl_scalar,
+    bgr_to_gray_bt2020_row_scalar
+);
+luma_impl_scalar!(
+    rgba_to_gray_bt2020_impl_scalar,
+    rgba_to_gray_bt2020_row_scalar
+);
+luma_impl_scalar!(
+    bgra_to_gray_bt2020_impl_scalar,
+    bgra_to_gray_bt2020_row_scalar
+);
+
+// Luma strided wrappers
+macro_rules! luma_strided_scalar {
+    ($name:ident, $row:ident, $bpp:expr) => {
+        pub(super) fn $name(
+            t: ScalarToken,
+            src: &[u8],
+            dst: &mut [u8],
+            w: usize,
+            h: usize,
+            ss: usize,
+            ds: usize,
+        ) {
+            for y in 0..h {
+                $row(t, &src[y * ss..][..w * $bpp], &mut dst[y * ds..][..w]);
+            }
+        }
+    };
+}
+luma_strided_scalar!(
+    rgb_to_gray_bt709_strided_scalar,
+    rgb_to_gray_bt709_row_scalar,
+    3
+);
+luma_strided_scalar!(
+    bgr_to_gray_bt709_strided_scalar,
+    bgr_to_gray_bt709_row_scalar,
+    3
+);
+luma_strided_scalar!(
+    rgba_to_gray_bt709_strided_scalar,
+    rgba_to_gray_bt709_row_scalar,
+    4
+);
+luma_strided_scalar!(
+    bgra_to_gray_bt709_strided_scalar,
+    bgra_to_gray_bt709_row_scalar,
+    4
+);
+luma_strided_scalar!(
+    rgb_to_gray_bt601_strided_scalar,
+    rgb_to_gray_bt601_row_scalar,
+    3
+);
+luma_strided_scalar!(
+    bgr_to_gray_bt601_strided_scalar,
+    bgr_to_gray_bt601_row_scalar,
+    3
+);
+luma_strided_scalar!(
+    rgba_to_gray_bt601_strided_scalar,
+    rgba_to_gray_bt601_row_scalar,
+    4
+);
+luma_strided_scalar!(
+    bgra_to_gray_bt601_strided_scalar,
+    bgra_to_gray_bt601_row_scalar,
+    4
+);
+luma_strided_scalar!(
+    rgb_to_gray_bt2020_strided_scalar,
+    rgb_to_gray_bt2020_row_scalar,
+    3
+);
+luma_strided_scalar!(
+    bgr_to_gray_bt2020_strided_scalar,
+    bgr_to_gray_bt2020_row_scalar,
+    3
+);
+luma_strided_scalar!(
+    rgba_to_gray_bt2020_strided_scalar,
+    rgba_to_gray_bt2020_row_scalar,
+    4
+);
+luma_strided_scalar!(
+    bgra_to_gray_bt2020_strided_scalar,
+    bgra_to_gray_bt2020_row_scalar,
+    4
+);
+
 // Gray layout strided wrappers
 pub(super) fn gray_to_rgb_strided_scalar(
     t: ScalarToken,

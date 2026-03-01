@@ -431,6 +431,116 @@ pub fn bgra_to_rgb_strided(
 }
 
 // ===========================================================================
+// Weighted luma conversions — RGB/RGBA → Gray
+// ===========================================================================
+
+macro_rules! luma_api {
+    (
+        $matrix:ident, $r:expr, $g:expr, $b:expr,
+        $doc_matrix:expr
+    ) => {
+        paste::paste! {
+            #[doc = concat!("RGB (3 bytes/px) → Gray (1 byte/px) using ", $doc_matrix, " luma weights [", stringify!($r), ", ", stringify!($g), ", ", stringify!($b), "].")]
+            pub fn [<rgb_to_gray_ $matrix>](src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+                check_copy(src.len(), 3, dst.len(), 1)?;
+                incant!([<rgb_to_gray_ $matrix _impl>](src, dst), [v3, scalar]);
+                Ok(())
+            }
+
+            #[doc = concat!("BGR (3 bytes/px) → Gray (1 byte/px) using ", $doc_matrix, " luma weights.")]
+            pub fn [<bgr_to_gray_ $matrix>](src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+                check_copy(src.len(), 3, dst.len(), 1)?;
+                incant!([<bgr_to_gray_ $matrix _impl>](src, dst), [v3, scalar]);
+                Ok(())
+            }
+
+            #[doc = concat!("RGBA (4 bytes/px) → Gray (1 byte/px) using ", $doc_matrix, " luma weights. Alpha ignored.")]
+            pub fn [<rgba_to_gray_ $matrix>](src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+                check_copy(src.len(), 4, dst.len(), 1)?;
+                incant!([<rgba_to_gray_ $matrix _impl>](src, dst), [v3, scalar]);
+                Ok(())
+            }
+
+            #[doc = concat!("BGRA (4 bytes/px) → Gray (1 byte/px) using ", $doc_matrix, " luma weights. Alpha ignored.")]
+            pub fn [<bgra_to_gray_ $matrix>](src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+                check_copy(src.len(), 4, dst.len(), 1)?;
+                incant!([<bgra_to_gray_ $matrix _impl>](src, dst), [v3, scalar]);
+                Ok(())
+            }
+
+            // Strided variants
+            #[doc = concat!("RGB → Gray ", $doc_matrix, " between strided buffers.")]
+            pub fn [<rgb_to_gray_ $matrix _strided>](
+                src: &[u8], dst: &mut [u8], width: usize, height: usize, src_stride: usize, dst_stride: usize,
+            ) -> Result<(), SizeError> {
+                check_strided(src.len(), width, height, src_stride, 3)?;
+                check_strided(dst.len(), width, height, dst_stride, 1)?;
+                incant!([<rgb_to_gray_ $matrix _strided>](src, dst, width, height, src_stride, dst_stride), [v3, scalar]);
+                Ok(())
+            }
+
+            #[doc = concat!("BGR → Gray ", $doc_matrix, " between strided buffers.")]
+            pub fn [<bgr_to_gray_ $matrix _strided>](
+                src: &[u8], dst: &mut [u8], width: usize, height: usize, src_stride: usize, dst_stride: usize,
+            ) -> Result<(), SizeError> {
+                check_strided(src.len(), width, height, src_stride, 3)?;
+                check_strided(dst.len(), width, height, dst_stride, 1)?;
+                incant!([<bgr_to_gray_ $matrix _strided>](src, dst, width, height, src_stride, dst_stride), [v3, scalar]);
+                Ok(())
+            }
+
+            #[doc = concat!("RGBA → Gray ", $doc_matrix, " between strided buffers.")]
+            pub fn [<rgba_to_gray_ $matrix _strided>](
+                src: &[u8], dst: &mut [u8], width: usize, height: usize, src_stride: usize, dst_stride: usize,
+            ) -> Result<(), SizeError> {
+                check_strided(src.len(), width, height, src_stride, 4)?;
+                check_strided(dst.len(), width, height, dst_stride, 1)?;
+                incant!([<rgba_to_gray_ $matrix _strided>](src, dst, width, height, src_stride, dst_stride), [v3, scalar]);
+                Ok(())
+            }
+
+            #[doc = concat!("BGRA → Gray ", $doc_matrix, " between strided buffers.")]
+            pub fn [<bgra_to_gray_ $matrix _strided>](
+                src: &[u8], dst: &mut [u8], width: usize, height: usize, src_stride: usize, dst_stride: usize,
+            ) -> Result<(), SizeError> {
+                check_strided(src.len(), width, height, src_stride, 4)?;
+                check_strided(dst.len(), width, height, dst_stride, 1)?;
+                incant!([<bgra_to_gray_ $matrix _strided>](src, dst, width, height, src_stride, dst_stride), [v3, scalar]);
+                Ok(())
+            }
+        }
+    };
+}
+
+luma_api!(bt709, 54, 183, 19, "BT.709");
+luma_api!(bt601, 77, 150, 29, "BT.601");
+luma_api!(bt2020, 67, 174, 15, "BT.2020");
+
+/// Alias: `rgb_to_gray` defaults to BT.709.
+#[inline(always)]
+pub fn rgb_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    rgb_to_gray_bt709(src, dst)
+}
+
+/// Alias: `bgr_to_gray` defaults to BT.709.
+#[inline(always)]
+pub fn bgr_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    bgr_to_gray_bt709(src, dst)
+}
+
+/// Alias: `rgba_to_gray` defaults to BT.709.
+#[inline(always)]
+pub fn rgba_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    rgba_to_gray_bt709(src, dst)
+}
+
+/// Alias: `bgra_to_gray` defaults to BT.709.
+#[inline(always)]
+pub fn bgra_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    bgra_to_gray_bt709(src, dst)
+}
+
+// ===========================================================================
 // Depth conversions — element-level, channel-agnostic
 // ===========================================================================
 

@@ -482,6 +482,151 @@ pub(super) fn convert_f32_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u
 }
 
 // ===========================================================================
+// Weighted luma — AVX2 rite row implementations
+// ===========================================================================
+
+/// 4bpp→gray luma via 16-bit multiply. Processes 8 RGBA pixels per iteration.
+///
+/// Uses channel extraction + u16 multiply instead of `maddubs` because weights
+/// can exceed 127 (e.g. BT.709 green = 183) and `maddubs` treats the second
+/// operand as signed i8.
+#[rite]
+pub(super) fn luma_4bpp_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8], w0: u8, w1: u8, w2: u8) {
+    // Shuffle masks: extract channel bytes from each 4-byte RGBA pixel.
+    // Within each 128-bit lane (4 pixels), gather one channel into bytes 0-3.
+    let r_shuf = _mm256_set_epi8(
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 8, 4, 0,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 8, 4, 0,
+    );
+    let g_shuf = _mm256_set_epi8(
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, 9, 5, 1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, 9, 5, 1,
+    );
+    let b_shuf = _mm256_set_epi8(
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 10, 6, 2,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 10, 6, 2,
+    );
+    let w_r = _mm256_set1_epi16(w0 as i16);
+    let w_g = _mm256_set1_epi16(w1 as i16);
+    let w_b = _mm256_set1_epi16(w2 as i16);
+    let add128 = _mm256_set1_epi16(128);
+    let zero = _mm256_setzero_si256();
+
+    let n = src.len() / 4;
+    let mut i = 0;
+    while i + 8 <= n {
+        let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
+        let pixels = _mm256_loadu_si256(s);
+
+        // Extract each channel: 4 bytes per lane → zero-extend to 4 u16 per lane
+        let r8 = _mm256_shuffle_epi8(pixels, r_shuf);
+        let g8 = _mm256_shuffle_epi8(pixels, g_shuf);
+        let b8 = _mm256_shuffle_epi8(pixels, b_shuf);
+
+        let r16 = _mm256_unpacklo_epi8(r8, zero);
+        let g16 = _mm256_unpacklo_epi8(g8, zero);
+        let b16 = _mm256_unpacklo_epi8(b8, zero);
+
+        // Weighted sum: R*wR + G*wG + B*wB + 128
+        let sum = _mm256_add_epi16(
+            _mm256_add_epi16(
+                _mm256_mullo_epi16(r16, w_r),
+                _mm256_mullo_epi16(g16, w_g),
+            ),
+            _mm256_add_epi16(_mm256_mullo_epi16(b16, w_b), add128),
+        );
+
+        // >> 8 and pack to u8
+        let shifted = _mm256_srli_epi16::<8>(sum);
+        let packed = _mm256_packus_epi16(shifted, zero);
+
+        // Gather results: 4 bytes in low part of each 128-bit lane
+        let lo = _mm256_extracti128_si256::<0>(packed);
+        let hi = _mm256_extracti128_si256::<1>(packed);
+        let combined = _mm_unpacklo_epi32(lo, hi);
+        let mut tmp = [0u8; 16];
+        _mm_storeu_si128(&mut tmp, combined);
+        dst[i..i + 8].copy_from_slice(&tmp[..8]);
+        i += 8;
+    }
+    for j in i..n {
+        let px = &src[j * 4..j * 4 + 4];
+        dst[j] =
+            ((px[0] as u16 * w0 as u16 + px[1] as u16 * w1 as u16 + px[2] as u16 * w2 as u16 + 128)
+                >> 8) as u8;
+    }
+}
+
+/// 3bpp→gray luma. Scalar fallback (3-byte stride is awkward for AVX2).
+#[rite]
+pub(super) fn luma_3bpp_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8], w0: u8, w1: u8, w2: u8) {
+    for (px, d) in src.chunks_exact(3).zip(dst.iter_mut()) {
+        *d =
+            ((px[0] as u16 * w0 as u16 + px[1] as u16 * w1 as u16 + px[2] as u16 * w2 as u16 + 128)
+                >> 8) as u8;
+    }
+}
+
+macro_rules! luma_v3_wrappers {
+    ($matrix:ident, $r:expr, $g:expr, $b:expr) => {
+        paste::paste! {
+            #[arcane]
+            pub(super) fn [<rgb_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
+                luma_3bpp_row_v3(t, s, d, $r, $g, $b);
+            }
+            #[arcane]
+            pub(super) fn [<bgr_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
+                luma_3bpp_row_v3(t, s, d, $b, $g, $r);
+            }
+            #[arcane]
+            pub(super) fn [<rgba_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
+                luma_4bpp_row_v3(t, s, d, $r, $g, $b);
+            }
+            #[arcane]
+            pub(super) fn [<bgra_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
+                luma_4bpp_row_v3(t, s, d, $b, $g, $r);
+            }
+            #[arcane]
+            pub(super) fn [<rgb_to_gray_ $matrix _strided_v3>](
+                t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+            ) {
+                for y in 0..h {
+                    luma_3bpp_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w], $r, $g, $b);
+                }
+            }
+            #[arcane]
+            pub(super) fn [<bgr_to_gray_ $matrix _strided_v3>](
+                t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+            ) {
+                for y in 0..h {
+                    luma_3bpp_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w], $b, $g, $r);
+                }
+            }
+            #[arcane]
+            pub(super) fn [<rgba_to_gray_ $matrix _strided_v3>](
+                t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+            ) {
+                for y in 0..h {
+                    luma_4bpp_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w], $r, $g, $b);
+                }
+            }
+            #[arcane]
+            pub(super) fn [<bgra_to_gray_ $matrix _strided_v3>](
+                t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+            ) {
+                for y in 0..h {
+                    luma_4bpp_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w], $b, $g, $r);
+                }
+            }
+        }
+    };
+}
+
+luma_v3_wrappers!(bt709, 54, 183, 19);
+luma_v3_wrappers!(bt601, 77, 150, 29);
+luma_v3_wrappers!(bt2020, 67, 174, 15);
+
+// ===========================================================================
 // x86-64 arcane contiguous wrappers
 // ===========================================================================
 
