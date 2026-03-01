@@ -42,6 +42,33 @@ jobs:
             bench-output.txt
             target/criterion/
 
+  bench-wasm:
+    name: bench (WASM SIMD128)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_WASM32_WASIP1_RUNNER: "wasmtime run --dir . --"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+      - name: Install wasmtime
+        run: |
+          curl https://wasmtime.dev/install.sh -sSf | bash
+          echo "$HOME/.wasmtime/bin" >> $GITHUB_PATH
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm-simd128
+      - name: Run benchmarks (WASM SIMD128)
+        env:
+          RUSTFLAGS: "-C target-feature=+simd128"
+        run: cargo bench --bench swizzle --target wasm32-wasip1 -- --noplot 2>&1 | tee bench-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-WASM SIMD128
+          path: bench-output.txt
+
   # Diagnostic: test whether target-cpu=native helps aarch64 by allowing
   # #[target_feature(enable = "neon")] functions to inline (features already
   # globally enabled, so the attribute boundary becomes a no-op).
