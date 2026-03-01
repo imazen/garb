@@ -292,6 +292,192 @@ pub fn convert_rgba_to_bgr(
 }
 
 // ---------------------------------------------------------------------------
+// Gray layout conversions
+// ---------------------------------------------------------------------------
+
+/// Convert `ImgRef<Gray<u8>>` to `ImgRefMut<Rgb<u8>>`, broadcasting gray.
+pub fn convert_gray_to_rgb(
+    src: ImgRef<'_, Gray<u8>>,
+    mut dst: ImgRefMut<'_, Rgb<u8>>,
+) -> Result<(), SizeError> {
+    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+    for (s, d) in src.rows().zip(dst.rows_mut()) {
+        crate::bytes::gray_to_rgb(bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+    }
+    Ok(())
+}
+
+/// Alias for [`convert_gray_to_rgb`].
+pub fn convert_gray_to_bgr(
+    src: ImgRef<'_, Gray<u8>>,
+    mut dst: ImgRefMut<'_, Bgr<u8>>,
+) -> Result<(), SizeError> {
+    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+    for (s, d) in src.rows().zip(dst.rows_mut()) {
+        crate::bytes::gray_to_bgr(bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+    }
+    Ok(())
+}
+
+/// Convert `ImgRef<GrayAlpha<u8>>` to `ImgRefMut<Rgb<u8>>`, dropping alpha.
+pub fn convert_gray_alpha_to_rgb(
+    src: ImgRef<'_, GrayAlpha<u8>>,
+    mut dst: ImgRefMut<'_, Rgb<u8>>,
+) -> Result<(), SizeError> {
+    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+    for (s, d) in src.rows().zip(dst.rows_mut()) {
+        crate::bytes::gray_alpha_to_rgb(bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+    }
+    Ok(())
+}
+
+/// Convert `ImgRef<Gray<u8>>` to `ImgRefMut<GrayAlpha<u8>>`, alpha=255.
+pub fn convert_gray_to_gray_alpha(
+    src: ImgRef<'_, Gray<u8>>,
+    mut dst: ImgRefMut<'_, GrayAlpha<u8>>,
+) -> Result<(), SizeError> {
+    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+    for (s, d) in src.rows().zip(dst.rows_mut()) {
+        crate::bytes::gray_to_gray_alpha(bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+    }
+    Ok(())
+}
+
+/// Convert `ImgRef<GrayAlpha<u8>>` to `ImgRefMut<Gray<u8>>`, dropping alpha.
+pub fn convert_gray_alpha_to_gray(
+    src: ImgRef<'_, GrayAlpha<u8>>,
+    mut dst: ImgRefMut<'_, Gray<u8>>,
+) -> Result<(), SizeError> {
+    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+    for (s, d) in src.rows().zip(dst.rows_mut()) {
+        crate::bytes::gray_alpha_to_gray(bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+    }
+    Ok(())
+}
+
+/// Identity gray extraction from RGB image (takes R channel).
+pub fn convert_rgb_to_gray_identity(
+    src: ImgRef<'_, Rgb<u8>>,
+    mut dst: ImgRefMut<'_, Gray<u8>>,
+) -> Result<(), SizeError> {
+    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+    for (s, d) in src.rows().zip(dst.rows_mut()) {
+        crate::bytes::rgb_to_gray_identity(bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+    }
+    Ok(())
+}
+
+/// Identity gray extraction from RGBA image (takes R channel).
+pub fn convert_rgba_to_gray_identity(
+    src: ImgRef<'_, Rgba<u8>>,
+    mut dst: ImgRefMut<'_, Gray<u8>>,
+) -> Result<(), SizeError> {
+    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+    for (s, d) in src.rows().zip(dst.rows_mut()) {
+        crate::bytes::rgba_to_gray_identity(bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Weighted luma — RGB/RGBA → Gray
+// ---------------------------------------------------------------------------
+
+macro_rules! luma_imgref {
+    ($matrix:ident, $doc_matrix:expr) => {
+        paste::paste! {
+            #[doc = concat!("Convert `ImgRef<Rgb<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+            pub fn [<convert_rgb_to_gray_ $matrix>](
+                src: ImgRef<'_, Rgb<u8>>,
+                mut dst: ImgRefMut<'_, Gray<u8>>,
+            ) -> Result<(), SizeError> {
+                check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+                for (s, d) in src.rows().zip(dst.rows_mut()) {
+                    crate::bytes::[<rgb_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                }
+                Ok(())
+            }
+            #[doc = concat!("Convert `ImgRef<Bgr<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+            pub fn [<convert_bgr_to_gray_ $matrix>](
+                src: ImgRef<'_, Bgr<u8>>,
+                mut dst: ImgRefMut<'_, Gray<u8>>,
+            ) -> Result<(), SizeError> {
+                check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+                for (s, d) in src.rows().zip(dst.rows_mut()) {
+                    crate::bytes::[<bgr_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                }
+                Ok(())
+            }
+            #[doc = concat!("Convert `ImgRef<Rgba<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+            pub fn [<convert_rgba_to_gray_ $matrix>](
+                src: ImgRef<'_, Rgba<u8>>,
+                mut dst: ImgRefMut<'_, Gray<u8>>,
+            ) -> Result<(), SizeError> {
+                check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+                for (s, d) in src.rows().zip(dst.rows_mut()) {
+                    crate::bytes::[<rgba_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                }
+                Ok(())
+            }
+            #[doc = concat!("Convert `ImgRef<Bgra<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+            pub fn [<convert_bgra_to_gray_ $matrix>](
+                src: ImgRef<'_, Bgra<u8>>,
+                mut dst: ImgRefMut<'_, Gray<u8>>,
+            ) -> Result<(), SizeError> {
+                check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+                for (s, d) in src.rows().zip(dst.rows_mut()) {
+                    crate::bytes::[<bgra_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                }
+                Ok(())
+            }
+        }
+    };
+}
+
+luma_imgref!(bt709, "BT.709");
+luma_imgref!(bt601, "BT.601");
+luma_imgref!(bt2020, "BT.2020");
+
+/// Default alias: RGB → Gray uses BT.709.
+#[inline(always)]
+pub fn convert_rgb_to_gray(
+    src: ImgRef<'_, Rgb<u8>>,
+    dst: ImgRefMut<'_, Gray<u8>>,
+) -> Result<(), SizeError> {
+    convert_rgb_to_gray_bt709(src, dst)
+}
+
+/// Default alias: RGBA → Gray uses BT.709.
+#[inline(always)]
+pub fn convert_rgba_to_gray(
+    src: ImgRef<'_, Rgba<u8>>,
+    dst: ImgRefMut<'_, Gray<u8>>,
+) -> Result<(), SizeError> {
+    convert_rgba_to_gray_bt709(src, dst)
+}
+
+// ---------------------------------------------------------------------------
+// f32 alpha premultiplication
+// ---------------------------------------------------------------------------
+
+/// Premultiply alpha for an `Rgba<f32>` image in-place.
+pub fn premultiply_rgba_f32(mut img: ImgRefMut<'_, Rgba<f32>>) {
+    for row in img.rows_mut() {
+        let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
+        crate::bytes::premultiply_alpha_f32(bytes).expect("row is always valid");
+    }
+}
+
+/// Unpremultiply alpha for an `Rgba<f32>` image in-place.
+/// Where alpha is zero, all channels are set to zero.
+pub fn unpremultiply_rgba_f32(mut img: ImgRefMut<'_, Rgba<f32>>) {
+    for row in img.rows_mut() {
+        let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
+        crate::bytes::unpremultiply_alpha_f32(bytes).expect("row is always valid");
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 

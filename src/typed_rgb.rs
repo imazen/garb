@@ -209,6 +209,162 @@ pub fn fill_alpha_bgra(pixels: &mut [Bgra<u8>]) {
 }
 
 // ---------------------------------------------------------------------------
+// Gray layout conversions
+// ---------------------------------------------------------------------------
+
+/// Copy `&[Gray<u8>]` into `&mut [Rgb<u8>]`, broadcasting gray to R=G=B.
+pub fn gray_to_rgb_buf(src: &[Gray<u8>], dst: &mut [Rgb<u8>]) -> Result<(), SizeError> {
+    crate::bytes::gray_to_rgb(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Alias for [`gray_to_rgb_buf`] — R=G=B so output is identical.
+#[inline(always)]
+pub fn gray_to_bgr_buf(src: &[Gray<u8>], dst: &mut [Bgr<u8>]) -> Result<(), SizeError> {
+    crate::bytes::gray_to_bgr(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Copy `&[GrayAlpha<u8>]` into `&mut [Rgb<u8>]`, broadcasting gray, dropping alpha.
+pub fn gray_alpha_to_rgb_buf(src: &[GrayAlpha<u8>], dst: &mut [Rgb<u8>]) -> Result<(), SizeError> {
+    crate::bytes::gray_alpha_to_rgb(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Alias for [`gray_alpha_to_rgb_buf`].
+#[inline(always)]
+pub fn gray_alpha_to_bgr_buf(src: &[GrayAlpha<u8>], dst: &mut [Bgr<u8>]) -> Result<(), SizeError> {
+    crate::bytes::gray_alpha_to_bgr(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Copy `&[Gray<u8>]` into `&mut [GrayAlpha<u8>]`, adding alpha=255.
+pub fn gray_to_gray_alpha_buf(
+    src: &[Gray<u8>],
+    dst: &mut [GrayAlpha<u8>],
+) -> Result<(), SizeError> {
+    crate::bytes::gray_to_gray_alpha(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Copy `&[GrayAlpha<u8>]` into `&mut [Gray<u8>]`, dropping alpha.
+pub fn gray_alpha_to_gray_buf(
+    src: &[GrayAlpha<u8>],
+    dst: &mut [Gray<u8>],
+) -> Result<(), SizeError> {
+    crate::bytes::gray_alpha_to_gray(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Identity gray extraction: `&[Rgb<u8>]` → `&[Gray<u8>]` (takes R channel).
+pub fn rgb_to_gray_identity_buf(src: &[Rgb<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+    crate::bytes::rgb_to_gray_identity(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Identity gray extraction: `&[Rgba<u8>]` → `&[Gray<u8>]` (takes R channel).
+pub fn rgba_to_gray_identity_buf(src: &[Rgba<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+    crate::bytes::rgba_to_gray_identity(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Alias for [`rgb_to_gray_identity_buf`].
+#[inline(always)]
+pub fn bgr_to_gray_identity_buf(src: &[Bgr<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+    crate::bytes::bgr_to_gray_identity(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+/// Alias for [`rgba_to_gray_identity_buf`].
+#[inline(always)]
+pub fn bgra_to_gray_identity_buf(src: &[Bgra<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+    crate::bytes::bgra_to_gray_identity(bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+}
+
+// ---------------------------------------------------------------------------
+// Weighted luma — RGB/RGBA → Gray
+// ---------------------------------------------------------------------------
+
+macro_rules! luma_typed {
+    ($matrix:ident, $doc_matrix:expr) => {
+        paste::paste! {
+            #[doc = concat!("RGB → Gray using ", $doc_matrix, " luma weights.")]
+            pub fn [<rgb_to_gray_ $matrix _buf>](src: &[Rgb<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+                crate::bytes::[<rgb_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+            }
+            #[doc = concat!("BGR → Gray using ", $doc_matrix, " luma weights.")]
+            pub fn [<bgr_to_gray_ $matrix _buf>](src: &[Bgr<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+                crate::bytes::[<bgr_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+            }
+            #[doc = concat!("RGBA → Gray using ", $doc_matrix, " luma weights.")]
+            pub fn [<rgba_to_gray_ $matrix _buf>](src: &[Rgba<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+                crate::bytes::[<rgba_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+            }
+            #[doc = concat!("BGRA → Gray using ", $doc_matrix, " luma weights.")]
+            pub fn [<bgra_to_gray_ $matrix _buf>](src: &[Bgra<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+                crate::bytes::[<bgra_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+            }
+        }
+    };
+}
+
+luma_typed!(bt709, "BT.709");
+luma_typed!(bt601, "BT.601");
+luma_typed!(bt2020, "BT.2020");
+
+/// Default alias: RGB → Gray uses BT.709.
+#[inline(always)]
+pub fn rgb_to_gray_buf(src: &[Rgb<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+    rgb_to_gray_bt709_buf(src, dst)
+}
+
+/// Default alias: BGR → Gray uses BT.709.
+#[inline(always)]
+pub fn bgr_to_gray_buf(src: &[Bgr<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+    bgr_to_gray_bt709_buf(src, dst)
+}
+
+/// Default alias: RGBA → Gray uses BT.709.
+#[inline(always)]
+pub fn rgba_to_gray_buf(src: &[Rgba<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+    rgba_to_gray_bt709_buf(src, dst)
+}
+
+/// Default alias: BGRA → Gray uses BT.709.
+#[inline(always)]
+pub fn bgra_to_gray_buf(src: &[Bgra<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+    bgra_to_gray_bt709_buf(src, dst)
+}
+
+// ---------------------------------------------------------------------------
+// f32 alpha premultiplication
+// ---------------------------------------------------------------------------
+
+/// Premultiply alpha for `&mut [Rgba<f32>]` in-place: `C' = C * A`, alpha preserved.
+pub fn premultiply_rgba_f32(pixels: &mut [Rgba<f32>]) {
+    let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
+    crate::bytes::premultiply_alpha_f32(bytes).expect("typed slice is always valid");
+}
+
+/// Premultiply alpha, copying from `&[Rgba<f32>]` to `&mut [Rgba<f32>]`.
+pub fn premultiply_rgba_f32_buf(src: &[Rgba<f32>], dst: &mut [Rgba<f32>]) -> Result<(), SizeError> {
+    crate::bytes::premultiply_alpha_f32_copy(
+        bytemuck::cast_slice(src),
+        bytemuck::cast_slice_mut(dst),
+    )
+}
+
+/// Unpremultiply alpha for `&mut [Rgba<f32>]` in-place: `C' = C / A`.
+/// Where alpha is zero, all channels are set to zero.
+pub fn unpremultiply_rgba_f32(pixels: &mut [Rgba<f32>]) {
+    let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
+    crate::bytes::unpremultiply_alpha_f32(bytes).expect("typed slice is always valid");
+}
+
+/// Unpremultiply alpha, copying from `&[Rgba<f32>]` to `&mut [Rgba<f32>]`.
+/// Where alpha is zero, all channels are set to zero.
+pub fn unpremultiply_rgba_f32_buf(
+    src: &[Rgba<f32>],
+    dst: &mut [Rgba<f32>],
+) -> Result<(), SizeError> {
+    crate::bytes::unpremultiply_alpha_f32_copy(
+        bytemuck::cast_slice(src),
+        bytemuck::cast_slice_mut(dst),
+    )
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
