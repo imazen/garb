@@ -11,8 +11,54 @@ fn probe<T: SimdToken>() -> &'static str {
     }
 }
 
+fn print_cpu_name() {
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+            for line in cpuinfo.lines() {
+                if let Some(name) = line.strip_prefix("model name")
+                    && let Some(name) = name.trim_start().strip_prefix(':')
+                {
+                    eprintln!("  CPU: {}", name.trim());
+                    return;
+                }
+                // aarch64 uses "CPU part" but not a readable name; try "Model" on some kernels
+                if let Some(name) = line.strip_prefix("Model")
+                    && let Some(name) = name.trim_start().strip_prefix(':')
+                {
+                    eprintln!("  CPU: {}", name.trim());
+                    return;
+                }
+            }
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(out) = std::process::Command::new("sysctl")
+            .args(["-n", "machdep.cpu.brand_string"])
+            .output()
+        {
+            if out.status.success() {
+                if let Ok(name) = std::str::from_utf8(&out.stdout) {
+                    eprintln!("  CPU: {}", name.trim());
+                    return;
+                }
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(name) = std::env::var("PROCESSOR_IDENTIFIER") {
+            eprintln!("  CPU: {}", name);
+            return;
+        }
+    }
+    let _ = (); // suppress "unreachable" on wasm
+}
+
 fn print_simd_info() {
     eprintln!("=== SIMD Tier Detection ===");
+    print_cpu_name();
     #[cfg(target_arch = "x86_64")]
     {
         eprintln!(
