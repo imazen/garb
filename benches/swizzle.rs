@@ -14,6 +14,7 @@ fn probe<T: SimdToken>() -> &'static str {
 fn print_cpu_name() {
     #[cfg(target_os = "linux")]
     {
+        // /proc/cpuinfo has "model name" on x86, but not on aarch64
         if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
             for line in cpuinfo.lines() {
                 if let Some(name) = line.strip_prefix("model name")
@@ -22,11 +23,19 @@ fn print_cpu_name() {
                     eprintln!("  CPU: {}", name.trim());
                     return;
                 }
-                // aarch64 uses "CPU part" but not a readable name; try "Model" on some kernels
-                if let Some(name) = line.strip_prefix("Model")
-                    && let Some(name) = name.trim_start().strip_prefix(':')
+            }
+        }
+        // Fallback: lscpu works on both x86 and aarch64
+        if let Ok(out) = std::process::Command::new("lscpu").output()
+            && out.status.success()
+            && let Ok(text) = std::str::from_utf8(&out.stdout)
+        {
+            for line in text.lines() {
+                if let Some(name) = line
+                    .strip_prefix("Model name:")
+                    .or_else(|| line.strip_prefix("Nom de modèle"))
                 {
-                    eprintln!("  CPU: {}", name.trim());
+                    eprintln!("  CPU: {}", name.trim_start_matches(':').trim());
                     return;
                 }
             }
