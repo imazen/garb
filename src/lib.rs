@@ -2,9 +2,8 @@
 //!
 //! *Dress your pixels for the occasion.*
 //!
-//! You can't show up to a function in the wrong style. Get with the times and
-//! swap your BGR for your RGB, your ARGB for your RGBA, your BGRX for your
-//! BGRA, and tie up loose ends like that unreliable alpha.
+//! You can't show up to a function in the wrong style. Swap your BGR for your RGB, your ARGB for your RGBA, and tie up loose
+//! ends like that unreliable alpha BGRX.
 //!
 //! SIMD-optimized pixel format conversions for row-level and whole-image
 //! operations. Supports x86-64 AVX2, ARM NEON, and WASM SIMD128 with
