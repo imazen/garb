@@ -22,9 +22,15 @@ stripping channels — so you can get back to the interesting work.
 - RGB → RGBA / BGRA
 - BGR → BGRA / RGBA
 - RGBA / BGRA → RGB / BGR (drop alpha)
-- Gray → RGBA
-- GrayAlpha → RGBA
+- Gray → RGBA / BGRA
+- GrayAlpha → RGBA / BGRA
 - Fill alpha (set byte 3 = 255 in each 4-byte pixel, for RGBA/BGRA layouts)
+
+**Experimental** (feature `experimental` — API may change)
+- Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha
+- RGB / RGBA / BGR / BGRA → Gray (weighted luma: BT.709, BT.601, BT.2020; or identity)
+- Depth conversion: u8 ↔ u16, u8 ↔ f32, u16 ↔ f32
+- F32 alpha premultiply / unpremultiply (in-place and copy, AVX2 SIMD)
 
 All operations have `_strided` variants for images with padding between rows
 (common in video frames and GPU textures).
@@ -163,6 +169,7 @@ let bgra_img: ImgVec<Bgra<u8>> = imgref::swap_rgba_to_bgra(rgba_img);
 | Feature  | Default | What it adds |
 |----------|---------|--------------|
 | `std`    | yes     | Enables `std` on dependencies (e.g. `archmage`) |
+| `experimental` | no | Gray layout, weighted luma, depth conversion, f32 premul (API may change) |
 | `rgb`    | no      | `garb::typed_rgb` — conversions on `Rgba<u8>`, `Bgra<u8>`, etc. |
 | `imgref` | no      | `garb::imgref` — whole-image conversions on `ImgVec` / `ImgRef` (implies `rgb`) |
 
@@ -212,8 +219,35 @@ Every function returns `Result<(), SizeError>`. All have `_strided` variants.
 | `fill_alpha_rgba` | Set byte 3 to 255 in each 4-byte pixel (alpha-last: RGBA/BGRA) |
 
 Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
-`bgr_to_rgb`, `gray_to_bgra`, `gray_alpha_to_bgra` (same underlying
-operations).
+`bgr_to_rgb`, `gray_to_bgra`, `gray_alpha_to_bgra`.
+
+#### Experimental (`feature = "experimental"`)
+
+| Function | Operation |
+|----------|-----------|
+| `gray_to_rgb` | 1bpp → 3bpp (R=G=B=gray) |
+| `gray_alpha_to_rgb` | 2bpp → 3bpp (R=G=B=gray, drop alpha) |
+| `gray_to_gray_alpha` | 1bpp → 2bpp (A=255) |
+| `gray_alpha_to_gray` | 2bpp → 1bpp (drop alpha) |
+| `rgb_to_gray` | 3bpp → 1bpp weighted luma (BT.709 default) |
+| `rgba_to_gray` | 4bpp → 1bpp weighted luma (BT.709 default) |
+| `rgb_to_gray_bt709` | 3bpp → 1bpp BT.709 luma |
+| `rgba_to_gray_bt601` | 4bpp → 1bpp BT.601 luma (also `_bt709`, `_bt2020`) |
+| `rgb_to_gray_identity` | 3bpp → 1bpp, take first channel (for R=G=B data) |
+| `rgba_to_gray_identity` | 4bpp → 1bpp, take first channel (for R=G=B data) |
+| `convert_u8_to_u16` | Depth: u8 → u16 (0–255 → 0–65535) |
+| `convert_u16_to_u8` | Depth: u16 → u8 |
+| `convert_u8_to_f32` | Depth: u8 → f32 (0–255 → 0.0–1.0) |
+| `convert_f32_to_u8` | Depth: f32 → u8 (clamped) |
+| `convert_u16_to_f32` | Depth: u16 → f32 (0–65535 → 0.0–1.0) |
+| `convert_f32_to_u16` | Depth: f32 → u16 (clamped) |
+| `premultiply_alpha_f32` | Premultiply alpha in `[R,G,B,A]` f32 buffer (in-place) |
+| `unpremultiply_alpha_f32` | Unpremultiply alpha in `[R,G,B,A]` f32 buffer (in-place) |
+| `premultiply_alpha_f32_copy` | Premultiply alpha, copy variant |
+| `unpremultiply_alpha_f32_copy` | Unpremultiply alpha, copy variant |
+
+Aliases: `bgr_to_gray`, `bgra_to_gray`, plus `_identity` and BGR variants
+for all gray conversions.
 
 ### `typed_rgb` (feature `rgb`)
 
@@ -243,6 +277,11 @@ reinterpreted `&mut` references (zero-copy).
 | `fill_alpha_rgba` | Set A=255 in `&mut [Rgba<u8>]` |
 | `fill_alpha_bgra` | Set A=255 in `&mut [Bgra<u8>]` |
 
+With `experimental`: `gray_to_rgb_buf`, `gray_alpha_to_rgb_buf`,
+`gray_to_gray_alpha_buf`, `gray_alpha_to_gray_buf`, `rgb_to_gray_*_buf`,
+`rgba_to_gray_*_buf`, `premultiply_rgba_f32`, `unpremultiply_rgba_f32`,
+plus identity and BGR variants.
+
 ### `imgref` (feature `imgref`)
 
 Whole-image conversions on `ImgVec` / `ImgRef` / `ImgRefMut`. In-place
@@ -266,6 +305,11 @@ swaps consume and return an `ImgVec` with the buffer reinterpreted.
 | `convert_bgra_to_rgb` | `ImgRef<Bgra<u8>>` + `ImgRefMut<Rgb<u8>>` |
 | `convert_bgra_to_bgr` | `ImgRef<Bgra<u8>>` + `ImgRefMut<Bgr<u8>>` |
 | `convert_rgba_to_bgr` | `ImgRef<Rgba<u8>>` + `ImgRefMut<Bgr<u8>>` |
+
+With `experimental`: `convert_gray_to_rgb`, `convert_gray_alpha_to_rgb`,
+`convert_gray_to_gray_alpha`, `convert_gray_alpha_to_gray`,
+`convert_rgb_to_gray_*`, `convert_rgba_to_gray_*`, `premultiply_rgba_f32`,
+`unpremultiply_rgba_f32`.
 
 ## License
 

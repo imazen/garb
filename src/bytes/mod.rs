@@ -430,11 +430,17 @@ pub fn bgra_to_rgb_strided(
     Ok(())
 }
 
-// ===========================================================================
-// Weighted luma conversions — RGB/RGBA → Gray
-// ===========================================================================
+#[cfg(feature = "experimental")]
+mod experimental_api {
+    use super::*;
+    use crate::SizeError;
+    use archmage::incant;
 
-macro_rules! luma_api {
+    // ===========================================================================
+    // Weighted luma conversions — RGB/RGBA → Gray
+    // ===========================================================================
+
+    macro_rules! luma_api {
     (
         $matrix:ident, $r:expr, $g:expr, $b:expr,
         $doc_matrix:expr
@@ -512,595 +518,598 @@ macro_rules! luma_api {
     };
 }
 
-luma_api!(bt709, 54, 183, 19, "BT.709");
-luma_api!(bt601, 77, 150, 29, "BT.601");
-luma_api!(bt2020, 67, 174, 15, "BT.2020");
+    luma_api!(bt709, 54, 183, 19, "BT.709");
+    luma_api!(bt601, 77, 150, 29, "BT.601");
+    luma_api!(bt2020, 67, 174, 15, "BT.2020");
 
-/// Alias: `rgb_to_gray` defaults to BT.709.
-#[inline(always)]
-pub fn rgb_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    rgb_to_gray_bt709(src, dst)
-}
-
-/// Alias: `bgr_to_gray` defaults to BT.709.
-#[inline(always)]
-pub fn bgr_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    bgr_to_gray_bt709(src, dst)
-}
-
-/// Alias: `rgba_to_gray` defaults to BT.709.
-#[inline(always)]
-pub fn rgba_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    rgba_to_gray_bt709(src, dst)
-}
-
-/// Alias: `bgra_to_gray` defaults to BT.709.
-#[inline(always)]
-pub fn bgra_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    bgra_to_gray_bt709(src, dst)
-}
-
-// ===========================================================================
-// Depth conversions — element-level, channel-agnostic
-// ===========================================================================
-
-/// Convert u8 elements to u16 elements. Maps [0,255] → [0,65535] via `v * 257`.
-///
-/// `src` contains u8 values. `dst` must have at least `src.len() * 2` bytes.
-pub fn convert_u8_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    if src.is_empty() {
-        return Err(SizeError::NotPixelAligned);
+    /// Alias: `rgb_to_gray` defaults to BT.709.
+    #[inline(always)]
+    pub fn rgb_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        rgb_to_gray_bt709(src, dst)
     }
-    check_copy(src.len(), 1, dst.len(), 2)?;
-    incant!(convert_u8_to_u16_impl(src, dst), [v3, scalar]);
-    Ok(())
-}
 
-/// Convert u16 elements to u8 elements. Rounded: `(v * 255 + 32768) >> 16`.
-///
-/// `src` contains u16 values (must be a multiple of 2 bytes).
-/// `dst` must have at least `src.len() / 2` bytes.
-pub fn convert_u16_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 2, dst.len(), 1)?;
-    incant!(convert_u16_to_u8_impl(src, dst), [v3, scalar]);
-    Ok(())
-}
-
-/// Convert u8 elements to f32 elements. Maps [0,255] → [0.0, 1.0] via `v / 255.0`.
-///
-/// `src` contains u8 values. `dst` must have at least `src.len() * 4` bytes.
-pub fn convert_u8_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    if src.is_empty() {
-        return Err(SizeError::NotPixelAligned);
+    /// Alias: `bgr_to_gray` defaults to BT.709.
+    #[inline(always)]
+    pub fn bgr_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        bgr_to_gray_bt709(src, dst)
     }
-    check_copy(src.len(), 1, dst.len(), 4)?;
-    incant!(convert_u8_to_f32_impl(src, dst), [v3, scalar]);
-    Ok(())
-}
 
-/// Convert f32 elements to u8 elements. Clamped to [0,1], then `v * 255 + 0.5`.
-///
-/// `src` contains f32 values (must be a multiple of 4 bytes).
-/// `dst` must have at least `src.len() / 4` bytes.
-pub fn convert_f32_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 4, dst.len(), 1)?;
-    incant!(convert_f32_to_u8_impl(src, dst), [v3, scalar]);
-    Ok(())
-}
-
-/// Convert u16 elements to f32 elements. Maps [0,65535] → [0.0, 1.0] via `v / 65535.0`.
-///
-/// `src` contains u16 values (must be a multiple of 2 bytes).
-/// `dst` must have at least `src.len() * 2` bytes (u16→f32 doubles byte count).
-pub fn convert_u16_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 2, dst.len(), 4)?;
-    incant!(convert_u16_to_f32_impl(src, dst), [v3, scalar]);
-    Ok(())
-}
-
-/// Convert f32 elements to u16 elements. Clamped to [0,1], then `v * 65535 + 0.5`.
-///
-/// `src` contains f32 values (must be a multiple of 4 bytes).
-/// `dst` must have at least `src.len() / 2` bytes (f32→u16 halves byte count).
-pub fn convert_f32_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 4, dst.len(), 2)?;
-    incant!(convert_f32_to_u16_impl(src, dst), [v3, scalar]);
-    Ok(())
-}
-
-// ===========================================================================
-// Gray layout conversions — no luma weights
-// ===========================================================================
-
-/// Gray (1 byte/px) → RGB/BGR (3 bytes/px). R=G=B=gray.
-pub fn gray_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    if src.is_empty() {
-        return Err(SizeError::NotPixelAligned);
+    /// Alias: `rgba_to_gray` defaults to BT.709.
+    #[inline(always)]
+    pub fn rgba_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        rgba_to_gray_bt709(src, dst)
     }
-    check_copy(src.len(), 1, dst.len(), 3)?;
-    incant!(gray_to_rgb_impl(src, dst), [scalar]);
-    Ok(())
-}
 
-/// GrayAlpha (2 bytes/px) → RGB/BGR (3 bytes/px). R=G=B=gray, alpha dropped.
-pub fn gray_alpha_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 2, dst.len(), 3)?;
-    incant!(gray_alpha_to_rgb_impl(src, dst), [scalar]);
-    Ok(())
-}
-
-/// Gray (1 byte/px) → GrayAlpha (2 bytes/px). Alpha set to 255.
-pub fn gray_to_gray_alpha(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    if src.is_empty() {
-        return Err(SizeError::NotPixelAligned);
+    /// Alias: `bgra_to_gray` defaults to BT.709.
+    #[inline(always)]
+    pub fn bgra_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        bgra_to_gray_bt709(src, dst)
     }
-    check_copy(src.len(), 1, dst.len(), 2)?;
-    incant!(gray_to_gray_alpha_impl(src, dst), [scalar]);
-    Ok(())
-}
 
-/// GrayAlpha (2 bytes/px) → Gray (1 byte/px). Drops alpha.
-pub fn gray_alpha_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 2, dst.len(), 1)?;
-    incant!(gray_alpha_to_gray_impl(src, dst), [scalar]);
-    Ok(())
-}
+    // ===========================================================================
+    // Depth conversions — element-level, channel-agnostic
+    // ===========================================================================
 
-/// RGB (3 bytes/px) → Gray (1 byte/px). Identity extraction — takes the R channel.
-///
-/// Use this for roundtripping gray data that was expanded to RGB (where R=G=B).
-/// For perceptual luminance conversion, use `rgb_to_gray_bt709` instead.
-pub fn rgb_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 3, dst.len(), 1)?;
-    incant!(rgb_to_gray_identity_impl(src, dst), [scalar]);
-    Ok(())
-}
+    /// Convert u8 elements to u16 elements. Maps [0,255] → [0,65535] via `v * 257`.
+    ///
+    /// `src` contains u8 values. `dst` must have at least `src.len() * 2` bytes.
+    pub fn convert_u8_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        if src.is_empty() {
+            return Err(SizeError::NotPixelAligned);
+        }
+        check_copy(src.len(), 1, dst.len(), 2)?;
+        incant!(convert_u8_to_u16_impl(src, dst), [v3, scalar]);
+        Ok(())
+    }
 
-/// RGBA (4 bytes/px) → Gray (1 byte/px). Identity extraction — takes the R channel.
-///
-/// Use this for roundtripping gray data that was expanded to RGBA (where R=G=B).
-/// For perceptual luminance conversion, use `rgba_to_gray_bt709` instead.
-pub fn rgba_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 4, dst.len(), 1)?;
-    incant!(rgba_to_gray_identity_impl(src, dst), [scalar]);
-    Ok(())
-}
+    /// Convert u16 elements to u8 elements. Rounded: `(v * 255 + 32768) >> 16`.
+    ///
+    /// `src` contains u16 values (must be a multiple of 2 bytes).
+    /// `dst` must have at least `src.len() / 2` bytes.
+    pub fn convert_u16_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 2, dst.len(), 1)?;
+        incant!(convert_u16_to_u8_impl(src, dst), [v3, scalar]);
+        Ok(())
+    }
 
-/// Alias for [`gray_to_rgb`] — R=G=B so output is identical.
-#[inline(always)]
-pub fn gray_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    gray_to_rgb(src, dst)
-}
+    /// Convert u8 elements to f32 elements. Maps [0,255] → [0.0, 1.0] via `v / 255.0`.
+    ///
+    /// `src` contains u8 values. `dst` must have at least `src.len() * 4` bytes.
+    pub fn convert_u8_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        if src.is_empty() {
+            return Err(SizeError::NotPixelAligned);
+        }
+        check_copy(src.len(), 1, dst.len(), 4)?;
+        incant!(convert_u8_to_f32_impl(src, dst), [v3, scalar]);
+        Ok(())
+    }
 
-/// Alias for [`gray_alpha_to_rgb`] — R=G=B so output is identical.
-#[inline(always)]
-pub fn gray_alpha_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    gray_alpha_to_rgb(src, dst)
-}
+    /// Convert f32 elements to u8 elements. Clamped to [0,1], then `v * 255 + 0.5`.
+    ///
+    /// `src` contains f32 values (must be a multiple of 4 bytes).
+    /// `dst` must have at least `src.len() / 4` bytes.
+    pub fn convert_f32_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 4, dst.len(), 1)?;
+        incant!(convert_f32_to_u8_impl(src, dst), [v3, scalar]);
+        Ok(())
+    }
 
-/// Alias for [`rgb_to_gray_identity`] — R=G=B so any channel works.
-#[inline(always)]
-pub fn bgr_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    rgb_to_gray_identity(src, dst)
-}
+    /// Convert u16 elements to f32 elements. Maps [0,65535] → [0.0, 1.0] via `v / 65535.0`.
+    ///
+    /// `src` contains u16 values (must be a multiple of 2 bytes).
+    /// `dst` must have at least `src.len() * 2` bytes (u16→f32 doubles byte count).
+    pub fn convert_u16_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 2, dst.len(), 4)?;
+        incant!(convert_u16_to_f32_impl(src, dst), [v3, scalar]);
+        Ok(())
+    }
 
-/// Alias for [`rgba_to_gray_identity`] — R=G=B so any channel works.
-#[inline(always)]
-pub fn bgra_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    rgba_to_gray_identity(src, dst)
-}
+    /// Convert f32 elements to u16 elements. Clamped to [0,1], then `v * 65535 + 0.5`.
+    ///
+    /// `src` contains f32 values (must be a multiple of 4 bytes).
+    /// `dst` must have at least `src.len() / 2` bytes (f32→u16 halves byte count).
+    pub fn convert_f32_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 4, dst.len(), 2)?;
+        incant!(convert_f32_to_u16_impl(src, dst), [v3, scalar]);
+        Ok(())
+    }
 
-// Strided gray layout conversions
+    // ===========================================================================
+    // Gray layout conversions — no luma weights
+    // ===========================================================================
 
-/// Gray (1 byte/px) → RGB (3 bytes/px) between strided buffers.
-pub fn gray_to_rgb_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 1)?;
-    check_strided(dst.len(), width, height, dst_stride, 3)?;
-    incant!(
-        gray_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
-        [scalar]
-    );
-    Ok(())
-}
+    /// Gray (1 byte/px) → RGB/BGR (3 bytes/px). R=G=B=gray.
+    pub fn gray_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        if src.is_empty() {
+            return Err(SizeError::NotPixelAligned);
+        }
+        check_copy(src.len(), 1, dst.len(), 3)?;
+        incant!(gray_to_rgb_impl(src, dst), [scalar]);
+        Ok(())
+    }
 
-/// GrayAlpha (2 bytes/px) → RGB (3 bytes/px) between strided buffers.
-pub fn gray_alpha_to_rgb_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 2)?;
-    check_strided(dst.len(), width, height, dst_stride, 3)?;
-    incant!(
-        gray_alpha_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
-        [scalar]
-    );
-    Ok(())
-}
+    /// GrayAlpha (2 bytes/px) → RGB/BGR (3 bytes/px). R=G=B=gray, alpha dropped.
+    pub fn gray_alpha_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 2, dst.len(), 3)?;
+        incant!(gray_alpha_to_rgb_impl(src, dst), [scalar]);
+        Ok(())
+    }
 
-/// Gray (1 byte/px) → GrayAlpha (2 bytes/px) between strided buffers.
-pub fn gray_to_gray_alpha_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 1)?;
-    check_strided(dst.len(), width, height, dst_stride, 2)?;
-    incant!(
-        gray_to_gray_alpha_strided(src, dst, width, height, src_stride, dst_stride),
-        [scalar]
-    );
-    Ok(())
-}
+    /// Gray (1 byte/px) → GrayAlpha (2 bytes/px). Alpha set to 255.
+    pub fn gray_to_gray_alpha(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        if src.is_empty() {
+            return Err(SizeError::NotPixelAligned);
+        }
+        check_copy(src.len(), 1, dst.len(), 2)?;
+        incant!(gray_to_gray_alpha_impl(src, dst), [scalar]);
+        Ok(())
+    }
 
-/// GrayAlpha (2 bytes/px) → Gray (1 byte/px) between strided buffers.
-pub fn gray_alpha_to_gray_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 2)?;
-    check_strided(dst.len(), width, height, dst_stride, 1)?;
-    incant!(
-        gray_alpha_to_gray_strided(src, dst, width, height, src_stride, dst_stride),
-        [scalar]
-    );
-    Ok(())
-}
+    /// GrayAlpha (2 bytes/px) → Gray (1 byte/px). Drops alpha.
+    pub fn gray_alpha_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 2, dst.len(), 1)?;
+        incant!(gray_alpha_to_gray_impl(src, dst), [scalar]);
+        Ok(())
+    }
 
-/// RGB (3 bytes/px) → Gray (1 byte/px) identity extraction between strided buffers.
-pub fn rgb_to_gray_identity_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 3)?;
-    check_strided(dst.len(), width, height, dst_stride, 1)?;
-    incant!(
-        rgb_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride),
-        [scalar]
-    );
-    Ok(())
-}
+    /// RGB (3 bytes/px) → Gray (1 byte/px). Identity extraction — takes the R channel.
+    ///
+    /// Use this for roundtripping gray data that was expanded to RGB (where R=G=B).
+    /// For perceptual luminance conversion, use `rgb_to_gray_bt709` instead.
+    pub fn rgb_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 3, dst.len(), 1)?;
+        incant!(rgb_to_gray_identity_impl(src, dst), [scalar]);
+        Ok(())
+    }
 
-/// RGBA (4 bytes/px) → Gray (1 byte/px) identity extraction between strided buffers.
-pub fn rgba_to_gray_identity_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 4)?;
-    check_strided(dst.len(), width, height, dst_stride, 1)?;
-    incant!(
-        rgba_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride),
-        [scalar]
-    );
-    Ok(())
-}
+    /// RGBA (4 bytes/px) → Gray (1 byte/px). Identity extraction — takes the R channel.
+    ///
+    /// Use this for roundtripping gray data that was expanded to RGBA (where R=G=B).
+    /// For perceptual luminance conversion, use `rgba_to_gray_bt709` instead.
+    pub fn rgba_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 4, dst.len(), 1)?;
+        incant!(rgba_to_gray_identity_impl(src, dst), [scalar]);
+        Ok(())
+    }
 
-/// Alias for [`gray_to_rgb_strided`].
-#[inline(always)]
-pub fn gray_to_bgr_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    gray_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
-}
+    /// Alias for [`gray_to_rgb`] — R=G=B so output is identical.
+    #[inline(always)]
+    pub fn gray_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        gray_to_rgb(src, dst)
+    }
 
-/// Alias for [`gray_alpha_to_rgb_strided`].
-#[inline(always)]
-pub fn gray_alpha_to_bgr_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    gray_alpha_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
-}
+    /// Alias for [`gray_alpha_to_rgb`] — R=G=B so output is identical.
+    #[inline(always)]
+    pub fn gray_alpha_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        gray_alpha_to_rgb(src, dst)
+    }
 
-/// Alias for [`rgb_to_gray_identity_strided`].
-#[inline(always)]
-pub fn bgr_to_gray_identity_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    rgb_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride)
-}
+    /// Alias for [`rgb_to_gray_identity`] — R=G=B so any channel works.
+    #[inline(always)]
+    pub fn bgr_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        rgb_to_gray_identity(src, dst)
+    }
 
-/// Alias for [`rgba_to_gray_identity_strided`].
-#[inline(always)]
-pub fn bgra_to_gray_identity_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    rgba_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride)
-}
+    /// Alias for [`rgba_to_gray_identity`] — R=G=B so any channel works.
+    #[inline(always)]
+    pub fn bgra_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        rgba_to_gray_identity(src, dst)
+    }
 
-// Strided depth conversions
+    // Strided gray layout conversions
 
-/// Convert u8→u16 between strided buffers. `width_elements` is element count per row.
-pub fn convert_u8_to_u16_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 1)?;
-    check_strided(dst.len(), width, height, dst_stride, 2)?;
-    incant!(
-        convert_u8_to_u16_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    /// Gray (1 byte/px) → RGB (3 bytes/px) between strided buffers.
+    pub fn gray_to_rgb_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 1)?;
+        check_strided(dst.len(), width, height, dst_stride, 3)?;
+        incant!(
+            gray_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
 
-/// Convert u16→u8 between strided buffers. `width` is element count per row.
-pub fn convert_u16_to_u8_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 2)?;
-    check_strided(dst.len(), width, height, dst_stride, 1)?;
-    incant!(
-        convert_u16_to_u8_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    /// GrayAlpha (2 bytes/px) → RGB (3 bytes/px) between strided buffers.
+    pub fn gray_alpha_to_rgb_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 2)?;
+        check_strided(dst.len(), width, height, dst_stride, 3)?;
+        incant!(
+            gray_alpha_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
 
-/// Convert u8→f32 between strided buffers. `width` is element count per row.
-pub fn convert_u8_to_f32_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 1)?;
-    check_strided(dst.len(), width, height, dst_stride, 4)?;
-    incant!(
-        convert_u8_to_f32_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    /// Gray (1 byte/px) → GrayAlpha (2 bytes/px) between strided buffers.
+    pub fn gray_to_gray_alpha_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 1)?;
+        check_strided(dst.len(), width, height, dst_stride, 2)?;
+        incant!(
+            gray_to_gray_alpha_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
 
-/// Convert f32→u8 between strided buffers. `width` is element count per row.
-pub fn convert_f32_to_u8_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 4)?;
-    check_strided(dst.len(), width, height, dst_stride, 1)?;
-    incant!(
-        convert_f32_to_u8_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    /// GrayAlpha (2 bytes/px) → Gray (1 byte/px) between strided buffers.
+    pub fn gray_alpha_to_gray_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 2)?;
+        check_strided(dst.len(), width, height, dst_stride, 1)?;
+        incant!(
+            gray_alpha_to_gray_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
 
-/// Convert u16→f32 between strided buffers. `width` is element count per row.
-pub fn convert_u16_to_f32_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 2)?;
-    check_strided(dst.len(), width, height, dst_stride, 4)?;
-    incant!(
-        convert_u16_to_f32_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    /// RGB (3 bytes/px) → Gray (1 byte/px) identity extraction between strided buffers.
+    pub fn rgb_to_gray_identity_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 3)?;
+        check_strided(dst.len(), width, height, dst_stride, 1)?;
+        incant!(
+            rgb_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
 
-/// Convert f32→u16 between strided buffers. `width` is element count per row.
-pub fn convert_f32_to_u16_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 4)?;
-    check_strided(dst.len(), width, height, dst_stride, 2)?;
-    incant!(
-        convert_f32_to_u16_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    /// RGBA (4 bytes/px) → Gray (1 byte/px) identity extraction between strided buffers.
+    pub fn rgba_to_gray_identity_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 4)?;
+        check_strided(dst.len(), width, height, dst_stride, 1)?;
+        incant!(
+            rgba_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
 
-// ===========================================================================
-// f32 alpha premultiplication
-// ===========================================================================
+    /// Alias for [`gray_to_rgb_strided`].
+    #[inline(always)]
+    pub fn gray_to_bgr_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        gray_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
+    }
 
-/// Premultiply alpha for f32 RGBA pixels in-place: `C' = C * A`, alpha preserved.
-///
-/// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
-pub fn premultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
-    check_inplace(buf.len(), 16)?;
-    incant!(premul_f32_impl(buf), [v3, scalar]);
-    Ok(())
-}
+    /// Alias for [`gray_alpha_to_rgb_strided`].
+    #[inline(always)]
+    pub fn gray_alpha_to_bgr_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        gray_alpha_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
+    }
 
-/// Premultiply alpha for f32 RGBA pixels, copying from `src` to `dst`.
-///
-/// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
-pub fn premultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 16, dst.len(), 16)?;
-    incant!(premul_f32_copy_impl(src, dst), [v3, scalar]);
-    Ok(())
-}
+    /// Alias for [`rgb_to_gray_identity_strided`].
+    #[inline(always)]
+    pub fn bgr_to_gray_identity_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        rgb_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride)
+    }
 
-/// Unpremultiply alpha for f32 RGBA pixels in-place: `C' = C / A`.
-///
-/// Where alpha is zero, all channels are set to zero.
-/// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
-pub fn unpremultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
-    check_inplace(buf.len(), 16)?;
-    incant!(unpremul_f32_impl(buf), [v3, scalar]);
-    Ok(())
-}
+    /// Alias for [`rgba_to_gray_identity_strided`].
+    #[inline(always)]
+    pub fn bgra_to_gray_identity_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        rgba_to_gray_identity_strided(src, dst, width, height, src_stride, dst_stride)
+    }
 
-/// Unpremultiply alpha for f32 RGBA pixels, copying from `src` to `dst`.
-///
-/// Where alpha is zero, all channels are set to zero.
-/// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
-pub fn unpremultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_copy(src.len(), 16, dst.len(), 16)?;
-    incant!(unpremul_f32_copy_impl(src, dst), [v3, scalar]);
-    Ok(())
-}
+    // Strided depth conversions
 
-/// Alias for [`premultiply_alpha_f32`].
-#[inline(always)]
-pub fn premultiply_alpha_rgba_f32(buf: &mut [u8]) -> Result<(), SizeError> {
-    premultiply_alpha_f32(buf)
-}
+    /// Convert u8→u16 between strided buffers. `width_elements` is element count per row.
+    pub fn convert_u8_to_u16_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 1)?;
+        check_strided(dst.len(), width, height, dst_stride, 2)?;
+        incant!(
+            convert_u8_to_u16_strided(src, dst, width, height, src_stride, dst_stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
 
-/// Alias for [`premultiply_alpha_f32_copy`].
-#[inline(always)]
-pub fn premultiply_alpha_rgba_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    premultiply_alpha_f32_copy(src, dst)
-}
+    /// Convert u16→u8 between strided buffers. `width` is element count per row.
+    pub fn convert_u16_to_u8_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 2)?;
+        check_strided(dst.len(), width, height, dst_stride, 1)?;
+        incant!(
+            convert_u16_to_u8_strided(src, dst, width, height, src_stride, dst_stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
 
-/// Alias for [`unpremultiply_alpha_f32`].
-#[inline(always)]
-pub fn unpremultiply_alpha_rgba_f32(buf: &mut [u8]) -> Result<(), SizeError> {
-    unpremultiply_alpha_f32(buf)
-}
+    /// Convert u8→f32 between strided buffers. `width` is element count per row.
+    pub fn convert_u8_to_f32_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 1)?;
+        check_strided(dst.len(), width, height, dst_stride, 4)?;
+        incant!(
+            convert_u8_to_f32_strided(src, dst, width, height, src_stride, dst_stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
 
-/// Alias for [`unpremultiply_alpha_f32_copy`].
-#[inline(always)]
-pub fn unpremultiply_alpha_rgba_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
-    unpremultiply_alpha_f32_copy(src, dst)
-}
+    /// Convert f32→u8 between strided buffers. `width` is element count per row.
+    pub fn convert_f32_to_u8_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 4)?;
+        check_strided(dst.len(), width, height, dst_stride, 1)?;
+        incant!(
+            convert_f32_to_u8_strided(src, dst, width, height, src_stride, dst_stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
 
-// Strided f32 premul
+    /// Convert u16→f32 between strided buffers. `width` is element count per row.
+    pub fn convert_u16_to_f32_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 2)?;
+        check_strided(dst.len(), width, height, dst_stride, 4)?;
+        incant!(
+            convert_u16_to_f32_strided(src, dst, width, height, src_stride, dst_stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
 
-/// Premultiply alpha for f32 RGBA pixels in a strided buffer.
-///
-/// `width` is the number of pixels per row. `stride` is bytes between row starts.
-/// Must be ≥ `width × 16`. Each pixel is 4 × f32 (16 bytes).
-pub fn premultiply_alpha_f32_strided(
-    buf: &mut [u8],
-    width: usize,
-    height: usize,
-    stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(buf.len(), width, height, stride, 16)?;
-    incant!(premul_f32_strided(buf, width, height, stride), [v3, scalar]);
-    Ok(())
-}
+    /// Convert f32→u16 between strided buffers. `width` is element count per row.
+    pub fn convert_f32_to_u16_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 4)?;
+        check_strided(dst.len(), width, height, dst_stride, 2)?;
+        incant!(
+            convert_f32_to_u16_strided(src, dst, width, height, src_stride, dst_stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
 
-/// Premultiply alpha for f32 RGBA pixels between strided buffers.
-pub fn premultiply_alpha_f32_copy_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 16)?;
-    check_strided(dst.len(), width, height, dst_stride, 16)?;
-    incant!(
-        premul_f32_copy_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    // ===========================================================================
+    // f32 alpha premultiplication
+    // ===========================================================================
 
-/// Unpremultiply alpha for f32 RGBA pixels in a strided buffer.
-///
-/// Where alpha is zero, all channels are set to zero.
-/// `width` is the number of pixels per row. `stride` is bytes between row starts.
-/// Must be ≥ `width × 16`. Each pixel is 4 × f32 (16 bytes).
-pub fn unpremultiply_alpha_f32_strided(
-    buf: &mut [u8],
-    width: usize,
-    height: usize,
-    stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(buf.len(), width, height, stride, 16)?;
-    incant!(
-        unpremul_f32_strided(buf, width, height, stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    /// Premultiply alpha for f32 RGBA pixels in-place: `C' = C * A`, alpha preserved.
+    ///
+    /// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
+    pub fn premultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
+        check_inplace(buf.len(), 16)?;
+        incant!(premul_f32_impl(buf), [v3, scalar]);
+        Ok(())
+    }
 
-/// Unpremultiply alpha for f32 RGBA pixels between strided buffers.
-///
-/// Where alpha is zero, all channels are set to zero.
-pub fn unpremultiply_alpha_f32_copy_strided(
-    src: &[u8],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided(src.len(), width, height, src_stride, 16)?;
-    check_strided(dst.len(), width, height, dst_stride, 16)?;
-    incant!(
-        unpremul_f32_copy_strided(src, dst, width, height, src_stride, dst_stride),
-        [v3, scalar]
-    );
-    Ok(())
-}
+    /// Premultiply alpha for f32 RGBA pixels, copying from `src` to `dst`.
+    ///
+    /// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
+    pub fn premultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 16, dst.len(), 16)?;
+        incant!(premul_f32_copy_impl(src, dst), [v3, scalar]);
+        Ok(())
+    }
+
+    /// Unpremultiply alpha for f32 RGBA pixels in-place: `C' = C / A`.
+    ///
+    /// Where alpha is zero, all channels are set to zero.
+    /// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
+    pub fn unpremultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
+        check_inplace(buf.len(), 16)?;
+        incant!(unpremul_f32_impl(buf), [v3, scalar]);
+        Ok(())
+    }
+
+    /// Unpremultiply alpha for f32 RGBA pixels, copying from `src` to `dst`.
+    ///
+    /// Where alpha is zero, all channels are set to zero.
+    /// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
+    pub fn unpremultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 16, dst.len(), 16)?;
+        incant!(unpremul_f32_copy_impl(src, dst), [v3, scalar]);
+        Ok(())
+    }
+
+    /// Alias for [`premultiply_alpha_f32`].
+    #[inline(always)]
+    pub fn premultiply_alpha_rgba_f32(buf: &mut [u8]) -> Result<(), SizeError> {
+        premultiply_alpha_f32(buf)
+    }
+
+    /// Alias for [`premultiply_alpha_f32_copy`].
+    #[inline(always)]
+    pub fn premultiply_alpha_rgba_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        premultiply_alpha_f32_copy(src, dst)
+    }
+
+    /// Alias for [`unpremultiply_alpha_f32`].
+    #[inline(always)]
+    pub fn unpremultiply_alpha_rgba_f32(buf: &mut [u8]) -> Result<(), SizeError> {
+        unpremultiply_alpha_f32(buf)
+    }
+
+    /// Alias for [`unpremultiply_alpha_f32_copy`].
+    #[inline(always)]
+    pub fn unpremultiply_alpha_rgba_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        unpremultiply_alpha_f32_copy(src, dst)
+    }
+
+    // Strided f32 premul
+
+    /// Premultiply alpha for f32 RGBA pixels in a strided buffer.
+    ///
+    /// `width` is the number of pixels per row. `stride` is bytes between row starts.
+    /// Must be ≥ `width × 16`. Each pixel is 4 × f32 (16 bytes).
+    pub fn premultiply_alpha_f32_strided(
+        buf: &mut [u8],
+        width: usize,
+        height: usize,
+        stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(buf.len(), width, height, stride, 16)?;
+        incant!(premul_f32_strided(buf, width, height, stride), [v3, scalar]);
+        Ok(())
+    }
+
+    /// Premultiply alpha for f32 RGBA pixels between strided buffers.
+    pub fn premultiply_alpha_f32_copy_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 16)?;
+        check_strided(dst.len(), width, height, dst_stride, 16)?;
+        incant!(
+            premul_f32_copy_strided(src, dst, width, height, src_stride, dst_stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
+
+    /// Unpremultiply alpha for f32 RGBA pixels in a strided buffer.
+    ///
+    /// Where alpha is zero, all channels are set to zero.
+    /// `width` is the number of pixels per row. `stride` is bytes between row starts.
+    /// Must be ≥ `width × 16`. Each pixel is 4 × f32 (16 bytes).
+    pub fn unpremultiply_alpha_f32_strided(
+        buf: &mut [u8],
+        width: usize,
+        height: usize,
+        stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(buf.len(), width, height, stride, 16)?;
+        incant!(
+            unpremul_f32_strided(buf, width, height, stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
+
+    /// Unpremultiply alpha for f32 RGBA pixels between strided buffers.
+    ///
+    /// Where alpha is zero, all channels are set to zero.
+    pub fn unpremultiply_alpha_f32_copy_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 16)?;
+        check_strided(dst.len(), width, height, dst_stride, 16)?;
+        incant!(
+            unpremul_f32_copy_strided(src, dst, width, height, src_stride, dst_stride),
+            [v3, scalar]
+        );
+        Ok(())
+    }
+} // mod experimental_api
+#[cfg(feature = "experimental")]
+pub use experimental_api::*;
 
 // ===========================================================================
 // Aliases — symmetric operations get both names

@@ -25,9 +25,9 @@ checksum = "5192cca8006f1fd4f7237516f40fa183bb07f8fbdfedaa0036de5ea9b0b45e78"
 
 [[package]]
 name = "archmage"
-version = "0.8.8"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6a8d07d03baac9aeaa060763129e3dccb82d7f5033f155f342e48fbd6eecb46"
+checksum = "ffeedd6925c1a4a6790e2299d6873e91144eccab42700e58e7f881403c8cab8b"
 dependencies = [
  "archmage-macros",
  "safe_unaligned_simd",
@@ -35,9 +35,9 @@ dependencies = [
 
 [[package]]
 name = "archmage-macros"
-version = "0.8.8"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d809ec8d42ebc519018e480ecc1c6ce4565a58d977f898e587a49773bd43040"
+checksum = "a408ca22a6097871cac60710d9b0b7af51edb3a7138ff5508e14ad039e84d26d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -189,7 +189,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "garb"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "archmage",
  "bytemuck",
@@ -197,7 +197,6 @@ dependencies = [
  "imgref",
  "paste",
  "rgb",
- "safe_unaligned_simd",
 ]
 
 [[package]]
@@ -337,9 +336,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.44"
+version = "1.0.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21b2ebcf727b7760c461f091f9f0f539b77b8e87f2fd88131e7f1b433b3cece4"
+checksum = "41f2619966050689382d2b44f664f4bc593e129785a36d6ee376ddf37259b924"
 dependencies = [
  "proc-macro2",
 ]
@@ -390,8 +389,9 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
 name = "safe_unaligned_simd"
-version = "0.2.4"
-source = "git+https://github.com/lilith/safe_unaligned_simd.git#18119f74c132443837aaabe8fadd680e8f137893"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9c874fb993656d484725d58fbfddb39dfcf98ebcadc1a1d09568aa6b39bafba"
 
 [[package]]
 name = "same-file"

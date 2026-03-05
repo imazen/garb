@@ -1,6 +1,6 @@
 [package]
 name = "garb"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.89"
 authors = ["Lilith River <lilith@imazen.io>"]
@@ -13,9 +13,8 @@ readme = "README.md"
 
 [dependencies]
 archmage = { version = "0.9", features = ["macros"] }
-safe_unaligned_simd = "0.2.5"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
-paste = "1"
+paste = { version = "1", optional = true }
 rgb = { version = "0.8", features = ["bytemuck"], optional = true }
 imgref = { version = "1", optional = true }
 
@@ -32,8 +31,7 @@ harness = false
 [features]
 default = ["std"]
 std = ["archmage/std"]
+experimental = ["dep:paste"]
 rgb = ["dep:rgb"]
 imgref = ["dep:imgref", "rgb"]
 
-[patch.crates-io]
-safe_unaligned_simd = { git = "https://github.com/lilith/safe_unaligned_simd.git" }

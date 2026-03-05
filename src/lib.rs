@@ -47,6 +47,8 @@
 //! ## Feature flags
 //!
 //! - **`std`** — Enables `std` on dependencies (e.g. `archmage`).
+//! - **`experimental`** — Gray layout, weighted luma, depth conversion, f32
+//!   alpha premultiply/unpremultiply. API may change between minor versions.
 //! - **`rgb`** — Type-safe conversions using [`rgb`] crate pixel types
 //!   via bytemuck. Zero-copy in-place swaps return reinterpreted references.
 //! - **`imgref`** — Multi-row conversions using `ImgRef` / `ImgRefMut`

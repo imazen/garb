@@ -1,7 +1,4 @@
-use core::arch::wasm32::{i8x16, i8x16_swizzle, u32x4_splat, v128_or};
-
 use archmage::prelude::*;
-use safe_unaligned_simd::wasm32::{v128_load, v128_store};
 
 use super::swap_br_u32;
 

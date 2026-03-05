@@ -1,7 +1,4 @@
 use archmage::prelude::*;
-use safe_unaligned_simd::x86_64::{
-    _mm_loadu_si128, _mm_storeu_si128, _mm256_loadu_si256, _mm256_storeu_si256,
-};
 
 use super::swap_br_u32;
 
@@ -65,7 +62,7 @@ const PACK_3X4_PERM_AVX: [i8; 32] = [
 ];
 
 // ===========================================================================
-// x86-64 AVX2 — rite row implementations
+// x86-64 AVX2 — core rite row implementations
 // ===========================================================================
 
 #[rite]
@@ -311,528 +308,6 @@ pub(super) fn bgra_to_rgb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
 }
 
 // ===========================================================================
-// Depth conversions — AVX2 rite row implementations
-// ===========================================================================
-
-#[rite]
-pub(super) fn convert_u8_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-    let mul257 = _mm256_set1_epi16(257);
-    let n = src.len();
-    let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
-    let mut i = 0;
-    // Process 16 u8 → 16 u16 per iteration
-    while i + 16 <= n {
-        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
-        let v = _mm_loadu_si128(s);
-        let wide = _mm256_cvtepu8_epi16(v);
-        let result = _mm256_mullo_epi16(wide, mul257);
-        let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst16[i..i + 16])
-            .try_into()
-            .unwrap();
-        _mm256_storeu_si256(d, result);
-        i += 16;
-    }
-    for j in i..n {
-        dst16[j] = (src[j] as u16) * 257;
-    }
-}
-
-#[rite]
-pub(super) fn convert_u16_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-    let src16: &[u16] = bytemuck::cast_slice(src);
-    let mul255 = _mm256_set1_epi32(255);
-    let add_half = _mm256_set1_epi32(32768);
-    let n = src16.len();
-    let mut i = 0;
-    // Process 8 u16 → 8 u8 per iteration (need to widen to u32 for multiply)
-    while i + 8 <= n {
-        let s: &[u8; 16] = bytemuck::cast_slice(&src16[i..i + 8]).try_into().unwrap();
-        let v = _mm_loadu_si128(s);
-        let wide = _mm256_cvtepu16_epi32(v);
-        let prod = _mm256_add_epi32(_mm256_mullo_epi32(wide, mul255), add_half);
-        let shifted = _mm256_srli_epi32::<16>(prod);
-        // Pack i32 → i16 → u8
-        let packed16 = _mm256_packus_epi32(shifted, shifted); // [0..3,0..3,4..7,4..7]
-        let packed8 = _mm256_packus_epi16(packed16, packed16); // [0..3,0..3,0..3,0..3,4..7,...]
-        // Extract the 8 bytes we need
-        let lo = _mm256_extracti128_si256::<0>(packed8);
-        let hi = _mm256_extracti128_si256::<1>(packed8);
-        let combined = _mm_unpacklo_epi32(lo, hi);
-        let mut tmp = [0u8; 16];
-        _mm_storeu_si128(&mut tmp, combined);
-        dst[i..i + 8].copy_from_slice(&tmp[..8]);
-        i += 8;
-    }
-    for j in i..n {
-        dst[j] = ((src16[j] as u32 * 255 + 32768) >> 16) as u8;
-    }
-}
-
-#[rite]
-pub(super) fn convert_u8_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-    let scale = _mm256_set1_ps(1.0 / 255.0);
-    let n = src.len();
-    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
-    let mut i = 0;
-    // Process 8 u8 → 8 f32 per iteration
-    while i + 8 <= n {
-        let mut tmp = [0u8; 16];
-        tmp[..8].copy_from_slice(&src[i..i + 8]);
-        let v = _mm_loadu_si128(&tmp);
-        let wide32 = _mm256_cvtepu8_epi32(v);
-        let floats = _mm256_cvtepi32_ps(wide32);
-        let result = _mm256_mul_ps(floats, scale);
-        let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst_f[i..i + 8])
-            .try_into()
-            .unwrap();
-        _mm256_storeu_si256(d, _mm256_castps_si256(result));
-        i += 8;
-    }
-    for j in i..n {
-        dst_f[j] = src[j] as f32 / 255.0;
-    }
-}
-
-#[rite]
-pub(super) fn convert_f32_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-    let src_f: &[f32] = bytemuck::cast_slice(src);
-    let scale = _mm256_set1_ps(255.0);
-    let half = _mm256_set1_ps(0.5);
-    let zero = _mm256_setzero_ps();
-    let one = _mm256_set1_ps(1.0);
-    let n = src_f.len();
-    let mut i = 0;
-    // Process 8 f32 → 8 u8 per iteration
-    while i + 8 <= n {
-        let s: &[u8; 32] = bytemuck::cast_slice(&src_f[i..i + 8]).try_into().unwrap();
-        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-        let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
-        let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
-        let ints = _mm256_cvttps_epi32(scaled);
-        // Pack i32 → i16 → u8
-        let packed16 = _mm256_packus_epi32(ints, ints);
-        let packed8 = _mm256_packus_epi16(packed16, packed16);
-        let lo = _mm256_extracti128_si256::<0>(packed8);
-        let hi = _mm256_extracti128_si256::<1>(packed8);
-        let combined = _mm_unpacklo_epi32(lo, hi);
-        let mut tmp = [0u8; 16];
-        _mm_storeu_si128(&mut tmp, combined);
-        dst[i..i + 8].copy_from_slice(&tmp[..8]);
-        i += 8;
-    }
-    for j in i..n {
-        dst[j] = (src_f[j].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-    }
-}
-
-#[rite]
-pub(super) fn convert_u16_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-    let src16: &[u16] = bytemuck::cast_slice(src);
-    let scale = _mm256_set1_ps(1.0 / 65535.0);
-    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
-    let n = src16.len();
-    let mut i = 0;
-    // Process 8 u16 → 8 f32 per iteration
-    while i + 8 <= n {
-        let s: &[u8; 16] = bytemuck::cast_slice(&src16[i..i + 8]).try_into().unwrap();
-        let v = _mm_loadu_si128(s);
-        let wide32 = _mm256_cvtepu16_epi32(v);
-        let floats = _mm256_cvtepi32_ps(wide32);
-        let result = _mm256_mul_ps(floats, scale);
-        let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst_f[i..i + 8])
-            .try_into()
-            .unwrap();
-        _mm256_storeu_si256(d, _mm256_castps_si256(result));
-        i += 8;
-    }
-    for j in i..n {
-        dst_f[j] = src16[j] as f32 / 65535.0;
-    }
-}
-
-#[rite]
-pub(super) fn convert_f32_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-    let src_f: &[f32] = bytemuck::cast_slice(src);
-    let scale = _mm256_set1_ps(65535.0);
-    let half = _mm256_set1_ps(0.5);
-    let zero = _mm256_setzero_ps();
-    let one = _mm256_set1_ps(1.0);
-    let n = src_f.len();
-    let mut i = 0;
-    // Process 8 f32 → 8 u16 per iteration
-    while i + 8 <= n {
-        let s: &[u8; 32] = bytemuck::cast_slice(&src_f[i..i + 8]).try_into().unwrap();
-        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-        let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
-        let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
-        let ints = _mm256_cvttps_epi32(scaled);
-        // Pack i32 → u16
-        let packed16 = _mm256_packus_epi32(ints, ints); // [0..3,0..3,4..7,4..7]
-        // Permute to get contiguous 8 u16
-        let perm = _mm256_permute4x64_epi64::<0b00_00_10_00>(packed16);
-        let mut tmp = [0u8; 32];
-        _mm256_storeu_si256(&mut tmp, perm);
-        dst[i * 2..i * 2 + 16].copy_from_slice(&tmp[..16]);
-        i += 8;
-    }
-    let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
-    for j in i..n {
-        dst16[j] = (src_f[j].clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
-    }
-}
-
-// ===========================================================================
-// Weighted luma — AVX2 rite row implementations
-// ===========================================================================
-
-/// 4bpp→gray luma via 16-bit multiply. Processes 8 RGBA pixels per iteration.
-///
-/// Uses channel extraction + u16 multiply instead of `maddubs` because weights
-/// can exceed 127 (e.g. BT.709 green = 183) and `maddubs` treats the second
-/// operand as signed i8.
-#[rite]
-pub(super) fn luma_4bpp_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8], w0: u8, w1: u8, w2: u8) {
-    // Shuffle masks: extract channel bytes from each 4-byte RGBA pixel.
-    // Within each 128-bit lane (4 pixels), gather one channel into bytes 0-3.
-    let r_shuf = _mm256_set_epi8(
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 8, 4, 0, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, 12, 8, 4, 0,
-    );
-    let g_shuf = _mm256_set_epi8(
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, 9, 5, 1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, 13, 9, 5, 1,
-    );
-    let b_shuf = _mm256_set_epi8(
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 10, 6, 2, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, 14, 10, 6, 2,
-    );
-    let w_r = _mm256_set1_epi16(w0 as i16);
-    let w_g = _mm256_set1_epi16(w1 as i16);
-    let w_b = _mm256_set1_epi16(w2 as i16);
-    let add128 = _mm256_set1_epi16(128);
-    let zero = _mm256_setzero_si256();
-
-    let n = src.len() / 4;
-    let mut i = 0;
-    while i + 8 <= n {
-        let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
-        let pixels = _mm256_loadu_si256(s);
-
-        // Extract each channel: 4 bytes per lane → zero-extend to 4 u16 per lane
-        let r8 = _mm256_shuffle_epi8(pixels, r_shuf);
-        let g8 = _mm256_shuffle_epi8(pixels, g_shuf);
-        let b8 = _mm256_shuffle_epi8(pixels, b_shuf);
-
-        let r16 = _mm256_unpacklo_epi8(r8, zero);
-        let g16 = _mm256_unpacklo_epi8(g8, zero);
-        let b16 = _mm256_unpacklo_epi8(b8, zero);
-
-        // Weighted sum: R*wR + G*wG + B*wB + 128
-        let sum = _mm256_add_epi16(
-            _mm256_add_epi16(_mm256_mullo_epi16(r16, w_r), _mm256_mullo_epi16(g16, w_g)),
-            _mm256_add_epi16(_mm256_mullo_epi16(b16, w_b), add128),
-        );
-
-        // >> 8 and pack to u8
-        let shifted = _mm256_srli_epi16::<8>(sum);
-        let packed = _mm256_packus_epi16(shifted, zero);
-
-        // Gather results: 4 bytes in low part of each 128-bit lane
-        let lo = _mm256_extracti128_si256::<0>(packed);
-        let hi = _mm256_extracti128_si256::<1>(packed);
-        let combined = _mm_unpacklo_epi32(lo, hi);
-        let mut tmp = [0u8; 16];
-        _mm_storeu_si128(&mut tmp, combined);
-        dst[i..i + 8].copy_from_slice(&tmp[..8]);
-        i += 8;
-    }
-    for j in i..n {
-        let px = &src[j * 4..j * 4 + 4];
-        dst[j] =
-            ((px[0] as u16 * w0 as u16 + px[1] as u16 * w1 as u16 + px[2] as u16 * w2 as u16 + 128)
-                >> 8) as u8;
-    }
-}
-
-/// 3bpp→gray luma. Scalar fallback (3-byte stride is awkward for AVX2).
-#[rite]
-pub(super) fn luma_3bpp_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8], w0: u8, w1: u8, w2: u8) {
-    for (px, d) in src.chunks_exact(3).zip(dst.iter_mut()) {
-        *d =
-            ((px[0] as u16 * w0 as u16 + px[1] as u16 * w1 as u16 + px[2] as u16 * w2 as u16 + 128)
-                >> 8) as u8;
-    }
-}
-
-macro_rules! luma_v3_wrappers {
-    ($matrix:ident, $r:expr, $g:expr, $b:expr) => {
-        paste::paste! {
-            #[arcane]
-            pub(super) fn [<rgb_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
-                luma_3bpp_row_v3(t, s, d, $r, $g, $b);
-            }
-            #[arcane]
-            pub(super) fn [<bgr_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
-                luma_3bpp_row_v3(t, s, d, $b, $g, $r);
-            }
-            #[arcane]
-            pub(super) fn [<rgba_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
-                luma_4bpp_row_v3(t, s, d, $r, $g, $b);
-            }
-            #[arcane]
-            pub(super) fn [<bgra_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
-                luma_4bpp_row_v3(t, s, d, $b, $g, $r);
-            }
-            #[arcane]
-            pub(super) fn [<rgb_to_gray_ $matrix _strided_v3>](
-                t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
-            ) {
-                for y in 0..h {
-                    luma_3bpp_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w], $r, $g, $b);
-                }
-            }
-            #[arcane]
-            pub(super) fn [<bgr_to_gray_ $matrix _strided_v3>](
-                t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
-            ) {
-                for y in 0..h {
-                    luma_3bpp_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w], $b, $g, $r);
-                }
-            }
-            #[arcane]
-            pub(super) fn [<rgba_to_gray_ $matrix _strided_v3>](
-                t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
-            ) {
-                for y in 0..h {
-                    luma_4bpp_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w], $r, $g, $b);
-                }
-            }
-            #[arcane]
-            pub(super) fn [<bgra_to_gray_ $matrix _strided_v3>](
-                t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
-            ) {
-                for y in 0..h {
-                    luma_4bpp_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w], $b, $g, $r);
-                }
-            }
-        }
-    };
-}
-
-luma_v3_wrappers!(bt709, 54, 183, 19);
-luma_v3_wrappers!(bt601, 77, 150, 29);
-luma_v3_wrappers!(bt2020, 67, 174, 15);
-
-// ===========================================================================
-// f32 alpha premultiplication — AVX2 rite row implementations
-// ===========================================================================
-
-/// In-place f32 premultiply: C' = C * A, alpha preserved. 2 pixels per iteration.
-#[rite]
-pub(super) fn premul_f32_row_v3(_t: X64V3Token, buf: &mut [u8]) {
-    let n = buf.len() / 16;
-    let mut i = 0;
-    while i + 2 <= n {
-        let s: &[u8; 32] = buf[i * 16..i * 16 + 32].try_into().unwrap();
-        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-        let alpha = _mm256_permute_ps::<0xFF>(v); // broadcast A to all lanes
-        let premul = _mm256_mul_ps(v, alpha);
-        let result = _mm256_blend_ps::<0b1000_1000>(premul, v); // keep original alpha
-        let d: &mut [u8; 32] = (&mut buf[i * 16..i * 16 + 32]).try_into().unwrap();
-        _mm256_storeu_si256(d, _mm256_castps_si256(result));
-        i += 2;
-    }
-    if i < n {
-        let floats: &mut [f32] = bytemuck::cast_slice_mut(&mut buf[i * 16..]);
-        for px in floats.chunks_exact_mut(4) {
-            let a = px[3];
-            px[0] *= a;
-            px[1] *= a;
-            px[2] *= a;
-        }
-    }
-}
-
-/// Copy f32 premultiply: C' = C * A, alpha copied. 2 pixels per iteration.
-#[rite]
-pub(super) fn premul_f32_copy_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-    let n = src.len() / 16;
-    let mut i = 0;
-    while i + 2 <= n {
-        let s: &[u8; 32] = src[i * 16..i * 16 + 32].try_into().unwrap();
-        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-        let alpha = _mm256_permute_ps::<0xFF>(v);
-        let premul = _mm256_mul_ps(v, alpha);
-        let result = _mm256_blend_ps::<0b1000_1000>(premul, v);
-        let d: &mut [u8; 32] = (&mut dst[i * 16..i * 16 + 32]).try_into().unwrap();
-        _mm256_storeu_si256(d, _mm256_castps_si256(result));
-        i += 2;
-    }
-    if i < n {
-        let src_f: &[f32] = bytemuck::cast_slice(&src[i * 16..]);
-        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(&mut dst[i * 16..]);
-        for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
-            let a = s[3];
-            d[0] = s[0] * a;
-            d[1] = s[1] * a;
-            d[2] = s[2] * a;
-            d[3] = a;
-        }
-    }
-}
-
-/// In-place f32 unpremultiply: C' = C / A, zero alpha → all zero. 2 pixels per iteration.
-#[rite]
-pub(super) fn unpremul_f32_row_v3(_t: X64V3Token, buf: &mut [u8]) {
-    let zero = _mm256_setzero_ps();
-    let one = _mm256_set1_ps(1.0);
-    let n = buf.len() / 16;
-    let mut i = 0;
-    while i + 2 <= n {
-        let s: &[u8; 32] = buf[i * 16..i * 16 + 32].try_into().unwrap();
-        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-        let alpha = _mm256_permute_ps::<0xFF>(v);
-        let zero_mask = _mm256_cmp_ps::<0>(alpha, zero); // _CMP_EQ_OQ
-        let inv_alpha = _mm256_div_ps(one, alpha);
-        let unpremul = _mm256_mul_ps(v, inv_alpha);
-        let blended = _mm256_blend_ps::<0b1000_1000>(unpremul, v); // keep original alpha
-        let result = _mm256_andnot_ps(zero_mask, blended); // zero where alpha was 0
-        let d: &mut [u8; 32] = (&mut buf[i * 16..i * 16 + 32]).try_into().unwrap();
-        _mm256_storeu_si256(d, _mm256_castps_si256(result));
-        i += 2;
-    }
-    if i < n {
-        let floats: &mut [f32] = bytemuck::cast_slice_mut(&mut buf[i * 16..]);
-        for px in floats.chunks_exact_mut(4) {
-            let a = px[3];
-            if a == 0.0 {
-                px[0] = 0.0;
-                px[1] = 0.0;
-                px[2] = 0.0;
-            } else {
-                let inv_a = 1.0 / a;
-                px[0] *= inv_a;
-                px[1] *= inv_a;
-                px[2] *= inv_a;
-            }
-        }
-    }
-}
-
-/// Copy f32 unpremultiply: C' = C / A, zero alpha → all zero. 2 pixels per iteration.
-#[rite]
-pub(super) fn unpremul_f32_copy_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-    let zero = _mm256_setzero_ps();
-    let one = _mm256_set1_ps(1.0);
-    let n = src.len() / 16;
-    let mut i = 0;
-    while i + 2 <= n {
-        let s: &[u8; 32] = src[i * 16..i * 16 + 32].try_into().unwrap();
-        let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-        let alpha = _mm256_permute_ps::<0xFF>(v);
-        let zero_mask = _mm256_cmp_ps::<0>(alpha, zero);
-        let inv_alpha = _mm256_div_ps(one, alpha);
-        let unpremul = _mm256_mul_ps(v, inv_alpha);
-        let blended = _mm256_blend_ps::<0b1000_1000>(unpremul, v);
-        let result = _mm256_andnot_ps(zero_mask, blended);
-        let d: &mut [u8; 32] = (&mut dst[i * 16..i * 16 + 32]).try_into().unwrap();
-        _mm256_storeu_si256(d, _mm256_castps_si256(result));
-        i += 2;
-    }
-    if i < n {
-        let src_f: &[f32] = bytemuck::cast_slice(&src[i * 16..]);
-        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(&mut dst[i * 16..]);
-        for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
-            let a = s[3];
-            if a == 0.0 {
-                d[0] = 0.0;
-                d[1] = 0.0;
-                d[2] = 0.0;
-                d[3] = 0.0;
-            } else {
-                let inv_a = 1.0 / a;
-                d[0] = s[0] * inv_a;
-                d[1] = s[1] * inv_a;
-                d[2] = s[2] * inv_a;
-                d[3] = a;
-            }
-        }
-    }
-}
-
-// Premul arcane contiguous wrappers
-#[arcane]
-pub(super) fn premul_f32_impl_v3(t: X64V3Token, b: &mut [u8]) {
-    premul_f32_row_v3(t, b);
-}
-#[arcane]
-pub(super) fn premul_f32_copy_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
-    premul_f32_copy_row_v3(t, s, d);
-}
-#[arcane]
-pub(super) fn unpremul_f32_impl_v3(t: X64V3Token, b: &mut [u8]) {
-    unpremul_f32_row_v3(t, b);
-}
-#[arcane]
-pub(super) fn unpremul_f32_copy_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
-    unpremul_f32_copy_row_v3(t, s, d);
-}
-
-// Premul arcane strided wrappers
-#[arcane]
-pub(super) fn premul_f32_strided_v3(
-    t: X64V3Token,
-    buf: &mut [u8],
-    w: usize,
-    h: usize,
-    stride: usize,
-) {
-    for y in 0..h {
-        premul_f32_row_v3(t, &mut buf[y * stride..][..w * 16]);
-    }
-}
-#[arcane]
-pub(super) fn premul_f32_copy_strided_v3(
-    t: X64V3Token,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        premul_f32_copy_row_v3(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
-    }
-}
-#[arcane]
-pub(super) fn unpremul_f32_strided_v3(
-    t: X64V3Token,
-    buf: &mut [u8],
-    w: usize,
-    h: usize,
-    stride: usize,
-) {
-    for y in 0..h {
-        unpremul_f32_row_v3(t, &mut buf[y * stride..][..w * 16]);
-    }
-}
-#[arcane]
-pub(super) fn unpremul_f32_copy_strided_v3(
-    t: X64V3Token,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        unpremul_f32_copy_row_v3(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
-    }
-}
-
-// ===========================================================================
 // x86-64 arcane contiguous wrappers
 // ===========================================================================
 
@@ -879,32 +354,6 @@ pub(super) fn rgba_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
 #[arcane]
 pub(super) fn bgra_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
     bgra_to_rgb_row_v3(t, s, d);
-}
-
-// Depth conversion arcane contiguous wrappers
-#[arcane]
-pub(super) fn convert_u8_to_u16_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
-    convert_u8_to_u16_row_v3(t, s, d);
-}
-#[arcane]
-pub(super) fn convert_u16_to_u8_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
-    convert_u16_to_u8_row_v3(t, s, d);
-}
-#[arcane]
-pub(super) fn convert_u8_to_f32_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
-    convert_u8_to_f32_row_v3(t, s, d);
-}
-#[arcane]
-pub(super) fn convert_f32_to_u8_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
-    convert_f32_to_u8_row_v3(t, s, d);
-}
-#[arcane]
-pub(super) fn convert_u16_to_f32_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
-    convert_u16_to_f32_row_v3(t, s, d);
-}
-#[arcane]
-pub(super) fn convert_f32_to_u16_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
-    convert_f32_to_u16_row_v3(t, s, d);
 }
 
 // ===========================================================================
@@ -1054,88 +503,645 @@ pub(super) fn bgra_to_rgb_strided_v3(
     }
 }
 
-// Depth conversion strided wrappers
-#[arcane]
-pub(super) fn convert_u8_to_u16_strided_v3(
-    t: X64V3Token,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        convert_u8_to_u16_row_v3(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 2]);
+// ===========================================================================
+// Experimental: depth, luma, premul (feature = "experimental")
+// ===========================================================================
+
+#[cfg(feature = "experimental")]
+mod experimental {
+    use archmage::prelude::*;
+
+    // -----------------------------------------------------------------------
+    // Depth conversions — AVX2 rite row implementations
+    // -----------------------------------------------------------------------
+
+    #[rite]
+    pub(in crate::bytes) fn convert_u8_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        let mul257 = _mm256_set1_epi16(257);
+        let n = src.len();
+        let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
+        let mut i = 0;
+        while i + 16 <= n {
+            let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+            let v = _mm_loadu_si128(s);
+            let wide = _mm256_cvtepu8_epi16(v);
+            let result = _mm256_mullo_epi16(wide, mul257);
+            let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst16[i..i + 16])
+                .try_into()
+                .unwrap();
+            _mm256_storeu_si256(d, result);
+            i += 16;
+        }
+        for j in i..n {
+            dst16[j] = (src[j] as u16) * 257;
+        }
+    }
+
+    #[rite]
+    pub(in crate::bytes) fn convert_u16_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        let src16: &[u16] = bytemuck::cast_slice(src);
+        let mul255 = _mm256_set1_epi32(255);
+        let add_half = _mm256_set1_epi32(32768);
+        let n = src16.len();
+        let mut i = 0;
+        while i + 8 <= n {
+            let s: &[u8; 16] = bytemuck::cast_slice(&src16[i..i + 8]).try_into().unwrap();
+            let v = _mm_loadu_si128(s);
+            let wide = _mm256_cvtepu16_epi32(v);
+            let prod = _mm256_add_epi32(_mm256_mullo_epi32(wide, mul255), add_half);
+            let shifted = _mm256_srli_epi32::<16>(prod);
+            let packed16 = _mm256_packus_epi32(shifted, shifted);
+            let packed8 = _mm256_packus_epi16(packed16, packed16);
+            let lo = _mm256_extracti128_si256::<0>(packed8);
+            let hi = _mm256_extracti128_si256::<1>(packed8);
+            let combined = _mm_unpacklo_epi32(lo, hi);
+            let mut tmp = [0u8; 16];
+            _mm_storeu_si128(&mut tmp, combined);
+            dst[i..i + 8].copy_from_slice(&tmp[..8]);
+            i += 8;
+        }
+        for j in i..n {
+            dst[j] = ((src16[j] as u32 * 255 + 32768) >> 16) as u8;
+        }
+    }
+
+    #[rite]
+    pub(in crate::bytes) fn convert_u8_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        let scale = _mm256_set1_ps(1.0 / 255.0);
+        let n = src.len();
+        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
+        let mut i = 0;
+        while i + 8 <= n {
+            let mut tmp = [0u8; 16];
+            tmp[..8].copy_from_slice(&src[i..i + 8]);
+            let v = _mm_loadu_si128(&tmp);
+            let wide32 = _mm256_cvtepu8_epi32(v);
+            let floats = _mm256_cvtepi32_ps(wide32);
+            let result = _mm256_mul_ps(floats, scale);
+            let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst_f[i..i + 8])
+                .try_into()
+                .unwrap();
+            _mm256_storeu_si256(d, _mm256_castps_si256(result));
+            i += 8;
+        }
+        for j in i..n {
+            dst_f[j] = src[j] as f32 / 255.0;
+        }
+    }
+
+    #[rite]
+    pub(in crate::bytes) fn convert_f32_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        let src_f: &[f32] = bytemuck::cast_slice(src);
+        let scale = _mm256_set1_ps(255.0);
+        let half = _mm256_set1_ps(0.5);
+        let zero = _mm256_setzero_ps();
+        let one = _mm256_set1_ps(1.0);
+        let n = src_f.len();
+        let mut i = 0;
+        while i + 8 <= n {
+            let s: &[u8; 32] = bytemuck::cast_slice(&src_f[i..i + 8]).try_into().unwrap();
+            let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+            let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
+            let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
+            let ints = _mm256_cvttps_epi32(scaled);
+            let packed16 = _mm256_packus_epi32(ints, ints);
+            let packed8 = _mm256_packus_epi16(packed16, packed16);
+            let lo = _mm256_extracti128_si256::<0>(packed8);
+            let hi = _mm256_extracti128_si256::<1>(packed8);
+            let combined = _mm_unpacklo_epi32(lo, hi);
+            let mut tmp = [0u8; 16];
+            _mm_storeu_si128(&mut tmp, combined);
+            dst[i..i + 8].copy_from_slice(&tmp[..8]);
+            i += 8;
+        }
+        for j in i..n {
+            dst[j] = (src_f[j].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        }
+    }
+
+    #[rite]
+    pub(in crate::bytes) fn convert_u16_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        let src16: &[u16] = bytemuck::cast_slice(src);
+        let scale = _mm256_set1_ps(1.0 / 65535.0);
+        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
+        let n = src16.len();
+        let mut i = 0;
+        while i + 8 <= n {
+            let s: &[u8; 16] = bytemuck::cast_slice(&src16[i..i + 8]).try_into().unwrap();
+            let v = _mm_loadu_si128(s);
+            let wide32 = _mm256_cvtepu16_epi32(v);
+            let floats = _mm256_cvtepi32_ps(wide32);
+            let result = _mm256_mul_ps(floats, scale);
+            let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst_f[i..i + 8])
+                .try_into()
+                .unwrap();
+            _mm256_storeu_si256(d, _mm256_castps_si256(result));
+            i += 8;
+        }
+        for j in i..n {
+            dst_f[j] = src16[j] as f32 / 65535.0;
+        }
+    }
+
+    #[rite]
+    pub(in crate::bytes) fn convert_f32_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        let src_f: &[f32] = bytemuck::cast_slice(src);
+        let scale = _mm256_set1_ps(65535.0);
+        let half = _mm256_set1_ps(0.5);
+        let zero = _mm256_setzero_ps();
+        let one = _mm256_set1_ps(1.0);
+        let n = src_f.len();
+        let mut i = 0;
+        while i + 8 <= n {
+            let s: &[u8; 32] = bytemuck::cast_slice(&src_f[i..i + 8]).try_into().unwrap();
+            let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+            let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
+            let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
+            let ints = _mm256_cvttps_epi32(scaled);
+            let packed16 = _mm256_packus_epi32(ints, ints);
+            let perm = _mm256_permute4x64_epi64::<0b00_00_10_00>(packed16);
+            let mut tmp = [0u8; 32];
+            _mm256_storeu_si256(&mut tmp, perm);
+            dst[i * 2..i * 2 + 16].copy_from_slice(&tmp[..16]);
+            i += 8;
+        }
+        let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
+        for j in i..n {
+            dst16[j] = (src_f[j].clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Weighted luma — AVX2 rite row implementations
+    // -----------------------------------------------------------------------
+
+    /// 4bpp→gray luma via 16-bit multiply. Processes 8 RGBA pixels per iteration.
+    ///
+    /// Uses channel extraction + u16 multiply instead of `maddubs` because weights
+    /// can exceed 127 (e.g. BT.709 green = 183) and `maddubs` treats the second
+    /// operand as signed i8.
+    #[rite]
+    pub(in crate::bytes) fn luma_4bpp_row_v3(
+        _t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w0: u8,
+        w1: u8,
+        w2: u8,
+    ) {
+        let r_shuf = _mm256_set_epi8(
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 8, 4, 0, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, 12, 8, 4, 0,
+        );
+        let g_shuf = _mm256_set_epi8(
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, 9, 5, 1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, 13, 9, 5, 1,
+        );
+        let b_shuf = _mm256_set_epi8(
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, 10, 6, 2, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, 14, 10, 6, 2,
+        );
+        let w_r = _mm256_set1_epi16(w0 as i16);
+        let w_g = _mm256_set1_epi16(w1 as i16);
+        let w_b = _mm256_set1_epi16(w2 as i16);
+        let add128 = _mm256_set1_epi16(128);
+        let zero = _mm256_setzero_si256();
+
+        let n = src.len() / 4;
+        let mut i = 0;
+        while i + 8 <= n {
+            let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
+            let pixels = _mm256_loadu_si256(s);
+
+            let r8 = _mm256_shuffle_epi8(pixels, r_shuf);
+            let g8 = _mm256_shuffle_epi8(pixels, g_shuf);
+            let b8 = _mm256_shuffle_epi8(pixels, b_shuf);
+
+            let r16 = _mm256_unpacklo_epi8(r8, zero);
+            let g16 = _mm256_unpacklo_epi8(g8, zero);
+            let b16 = _mm256_unpacklo_epi8(b8, zero);
+
+            let sum = _mm256_add_epi16(
+                _mm256_add_epi16(_mm256_mullo_epi16(r16, w_r), _mm256_mullo_epi16(g16, w_g)),
+                _mm256_add_epi16(_mm256_mullo_epi16(b16, w_b), add128),
+            );
+
+            let shifted = _mm256_srli_epi16::<8>(sum);
+            let packed = _mm256_packus_epi16(shifted, zero);
+
+            let lo = _mm256_extracti128_si256::<0>(packed);
+            let hi = _mm256_extracti128_si256::<1>(packed);
+            let combined = _mm_unpacklo_epi32(lo, hi);
+            let mut tmp = [0u8; 16];
+            _mm_storeu_si128(&mut tmp, combined);
+            dst[i..i + 8].copy_from_slice(&tmp[..8]);
+            i += 8;
+        }
+        for j in i..n {
+            let px = &src[j * 4..j * 4 + 4];
+            dst[j] = ((px[0] as u16 * w0 as u16
+                + px[1] as u16 * w1 as u16
+                + px[2] as u16 * w2 as u16
+                + 128)
+                >> 8) as u8;
+        }
+    }
+
+    /// 3bpp→gray luma. Scalar fallback (3-byte stride is awkward for AVX2).
+    #[rite]
+    pub(in crate::bytes) fn luma_3bpp_row_v3(
+        _t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w0: u8,
+        w1: u8,
+        w2: u8,
+    ) {
+        for (px, d) in src.chunks_exact(3).zip(dst.iter_mut()) {
+            *d = ((px[0] as u16 * w0 as u16
+                + px[1] as u16 * w1 as u16
+                + px[2] as u16 * w2 as u16
+                + 128)
+                >> 8) as u8;
+        }
+    }
+
+    macro_rules! luma_v3_wrappers {
+        ($matrix:ident, $r:expr, $g:expr, $b:expr) => {
+            paste::paste! {
+                #[arcane]
+                pub(in crate::bytes) fn [<rgb_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
+                    luma_3bpp_row_v3(t, s, d, $r, $g, $b);
+                }
+                #[arcane]
+                pub(in crate::bytes) fn [<bgr_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
+                    luma_3bpp_row_v3(t, s, d, $b, $g, $r);
+                }
+                #[arcane]
+                pub(in crate::bytes) fn [<rgba_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
+                    luma_4bpp_row_v3(t, s, d, $r, $g, $b);
+                }
+                #[arcane]
+                pub(in crate::bytes) fn [<bgra_to_gray_ $matrix _impl_v3>](t: X64V3Token, s: &[u8], d: &mut [u8]) {
+                    luma_4bpp_row_v3(t, s, d, $b, $g, $r);
+                }
+                #[arcane]
+                pub(in crate::bytes) fn [<rgb_to_gray_ $matrix _strided_v3>](
+                    t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+                ) {
+                    for y in 0..h {
+                        luma_3bpp_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w], $r, $g, $b);
+                    }
+                }
+                #[arcane]
+                pub(in crate::bytes) fn [<bgr_to_gray_ $matrix _strided_v3>](
+                    t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+                ) {
+                    for y in 0..h {
+                        luma_3bpp_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w], $b, $g, $r);
+                    }
+                }
+                #[arcane]
+                pub(in crate::bytes) fn [<rgba_to_gray_ $matrix _strided_v3>](
+                    t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+                ) {
+                    for y in 0..h {
+                        luma_4bpp_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w], $r, $g, $b);
+                    }
+                }
+                #[arcane]
+                pub(in crate::bytes) fn [<bgra_to_gray_ $matrix _strided_v3>](
+                    t: X64V3Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+                ) {
+                    for y in 0..h {
+                        luma_4bpp_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w], $b, $g, $r);
+                    }
+                }
+            }
+        };
+    }
+
+    luma_v3_wrappers!(bt709, 54, 183, 19);
+    luma_v3_wrappers!(bt601, 77, 150, 29);
+    luma_v3_wrappers!(bt2020, 67, 174, 15);
+
+    // -----------------------------------------------------------------------
+    // f32 alpha premultiplication — AVX2 rite row implementations
+    // -----------------------------------------------------------------------
+
+    #[rite]
+    pub(in crate::bytes) fn premul_f32_row_v3(_t: X64V3Token, buf: &mut [u8]) {
+        let n = buf.len() / 16;
+        let mut i = 0;
+        while i + 2 <= n {
+            let s: &[u8; 32] = buf[i * 16..i * 16 + 32].try_into().unwrap();
+            let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+            let alpha = _mm256_permute_ps::<0xFF>(v);
+            let premul = _mm256_mul_ps(v, alpha);
+            let result = _mm256_blend_ps::<0b1000_1000>(premul, v);
+            let d: &mut [u8; 32] = (&mut buf[i * 16..i * 16 + 32]).try_into().unwrap();
+            _mm256_storeu_si256(d, _mm256_castps_si256(result));
+            i += 2;
+        }
+        if i < n {
+            let floats: &mut [f32] = bytemuck::cast_slice_mut(&mut buf[i * 16..]);
+            for px in floats.chunks_exact_mut(4) {
+                let a = px[3];
+                px[0] *= a;
+                px[1] *= a;
+                px[2] *= a;
+            }
+        }
+    }
+
+    #[rite]
+    pub(in crate::bytes) fn premul_f32_copy_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        let n = src.len() / 16;
+        let mut i = 0;
+        while i + 2 <= n {
+            let s: &[u8; 32] = src[i * 16..i * 16 + 32].try_into().unwrap();
+            let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+            let alpha = _mm256_permute_ps::<0xFF>(v);
+            let premul = _mm256_mul_ps(v, alpha);
+            let result = _mm256_blend_ps::<0b1000_1000>(premul, v);
+            let d: &mut [u8; 32] = (&mut dst[i * 16..i * 16 + 32]).try_into().unwrap();
+            _mm256_storeu_si256(d, _mm256_castps_si256(result));
+            i += 2;
+        }
+        if i < n {
+            let src_f: &[f32] = bytemuck::cast_slice(&src[i * 16..]);
+            let dst_f: &mut [f32] = bytemuck::cast_slice_mut(&mut dst[i * 16..]);
+            for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
+                let a = s[3];
+                d[0] = s[0] * a;
+                d[1] = s[1] * a;
+                d[2] = s[2] * a;
+                d[3] = a;
+            }
+        }
+    }
+
+    #[rite]
+    pub(in crate::bytes) fn unpremul_f32_row_v3(_t: X64V3Token, buf: &mut [u8]) {
+        let zero = _mm256_setzero_ps();
+        let one = _mm256_set1_ps(1.0);
+        let n = buf.len() / 16;
+        let mut i = 0;
+        while i + 2 <= n {
+            let s: &[u8; 32] = buf[i * 16..i * 16 + 32].try_into().unwrap();
+            let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+            let alpha = _mm256_permute_ps::<0xFF>(v);
+            let zero_mask = _mm256_cmp_ps::<0>(alpha, zero); // _CMP_EQ_OQ
+            let inv_alpha = _mm256_div_ps(one, alpha);
+            let unpremul = _mm256_mul_ps(v, inv_alpha);
+            let blended = _mm256_blend_ps::<0b1000_1000>(unpremul, v);
+            let result = _mm256_andnot_ps(zero_mask, blended);
+            let d: &mut [u8; 32] = (&mut buf[i * 16..i * 16 + 32]).try_into().unwrap();
+            _mm256_storeu_si256(d, _mm256_castps_si256(result));
+            i += 2;
+        }
+        if i < n {
+            let floats: &mut [f32] = bytemuck::cast_slice_mut(&mut buf[i * 16..]);
+            for px in floats.chunks_exact_mut(4) {
+                let a = px[3];
+                if a == 0.0 {
+                    px[0] = 0.0;
+                    px[1] = 0.0;
+                    px[2] = 0.0;
+                } else {
+                    let inv_a = 1.0 / a;
+                    px[0] *= inv_a;
+                    px[1] *= inv_a;
+                    px[2] *= inv_a;
+                }
+            }
+        }
+    }
+
+    #[rite]
+    pub(in crate::bytes) fn unpremul_f32_copy_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        let zero = _mm256_setzero_ps();
+        let one = _mm256_set1_ps(1.0);
+        let n = src.len() / 16;
+        let mut i = 0;
+        while i + 2 <= n {
+            let s: &[u8; 32] = src[i * 16..i * 16 + 32].try_into().unwrap();
+            let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
+            let alpha = _mm256_permute_ps::<0xFF>(v);
+            let zero_mask = _mm256_cmp_ps::<0>(alpha, zero);
+            let inv_alpha = _mm256_div_ps(one, alpha);
+            let unpremul = _mm256_mul_ps(v, inv_alpha);
+            let blended = _mm256_blend_ps::<0b1000_1000>(unpremul, v);
+            let result = _mm256_andnot_ps(zero_mask, blended);
+            let d: &mut [u8; 32] = (&mut dst[i * 16..i * 16 + 32]).try_into().unwrap();
+            _mm256_storeu_si256(d, _mm256_castps_si256(result));
+            i += 2;
+        }
+        if i < n {
+            let src_f: &[f32] = bytemuck::cast_slice(&src[i * 16..]);
+            let dst_f: &mut [f32] = bytemuck::cast_slice_mut(&mut dst[i * 16..]);
+            for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
+                let a = s[3];
+                if a == 0.0 {
+                    d[0] = 0.0;
+                    d[1] = 0.0;
+                    d[2] = 0.0;
+                    d[3] = 0.0;
+                } else {
+                    let inv_a = 1.0 / a;
+                    d[0] = s[0] * inv_a;
+                    d[1] = s[1] * inv_a;
+                    d[2] = s[2] * inv_a;
+                    d[3] = a;
+                }
+            }
+        }
+    }
+
+    // Premul arcane contiguous wrappers
+    #[arcane]
+    pub(in crate::bytes) fn premul_f32_impl_v3(t: X64V3Token, b: &mut [u8]) {
+        premul_f32_row_v3(t, b);
+    }
+    #[arcane]
+    pub(in crate::bytes) fn premul_f32_copy_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+        premul_f32_copy_row_v3(t, s, d);
+    }
+    #[arcane]
+    pub(in crate::bytes) fn unpremul_f32_impl_v3(t: X64V3Token, b: &mut [u8]) {
+        unpremul_f32_row_v3(t, b);
+    }
+    #[arcane]
+    pub(in crate::bytes) fn unpremul_f32_copy_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+        unpremul_f32_copy_row_v3(t, s, d);
+    }
+
+    // Premul arcane strided wrappers
+    #[arcane]
+    pub(in crate::bytes) fn premul_f32_strided_v3(
+        t: X64V3Token,
+        buf: &mut [u8],
+        w: usize,
+        h: usize,
+        stride: usize,
+    ) {
+        for y in 0..h {
+            premul_f32_row_v3(t, &mut buf[y * stride..][..w * 16]);
+        }
+    }
+    #[arcane]
+    pub(in crate::bytes) fn premul_f32_copy_strided_v3(
+        t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            premul_f32_copy_row_v3(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
+        }
+    }
+    #[arcane]
+    pub(in crate::bytes) fn unpremul_f32_strided_v3(
+        t: X64V3Token,
+        buf: &mut [u8],
+        w: usize,
+        h: usize,
+        stride: usize,
+    ) {
+        for y in 0..h {
+            unpremul_f32_row_v3(t, &mut buf[y * stride..][..w * 16]);
+        }
+    }
+    #[arcane]
+    pub(in crate::bytes) fn unpremul_f32_copy_strided_v3(
+        t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            unpremul_f32_copy_row_v3(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
+        }
+    }
+
+    // Depth conversion arcane contiguous wrappers
+    #[arcane]
+    pub(in crate::bytes) fn convert_u8_to_u16_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+        convert_u8_to_u16_row_v3(t, s, d);
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_u16_to_u8_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+        convert_u16_to_u8_row_v3(t, s, d);
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_u8_to_f32_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+        convert_u8_to_f32_row_v3(t, s, d);
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_f32_to_u8_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+        convert_f32_to_u8_row_v3(t, s, d);
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_u16_to_f32_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+        convert_u16_to_f32_row_v3(t, s, d);
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_f32_to_u16_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+        convert_f32_to_u16_row_v3(t, s, d);
+    }
+
+    // Depth conversion strided wrappers
+    #[arcane]
+    pub(in crate::bytes) fn convert_u8_to_u16_strided_v3(
+        t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            convert_u8_to_u16_row_v3(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 2]);
+        }
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_u16_to_u8_strided_v3(
+        t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            convert_u16_to_u8_row_v3(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w]);
+        }
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_u8_to_f32_strided_v3(
+        t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            convert_u8_to_f32_row_v3(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
+        }
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_f32_to_u8_strided_v3(
+        t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            convert_f32_to_u8_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w]);
+        }
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_u16_to_f32_strided_v3(
+        t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            convert_u16_to_f32_row_v3(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+        }
+    }
+    #[arcane]
+    pub(in crate::bytes) fn convert_f32_to_u16_strided_v3(
+        t: X64V3Token,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            convert_f32_to_u16_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 2]);
+        }
     }
 }
-#[arcane]
-pub(super) fn convert_u16_to_u8_strided_v3(
-    t: X64V3Token,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        convert_u16_to_u8_row_v3(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w]);
-    }
-}
-#[arcane]
-pub(super) fn convert_u8_to_f32_strided_v3(
-    t: X64V3Token,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        convert_u8_to_f32_row_v3(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
-    }
-}
-#[arcane]
-pub(super) fn convert_f32_to_u8_strided_v3(
-    t: X64V3Token,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        convert_f32_to_u8_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w]);
-    }
-}
-#[arcane]
-pub(super) fn convert_u16_to_f32_strided_v3(
-    t: X64V3Token,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        convert_u16_to_f32_row_v3(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
-    }
-}
-#[arcane]
-pub(super) fn convert_f32_to_u16_strided_v3(
-    t: X64V3Token,
-    src: &[u8],
-    dst: &mut [u8],
-    w: usize,
-    h: usize,
-    ss: usize,
-    ds: usize,
-) {
-    for y in 0..h {
-        convert_f32_to_u16_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 2]);
-    }
-}
+
+#[cfg(feature = "experimental")]
+pub(super) use experimental::*;

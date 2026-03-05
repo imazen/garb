@@ -341,6 +341,7 @@ fn bench_fill_alpha(c: &mut Criterion) {
 
 // === Naive baselines for new operations ===
 
+#[cfg(feature = "experimental")]
 fn naive_u8_to_f32(src: &[u8], dst: &mut [u8]) {
     let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
     for (s, d) in src.iter().zip(dst_f.iter_mut()) {
@@ -348,6 +349,7 @@ fn naive_u8_to_f32(src: &[u8], dst: &mut [u8]) {
     }
 }
 
+#[cfg(feature = "experimental")]
 fn naive_f32_to_u8(src: &[u8], dst: &mut [u8]) {
     let src_f: &[f32] = bytemuck::cast_slice(src);
     for (s, d) in src_f.iter().zip(dst.iter_mut()) {
@@ -355,12 +357,14 @@ fn naive_f32_to_u8(src: &[u8], dst: &mut [u8]) {
     }
 }
 
+#[cfg(feature = "experimental")]
 fn naive_rgba_to_gray_bt709(src: &[u8], dst: &mut [u8]) {
     for (px, d) in src.chunks_exact(4).zip(dst.iter_mut()) {
         *d = ((px[0] as u16 * 54 + px[1] as u16 * 183 + px[2] as u16 * 19 + 128) >> 8) as u8;
     }
 }
 
+#[cfg(feature = "experimental")]
 fn naive_premul_f32(buf: &mut [u8]) {
     let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
     for px in floats.chunks_exact_mut(4) {
@@ -371,6 +375,7 @@ fn naive_premul_f32(buf: &mut [u8]) {
     }
 }
 
+#[cfg(feature = "experimental")]
 fn naive_unpremul_f32(buf: &mut [u8]) {
     let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
     for px in floats.chunks_exact_mut(4) {
@@ -390,6 +395,7 @@ fn naive_unpremul_f32(buf: &mut [u8]) {
 
 // === New benchmark groups ===
 
+#[cfg(feature = "experimental")]
 fn bench_depth_u8_to_f32(c: &mut Criterion) {
     let mut group = c.benchmark_group("depth_u8_to_f32");
     let src_n = W * H * 4; // 4 channels
@@ -406,6 +412,7 @@ fn bench_depth_u8_to_f32(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(feature = "experimental")]
 fn bench_depth_f32_to_u8(c: &mut Criterion) {
     let mut group = c.benchmark_group("depth_f32_to_u8");
     let n = W * H * 4; // number of elements
@@ -423,6 +430,7 @@ fn bench_depth_f32_to_u8(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(feature = "experimental")]
 fn bench_rgba_to_gray_bt709(c: &mut Criterion) {
     let mut group = c.benchmark_group("rgba_to_gray_bt709");
     let src_n = W * H * 4;
@@ -439,6 +447,7 @@ fn bench_rgba_to_gray_bt709(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(feature = "experimental")]
 fn bench_premul_f32(c: &mut Criterion) {
     let mut group = c.benchmark_group("premul_f32_inplace");
     let n = W * H * 16; // 4 f32 per pixel
@@ -456,6 +465,7 @@ fn bench_premul_f32(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(feature = "experimental")]
 fn bench_unpremul_f32(c: &mut Criterion) {
     let mut group = c.benchmark_group("unpremul_f32_inplace");
     let n = W * H * 16;
@@ -491,10 +501,13 @@ fn main() {
     bench_4to3_strip_swap(&mut criterion);
     bench_3to4_expand(&mut criterion);
     bench_fill_alpha(&mut criterion);
-    bench_depth_u8_to_f32(&mut criterion);
-    bench_depth_f32_to_u8(&mut criterion);
-    bench_rgba_to_gray_bt709(&mut criterion);
-    bench_premul_f32(&mut criterion);
-    bench_unpremul_f32(&mut criterion);
+    #[cfg(feature = "experimental")]
+    {
+        bench_depth_u8_to_f32(&mut criterion);
+        bench_depth_f32_to_u8(&mut criterion);
+        bench_rgba_to_gray_bt709(&mut criterion);
+        bench_premul_f32(&mut criterion);
+        bench_unpremul_f32(&mut criterion);
+    }
     criterion.final_summary();
 }
