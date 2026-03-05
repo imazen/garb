@@ -550,7 +550,7 @@ mod experimental_api {
     // Depth conversions — element-level, channel-agnostic
     // ===========================================================================
 
-    /// Convert u8 elements to u16 elements. Maps [0,255] → [0,65535] via `v * 257`.
+    /// Convert u8 elements to u16 elements. Maps `[0,255]` → `[0,65535]` via `v * 257`.
     ///
     /// `src` contains u8 values. `dst` must have at least `src.len() * 2` bytes.
     pub fn convert_u8_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
@@ -572,7 +572,7 @@ mod experimental_api {
         Ok(())
     }
 
-    /// Convert u8 elements to f32 elements. Maps [0,255] → [0.0, 1.0] via `v / 255.0`.
+    /// Convert u8 elements to f32 elements. Maps `[0,255]` → `[0.0, 1.0]` via `v / 255.0`.
     ///
     /// `src` contains u8 values. `dst` must have at least `src.len() * 4` bytes.
     pub fn convert_u8_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
@@ -584,7 +584,7 @@ mod experimental_api {
         Ok(())
     }
 
-    /// Convert f32 elements to u8 elements. Clamped to [0,1], then `v * 255 + 0.5`.
+    /// Convert f32 elements to u8 elements. Clamped to `[0,1]`, then `v * 255 + 0.5`.
     ///
     /// `src` contains f32 values (must be a multiple of 4 bytes).
     /// `dst` must have at least `src.len() / 4` bytes.
@@ -594,7 +594,7 @@ mod experimental_api {
         Ok(())
     }
 
-    /// Convert u16 elements to f32 elements. Maps [0,65535] → [0.0, 1.0] via `v / 65535.0`.
+    /// Convert u16 elements to f32 elements. Maps `[0,65535]` → `[0.0, 1.0]` via `v / 65535.0`.
     ///
     /// `src` contains u16 values (must be a multiple of 2 bytes).
     /// `dst` must have at least `src.len() * 2` bytes (u16→f32 doubles byte count).
@@ -604,7 +604,7 @@ mod experimental_api {
         Ok(())
     }
 
-    /// Convert f32 elements to u16 elements. Clamped to [0,1], then `v * 65535 + 0.5`.
+    /// Convert f32 elements to u16 elements. Clamped to `[0,1]`, then `v * 65535 + 0.5`.
     ///
     /// `src` contains f32 values (must be a multiple of 4 bytes).
     /// `dst` must have at least `src.len() / 2` bytes (f32→u16 halves byte count).
