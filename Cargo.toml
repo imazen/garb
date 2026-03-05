@@ -12,7 +12,7 @@ repository = "https://github.com/imazen/garb"
 readme = "README.md"
 
 [dependencies]
-archmage = { version = "0.9", features = ["macros", "safe_unaligned_simd"] }
+archmage = { version = "0.9", features = ["macros"] }
 safe_unaligned_simd = "0.2.5"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 paste = "1"
