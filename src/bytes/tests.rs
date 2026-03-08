@@ -519,6 +519,472 @@ fn permutation_strided_3bpp_and_strip() {
 }
 
 // -----------------------------------------------------------------------
+// ARGB/XRGB operations
+// -----------------------------------------------------------------------
+
+fn ref_rotate_left(data: &[u8]) -> Vec<u8> {
+    let mut out = data.to_vec();
+    for px in out.chunks_exact_mut(4) {
+        let a = px[0];
+        px[0] = px[1];
+        px[1] = px[2];
+        px[2] = px[3];
+        px[3] = a;
+    }
+    out
+}
+
+fn ref_rotate_right(data: &[u8]) -> Vec<u8> {
+    let mut out = data.to_vec();
+    for px in out.chunks_exact_mut(4) {
+        let d = px[3];
+        px[3] = px[2];
+        px[2] = px[1];
+        px[1] = px[0];
+        px[0] = d;
+    }
+    out
+}
+
+fn ref_reverse_4bpp(data: &[u8]) -> Vec<u8> {
+    let mut out = data.to_vec();
+    for px in out.chunks_exact_mut(4) {
+        px.reverse();
+    }
+    out
+}
+
+fn ref_fill_alpha_first(data: &[u8]) -> Vec<u8> {
+    let mut out = data.to_vec();
+    for px in out.chunks_exact_mut(4) {
+        px[0] = 255;
+    }
+    out
+}
+
+fn ref_rgb_to_argb(src: &[u8]) -> Vec<u8> {
+    let n = src.len() / 3;
+    let mut out = vec![0u8; n * 4];
+    for (s, d) in src.chunks_exact(3).zip(out.chunks_exact_mut(4)) {
+        d[0] = 255;
+        d[1] = s[0];
+        d[2] = s[1];
+        d[3] = s[2];
+    }
+    out
+}
+
+fn ref_rgb_to_abgr(src: &[u8]) -> Vec<u8> {
+    let n = src.len() / 3;
+    let mut out = vec![0u8; n * 4];
+    for (s, d) in src.chunks_exact(3).zip(out.chunks_exact_mut(4)) {
+        d[0] = 255;
+        d[1] = s[2];
+        d[2] = s[1];
+        d[3] = s[0];
+    }
+    out
+}
+
+fn ref_argb_to_rgb(src: &[u8]) -> Vec<u8> {
+    let n = src.len() / 4;
+    let mut out = vec![0u8; n * 3];
+    for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(3)) {
+        d[0] = s[1];
+        d[1] = s[2];
+        d[2] = s[3];
+    }
+    out
+}
+
+fn ref_argb_to_bgr(src: &[u8]) -> Vec<u8> {
+    let n = src.len() / 4;
+    let mut out = vec![0u8; n * 3];
+    for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(3)) {
+        d[0] = s[3];
+        d[1] = s[2];
+        d[2] = s[1];
+    }
+    out
+}
+
+fn ref_gray_to_argb(src: &[u8]) -> Vec<u8> {
+    let mut out = vec![0u8; src.len() * 4];
+    for (s, d) in src.iter().zip(out.chunks_exact_mut(4)) {
+        d[0] = 255;
+        d[1] = *s;
+        d[2] = *s;
+        d[3] = *s;
+    }
+    out
+}
+
+fn ref_gray_alpha_to_argb(src: &[u8]) -> Vec<u8> {
+    let n = src.len() / 2;
+    let mut out = vec![0u8; n * 4];
+    for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+        d[0] = s[1];
+        d[1] = s[0];
+        d[2] = s[0];
+        d[3] = s[0];
+    }
+    out
+}
+
+#[test]
+fn permutation_argb_to_rgba_inplace() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let mut data = make_4bpp(n);
+            let expected = ref_rotate_left(&data);
+            argb_to_rgba_inplace(&mut data).unwrap();
+            assert_eq!(data, expected, "argb_to_rgba_inplace n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("argb_to_rgba_inplace: {report}");
+}
+
+#[test]
+fn permutation_argb_to_rgba_copy() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_rotate_left(&src);
+            let mut dst = vec![0u8; n * 4];
+            argb_to_rgba(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "argb_to_rgba n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("argb_to_rgba: {report}");
+}
+
+#[test]
+fn permutation_rgba_to_argb_inplace() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let mut data = make_4bpp(n);
+            let expected = ref_rotate_right(&data);
+            rgba_to_argb_inplace(&mut data).unwrap();
+            assert_eq!(data, expected, "rgba_to_argb_inplace n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgba_to_argb_inplace: {report}");
+}
+
+#[test]
+fn permutation_rgba_to_argb_copy() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_rotate_right(&src);
+            let mut dst = vec![0u8; n * 4];
+            rgba_to_argb(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "rgba_to_argb n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgba_to_argb: {report}");
+}
+
+#[test]
+fn permutation_argb_to_bgra_inplace() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let mut data = make_4bpp(n);
+            let expected = ref_reverse_4bpp(&data);
+            argb_to_bgra_inplace(&mut data).unwrap();
+            assert_eq!(data, expected, "argb_to_bgra_inplace n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("argb_to_bgra_inplace: {report}");
+}
+
+#[test]
+fn permutation_argb_to_bgra_copy() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_reverse_4bpp(&src);
+            let mut dst = vec![0u8; n * 4];
+            argb_to_bgra(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "argb_to_bgra n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("argb_to_bgra: {report}");
+}
+
+#[test]
+fn permutation_fill_alpha_argb() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let mut data = make_4bpp(n);
+            let expected = ref_fill_alpha_first(&data);
+            fill_alpha_argb(&mut data).unwrap();
+            assert_eq!(data, expected, "fill_alpha_argb n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("fill_alpha_argb: {report}");
+}
+
+#[test]
+fn permutation_rgb_to_argb() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_3bpp(n);
+            let expected = ref_rgb_to_argb(&src);
+            let mut dst = vec![0u8; n * 4];
+            rgb_to_argb(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "rgb_to_argb n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgb_to_argb: {report}");
+}
+
+#[test]
+fn permutation_rgb_to_abgr() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_3bpp(n);
+            let expected = ref_rgb_to_abgr(&src);
+            let mut dst = vec![0u8; n * 4];
+            rgb_to_abgr(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "rgb_to_abgr n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgb_to_abgr: {report}");
+}
+
+#[test]
+fn permutation_argb_to_rgb() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_argb_to_rgb(&src);
+            let mut dst = vec![0u8; n * 3];
+            argb_to_rgb(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "argb_to_rgb n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("argb_to_rgb: {report}");
+}
+
+#[test]
+fn permutation_argb_to_bgr() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_argb_to_bgr(&src);
+            let mut dst = vec![0u8; n * 3];
+            argb_to_bgr(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "argb_to_bgr n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("argb_to_bgr: {report}");
+}
+
+#[test]
+fn permutation_gray_to_argb() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_1bpp(n);
+            let expected = ref_gray_to_argb(&src);
+            let mut dst = vec![0u8; n * 4];
+            gray_to_argb(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "gray_to_argb n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("gray_to_argb: {report}");
+}
+
+#[test]
+fn permutation_gray_alpha_to_argb() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_2bpp(n);
+            let expected = ref_gray_alpha_to_argb(&src);
+            let mut dst = vec![0u8; n * 4];
+            gray_alpha_to_argb(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "gray_alpha_to_argb n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("gray_alpha_to_argb: {report}");
+}
+
+#[test]
+fn permutation_argb_roundtrip() {
+    // ARGB→RGBA→ARGB roundtrip
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let original = make_4bpp(n);
+            let mut data = original.clone();
+            argb_to_rgba_inplace(&mut data).unwrap();
+            rgba_to_argb_inplace(&mut data).unwrap();
+            assert_eq!(data, original, "rotate roundtrip n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("argb_roundtrip: {report}");
+}
+
+#[test]
+fn permutation_strided_argb() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        let w = 10;
+        let h = 4;
+        let stride = 48;
+
+        // ARGB→RGBA strided inplace
+        let mut buf = vec![0xCCu8; stride * h];
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * stride + x * 4;
+                buf[i] = (y * w + x) as u8; // A
+                buf[i + 1] = 100; // R
+                buf[i + 2] = 150; // G
+                buf[i + 3] = 200; // B
+            }
+        }
+        let orig = buf.clone();
+        argb_to_rgba_inplace_strided(&mut buf, w, h, stride).unwrap();
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * stride + x * 4;
+                let o = &orig[i..i + 4];
+                assert_eq!(
+                    [buf[i], buf[i + 1], buf[i + 2], buf[i + 3]],
+                    [o[1], o[2], o[3], o[0]],
+                    "strided argb_to_rgba y={y} x={x} tier={perm}"
+                );
+            }
+            // Padding untouched
+            for i in (w * 4)..stride {
+                assert_eq!(
+                    buf[y * stride + i],
+                    0xCC,
+                    "padding corrupted y={y} i={i} tier={perm}"
+                );
+            }
+        }
+
+        // ARGB→BGRA strided (reverse)
+        let mut buf2 = orig.clone();
+        argb_to_bgra_inplace_strided(&mut buf2, w, h, stride).unwrap();
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * stride + x * 4;
+                let o = &orig[i..i + 4];
+                assert_eq!(
+                    [buf2[i], buf2[i + 1], buf2[i + 2], buf2[i + 3]],
+                    [o[3], o[2], o[1], o[0]],
+                    "strided argb_to_bgra y={y} x={x} tier={perm}"
+                );
+            }
+        }
+
+        // fill_alpha_argb strided
+        let mut buf3 = orig.clone();
+        fill_alpha_argb_strided(&mut buf3, w, h, stride).unwrap();
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * stride + x * 4;
+                assert_eq!(
+                    buf3[i], 255,
+                    "strided fill_alpha_argb y={y} x={x} tier={perm}"
+                );
+                assert_eq!(buf3[i + 1], orig[i + 1]);
+                assert_eq!(buf3[i + 2], orig[i + 2]);
+                assert_eq!(buf3[i + 3], orig[i + 3]);
+            }
+        }
+    });
+    std::eprintln!("strided_argb: {report}");
+}
+
+#[test]
+fn permutation_strided_argb_cross_bpp() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        let w = 10;
+        let h = 3;
+
+        // RGB→ARGB strided
+        let src_stride = w * 3 + 6;
+        let dst_stride = w * 4 + 8;
+        let src = make_3bpp(src_stride / 3 * h);
+        let mut dst = vec![0xCCu8; dst_stride * h];
+        rgb_to_argb_strided(&src, &mut dst, w, h, src_stride, dst_stride).unwrap();
+        for y in 0..h {
+            for x in 0..w {
+                let si = y * src_stride + x * 3;
+                let di = y * dst_stride + x * 4;
+                assert_eq!(
+                    [dst[di], dst[di + 1], dst[di + 2], dst[di + 3]],
+                    [255, src[si], src[si + 1], src[si + 2]],
+                    "strided rgb_to_argb y={y} x={x} tier={perm}"
+                );
+            }
+        }
+
+        // ARGB→RGB strided
+        let src_stride4 = w * 4 + 8;
+        let dst_stride3 = w * 3 + 6;
+        let src4: Vec<u8> = (0..src_stride4 * h).map(|i| (i % 251) as u8).collect();
+        let mut dst3 = vec![0u8; dst_stride3 * h];
+        argb_to_rgb_strided(&src4, &mut dst3, w, h, src_stride4, dst_stride3).unwrap();
+        for y in 0..h {
+            for x in 0..w {
+                let si = y * src_stride4 + x * 4;
+                let di = y * dst_stride3 + x * 3;
+                assert_eq!(
+                    [dst3[di], dst3[di + 1], dst3[di + 2]],
+                    [src4[si + 1], src4[si + 2], src4[si + 3]],
+                    "strided argb_to_rgb y={y} x={x} tier={perm}"
+                );
+            }
+        }
+
+        // Gray→ARGB strided
+        let src_stride1 = w + 4;
+        let gray: Vec<u8> = (0..src_stride1 * h).map(|i| (i % 251) as u8).collect();
+        let mut dst_ga = vec![0u8; dst_stride * h];
+        gray_to_argb_strided(&gray, &mut dst_ga, w, h, src_stride1, dst_stride).unwrap();
+        for y in 0..h {
+            for x in 0..w {
+                let g = gray[y * src_stride1 + x];
+                let di = y * dst_stride + x * 4;
+                assert_eq!(
+                    [dst_ga[di], dst_ga[di + 1], dst_ga[di + 2], dst_ga[di + 3]],
+                    [255, g, g, g],
+                    "strided gray_to_argb y={y} x={x} tier={perm}"
+                );
+            }
+        }
+
+        // GrayAlpha→ARGB strided
+        let src_stride2 = w * 2 + 6;
+        let ga: Vec<u8> = (0..src_stride2 * h).map(|i| (i % 251) as u8).collect();
+        let mut dst_gaa = vec![0u8; dst_stride * h];
+        gray_alpha_to_argb_strided(&ga, &mut dst_gaa, w, h, src_stride2, dst_stride).unwrap();
+        for y in 0..h {
+            for x in 0..w {
+                let si = y * src_stride2 + x * 2;
+                let g = ga[si];
+                let a = ga[si + 1];
+                let di = y * dst_stride + x * 4;
+                assert_eq!(
+                    [
+                        dst_gaa[di],
+                        dst_gaa[di + 1],
+                        dst_gaa[di + 2],
+                        dst_gaa[di + 3]
+                    ],
+                    [a, g, g, g],
+                    "strided gray_alpha_to_argb y={y} x={x} tier={perm}"
+                );
+            }
+        }
+    });
+    std::eprintln!("strided_argb_cross_bpp: {report}");
+}
+
+// -----------------------------------------------------------------------
 // Gray layout conversions (no luma weights)
 // -----------------------------------------------------------------------
 
@@ -1042,6 +1508,83 @@ fn test_aliases_match() {
     gray_to_bgra(&gray, &mut dst_e).unwrap();
     gray_to_rgba(&gray, &mut dst_f).unwrap();
     assert_eq!(dst_e, dst_f);
+
+    // ARGB aliases
+    // bgra_to_argb = argb_to_bgra (reverse is symmetric)
+    let mut a2 = data.clone();
+    let mut b2 = data.clone();
+    argb_to_bgra_inplace(&mut a2).unwrap();
+    bgra_to_argb_inplace(&mut b2).unwrap();
+    assert_eq!(a2, b2, "argb_to_bgra = bgra_to_argb");
+
+    // abgr_to_bgra = argb_to_rgba (same rotate left)
+    let mut c2 = data.clone();
+    let mut d2 = data.clone();
+    argb_to_rgba_inplace(&mut c2).unwrap();
+    abgr_to_bgra_inplace(&mut d2).unwrap();
+    assert_eq!(c2, d2, "argb_to_rgba = abgr_to_bgra");
+
+    // abgr_to_rgba = argb_to_bgra (same reverse)
+    let mut e2 = data.clone();
+    let mut f2 = data.clone();
+    argb_to_bgra_inplace(&mut e2).unwrap();
+    abgr_to_rgba_inplace(&mut f2).unwrap();
+    assert_eq!(e2, f2, "argb_to_bgra = abgr_to_rgba");
+
+    // rgba_to_abgr = argb_to_bgra (same reverse)
+    let mut g2 = data.clone();
+    let mut h2 = data.clone();
+    argb_to_bgra_inplace(&mut g2).unwrap();
+    rgba_to_abgr_inplace(&mut h2).unwrap();
+    assert_eq!(g2, h2, "argb_to_bgra = rgba_to_abgr");
+
+    // bgr_to_argb = rgb_to_abgr
+    let mut dst_g = vec![0u8; 64];
+    let mut dst_h = vec![0u8; 64];
+    bgr_to_argb(&src3, &mut dst_g).unwrap();
+    rgb_to_abgr(&src3, &mut dst_h).unwrap();
+    assert_eq!(dst_g, dst_h, "bgr_to_argb = rgb_to_abgr");
+
+    // bgr_to_abgr = rgb_to_argb
+    let mut dst_i = vec![0u8; 64];
+    let mut dst_j = vec![0u8; 64];
+    bgr_to_abgr(&src3, &mut dst_i).unwrap();
+    rgb_to_argb(&src3, &mut dst_j).unwrap();
+    assert_eq!(dst_i, dst_j, "bgr_to_abgr = rgb_to_argb");
+
+    // abgr_to_bgr = argb_to_rgb
+    let mut dst_k = vec![0u8; 48];
+    let mut dst_l = vec![0u8; 48];
+    abgr_to_bgr(&data, &mut dst_k).unwrap();
+    argb_to_rgb(&data, &mut dst_l).unwrap();
+    assert_eq!(dst_k, dst_l, "abgr_to_bgr = argb_to_rgb");
+
+    // abgr_to_rgb = argb_to_bgr
+    let mut dst_m = vec![0u8; 48];
+    let mut dst_n = vec![0u8; 48];
+    abgr_to_rgb(&data, &mut dst_m).unwrap();
+    argb_to_bgr(&data, &mut dst_n).unwrap();
+    assert_eq!(dst_m, dst_n, "abgr_to_rgb = argb_to_bgr");
+
+    // gray_to_abgr = gray_to_argb
+    let mut dst_o = vec![0u8; 64];
+    let mut dst_p = vec![0u8; 64];
+    gray_to_abgr(&gray, &mut dst_o).unwrap();
+    gray_to_argb(&gray, &mut dst_p).unwrap();
+    assert_eq!(dst_o, dst_p, "gray_to_abgr = gray_to_argb");
+
+    // fill_alpha_xrgb = fill_alpha_argb = fill_alpha_abgr = fill_alpha_xbgr
+    let mut fa1 = data.clone();
+    let mut fa2 = data.clone();
+    let mut fa3 = data.clone();
+    let mut fa4 = data.clone();
+    fill_alpha_argb(&mut fa1).unwrap();
+    fill_alpha_xrgb(&mut fa2).unwrap();
+    fill_alpha_abgr(&mut fa3).unwrap();
+    fill_alpha_xbgr(&mut fa4).unwrap();
+    assert_eq!(fa1, fa2, "fill_alpha_argb = fill_alpha_xrgb");
+    assert_eq!(fa1, fa3, "fill_alpha_argb = fill_alpha_abgr");
+    assert_eq!(fa1, fa4, "fill_alpha_argb = fill_alpha_xbgr");
 }
 
 // -----------------------------------------------------------------------

@@ -153,6 +153,229 @@ pub(super) fn swap_bgr_row_neon(_token: NeonToken, row: &mut [u8]) {
 }
 
 // ===========================================================================
+// ARM NEON — ARGB/XRGB rite row implementations
+// ===========================================================================
+
+#[rite]
+pub(super) fn rotate_left_row_neon(_token: NeonToken, row: &mut [u8]) {
+    let mask_bytes: [u8; 16] = [1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12];
+    let mask = vld1q_u8(&mask_bytes);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = vld1q_u8(arr);
+        let shuffled = vqtbl1q_u8(v, mask);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        vst1q_u8(out, shuffled);
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let a = px[0];
+        px[0] = px[1];
+        px[1] = px[2];
+        px[2] = px[3];
+        px[3] = a;
+    }
+}
+
+#[rite]
+pub(super) fn copy_rotate_left_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
+    let mask_bytes: [u8; 16] = [1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12];
+    let mask = vld1q_u8(&mask_bytes);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = vld1q_u8(s);
+        let shuffled = vqtbl1q_u8(v, mask);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        vst1q_u8(d, shuffled);
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[1];
+        d[1] = s[2];
+        d[2] = s[3];
+        d[3] = s[0];
+    }
+}
+
+#[rite]
+pub(super) fn rotate_right_row_neon(_token: NeonToken, row: &mut [u8]) {
+    let mask_bytes: [u8; 16] = [3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14];
+    let mask = vld1q_u8(&mask_bytes);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = vld1q_u8(arr);
+        let shuffled = vqtbl1q_u8(v, mask);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        vst1q_u8(out, shuffled);
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let d = px[3];
+        px[3] = px[2];
+        px[2] = px[1];
+        px[1] = px[0];
+        px[0] = d;
+    }
+}
+
+#[rite]
+pub(super) fn copy_rotate_right_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
+    let mask_bytes: [u8; 16] = [3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14];
+    let mask = vld1q_u8(&mask_bytes);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = vld1q_u8(s);
+        let shuffled = vqtbl1q_u8(v, mask);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        vst1q_u8(d, shuffled);
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[3];
+        d[1] = s[0];
+        d[2] = s[1];
+        d[3] = s[2];
+    }
+}
+
+#[rite]
+pub(super) fn reverse_4bpp_row_neon(_token: NeonToken, row: &mut [u8]) {
+    let mask_bytes: [u8; 16] = [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12];
+    let mask = vld1q_u8(&mask_bytes);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = vld1q_u8(arr);
+        let shuffled = vqtbl1q_u8(v, mask);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        vst1q_u8(out, shuffled);
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+        px.copy_from_slice(&v.swap_bytes().to_ne_bytes());
+    }
+}
+
+#[rite]
+pub(super) fn copy_reverse_4bpp_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
+    let mask_bytes: [u8; 16] = [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12];
+    let mask = vld1q_u8(&mask_bytes);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = vld1q_u8(s);
+        let shuffled = vqtbl1q_u8(v, mask);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        vst1q_u8(d, shuffled);
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[3];
+        d[1] = s[2];
+        d[2] = s[1];
+        d[3] = s[0];
+    }
+}
+
+#[rite]
+pub(super) fn fill_alpha_first_row_neon(_token: NeonToken, row: &mut [u8]) {
+    let ab: [u8; 16] = [0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0];
+    let alpha = vld1q_u8(&ab);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = vld1q_u8(arr);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        vst1q_u8(out, vorrq_u8(v, alpha));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        px[0] = 0xFF;
+    }
+}
+
+#[rite]
+pub(super) fn gray_to_4bpp_alpha_first_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8]) {
+    let masks: [[u8; 16]; 4] = [
+        [0x80, 0, 0, 0, 0x80, 1, 1, 1, 0x80, 2, 2, 2, 0x80, 3, 3, 3],
+        [0x80, 4, 4, 4, 0x80, 5, 5, 5, 0x80, 6, 6, 6, 0x80, 7, 7, 7],
+        [
+            0x80, 8, 8, 8, 0x80, 9, 9, 9, 0x80, 10, 10, 10, 0x80, 11, 11, 11,
+        ],
+        [
+            0x80, 12, 12, 12, 0x80, 13, 13, 13, 0x80, 14, 14, 14, 0x80, 15, 15, 15,
+        ],
+    ];
+    let m: [_; 4] = core::array::from_fn(|i| vld1q_u8(&masks[i]));
+    let ab: [u8; 16] = [0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0, 0];
+    let alpha = vld1q_u8(&ab);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 64 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let grays = vld1q_u8(s);
+        for j in 0..4 {
+            let d: &mut [u8; 16] = (&mut dst[id + j * 16..id + (j + 1) * 16])
+                .try_into()
+                .unwrap();
+            vst1q_u8(d, vorrq_u8(vqtbl1q_u8(grays, m[j]), alpha));
+        }
+        is += 16;
+        id += 64;
+    }
+    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = 0xFF;
+        d[1] = v;
+        d[2] = v;
+        d[3] = v;
+    }
+}
+
+#[rite]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_row_neon(
+    _token: NeonToken,
+    src: &[u8],
+    dst: &mut [u8],
+) {
+    let masks: [[u8; 16]; 2] = [
+        [1, 0, 0, 0, 3, 2, 2, 2, 5, 4, 4, 4, 7, 6, 6, 6],
+        [9, 8, 8, 8, 11, 10, 10, 10, 13, 12, 12, 12, 15, 14, 14, 14],
+    ];
+    let m0 = vld1q_u8(&masks[0]);
+    let m1 = vld1q_u8(&masks[1]);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 32 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let gas = vld1q_u8(s);
+        let d0: &mut [u8; 16] = (&mut dst[id..id + 16]).try_into().unwrap();
+        vst1q_u8(d0, vqtbl1q_u8(gas, m0));
+        let d1: &mut [u8; 16] = (&mut dst[id + 16..id + 32]).try_into().unwrap();
+        vst1q_u8(d1, vqtbl1q_u8(gas, m1));
+        is += 16;
+        id += 32;
+    }
+    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = ga[1];
+        d[1] = ga[0];
+        d[2] = ga[0];
+        d[3] = ga[0];
+    }
+}
+
+// ===========================================================================
 // ARM arcane contiguous wrappers
 // ===========================================================================
 
@@ -179,6 +402,42 @@ pub(super) fn gray_alpha_to_4bpp_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8])
 #[arcane]
 pub(super) fn swap_bgr_impl_neon(t: NeonToken, b: &mut [u8]) {
     swap_bgr_row_neon(t, b);
+}
+#[arcane]
+pub(super) fn rotate_left_impl_neon(t: NeonToken, b: &mut [u8]) {
+    rotate_left_row_neon(t, b);
+}
+#[arcane]
+pub(super) fn copy_rotate_left_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    copy_rotate_left_row_neon(t, s, d);
+}
+#[arcane]
+pub(super) fn rotate_right_impl_neon(t: NeonToken, b: &mut [u8]) {
+    rotate_right_row_neon(t, b);
+}
+#[arcane]
+pub(super) fn copy_rotate_right_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    copy_rotate_right_row_neon(t, s, d);
+}
+#[arcane]
+pub(super) fn reverse_4bpp_impl_neon(t: NeonToken, b: &mut [u8]) {
+    reverse_4bpp_row_neon(t, b);
+}
+#[arcane]
+pub(super) fn copy_reverse_4bpp_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    copy_reverse_4bpp_row_neon(t, s, d);
+}
+#[arcane]
+pub(super) fn fill_alpha_first_impl_neon(t: NeonToken, b: &mut [u8]) {
+    fill_alpha_first_row_neon(t, b);
+}
+#[arcane]
+pub(super) fn gray_to_4bpp_alpha_first_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    gray_to_4bpp_alpha_first_row_neon(t, s, d);
+}
+#[arcane]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_impl_neon(t: NeonToken, s: &[u8], d: &mut [u8]) {
+    gray_alpha_to_4bpp_alpha_first_row_neon(t, s, d);
 }
 
 // ===========================================================================
@@ -261,5 +520,127 @@ pub(super) fn swap_bgr_strided_neon(
 ) {
     for y in 0..h {
         swap_bgr_row_neon(t, &mut buf[y * stride..][..w * 3]);
+    }
+}
+#[arcane]
+pub(super) fn rotate_left_strided_neon(
+    t: NeonToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        rotate_left_row_neon(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_rotate_left_strided_neon(
+    t: NeonToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_rotate_left_row_neon(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn rotate_right_strided_neon(
+    t: NeonToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        rotate_right_row_neon(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_rotate_right_strided_neon(
+    t: NeonToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_rotate_right_row_neon(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn reverse_4bpp_strided_neon(
+    t: NeonToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        reverse_4bpp_row_neon(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_reverse_4bpp_strided_neon(
+    t: NeonToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_reverse_4bpp_row_neon(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn fill_alpha_first_strided_neon(
+    t: NeonToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        fill_alpha_first_row_neon(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn gray_to_4bpp_alpha_first_strided_neon(
+    t: NeonToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_to_4bpp_alpha_first_row_neon(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_strided_neon(
+    t: NeonToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_alpha_to_4bpp_alpha_first_row_neon(
+            t,
+            &src[y * ss..][..w * 2],
+            &mut dst[y * ds..][..w * 4],
+        );
     }
 }

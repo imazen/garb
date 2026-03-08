@@ -237,6 +237,296 @@ pub(super) fn bgra_to_rgb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
 }
 
 // ===========================================================================
+// WASM SIMD128 — ARGB/XRGB rite row implementations
+// ===========================================================================
+
+#[rite]
+pub(super) fn rotate_left_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    let mask = i8x16(1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = v128_load(arr);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        v128_store(out, i8x16_swizzle(v, mask));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let a = px[0];
+        px[0] = px[1];
+        px[1] = px[2];
+        px[2] = px[3];
+        px[3] = a;
+    }
+}
+
+#[rite]
+pub(super) fn copy_rotate_left_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = v128_load(s);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        v128_store(d, i8x16_swizzle(v, mask));
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[1];
+        d[1] = s[2];
+        d[2] = s[3];
+        d[3] = s[0];
+    }
+}
+
+#[rite]
+pub(super) fn rotate_right_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    let mask = i8x16(3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = v128_load(arr);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        v128_store(out, i8x16_swizzle(v, mask));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let d = px[3];
+        px[3] = px[2];
+        px[2] = px[1];
+        px[1] = px[0];
+        px[0] = d;
+    }
+}
+
+#[rite]
+pub(super) fn copy_rotate_right_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = v128_load(s);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        v128_store(d, i8x16_swizzle(v, mask));
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[3];
+        d[1] = s[0];
+        d[2] = s[1];
+        d[3] = s[2];
+    }
+}
+
+#[rite]
+pub(super) fn reverse_4bpp_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    let mask = i8x16(3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = v128_load(arr);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        v128_store(out, i8x16_swizzle(v, mask));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+        px.copy_from_slice(&v.swap_bytes().to_ne_bytes());
+    }
+}
+
+#[rite]
+pub(super) fn copy_reverse_4bpp_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let v = v128_load(s);
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        v128_store(d, i8x16_swizzle(v, mask));
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[3];
+        d[1] = s[2];
+        d[2] = s[1];
+        d[3] = s[0];
+    }
+}
+
+#[rite]
+pub(super) fn fill_alpha_first_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    let alpha = u32x4_splat(0x000000FF);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let v = v128_load(arr);
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        v128_store(out, v128_or(v, alpha));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        px[0] = 0xFF;
+    }
+}
+
+#[rite]
+pub(super) fn rgb_to_argb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let shuf = i8x16(-128, 0, 1, 2, -128, 3, 4, 5, -128, 6, 7, 8, -128, 9, 10, 11);
+    let alpha = u32x4_splat(0x000000FF);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 16 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let d: &mut [u8; 16] = (&mut dst[id..id + 16]).try_into().unwrap();
+        v128_store(d, v128_or(i8x16_swizzle(v128_load(s), shuf), alpha));
+        is += 12;
+        id += 16;
+    }
+    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = 0xFF;
+        d[1] = s[0];
+        d[2] = s[1];
+        d[3] = s[2];
+    }
+}
+
+#[rite]
+pub(super) fn rgb_to_abgr_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let shuf = i8x16(-128, 2, 1, 0, -128, 5, 4, 3, -128, 8, 7, 6, -128, 11, 10, 9);
+    let alpha = u32x4_splat(0x000000FF);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 16 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let d: &mut [u8; 16] = (&mut dst[id..id + 16]).try_into().unwrap();
+        v128_store(d, v128_or(i8x16_swizzle(v128_load(s), shuf), alpha));
+        is += 12;
+        id += 16;
+    }
+    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = 0xFF;
+        d[1] = s[2];
+        d[2] = s[1];
+        d[3] = s[0];
+    }
+}
+
+#[rite]
+pub(super) fn argb_to_rgb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, -1, -1, -1, -1);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 12 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let v = v128_load(s);
+        let mut tmp = [0u8; 16];
+        v128_store(&mut tmp, i8x16_swizzle(v, mask));
+        dst[id..id + 12].copy_from_slice(&tmp[..12]);
+        is += 16;
+        id += 12;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[1];
+        d[1] = s[2];
+        d[2] = s[3];
+    }
+}
+
+#[rite]
+pub(super) fn argb_to_bgr_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(3, 2, 1, 7, 6, 5, 11, 10, 9, 15, 14, 13, -1, -1, -1, -1);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 12 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let v = v128_load(s);
+        let mut tmp = [0u8; 16];
+        v128_store(&mut tmp, i8x16_swizzle(v, mask));
+        dst[id..id + 12].copy_from_slice(&tmp[..12]);
+        is += 16;
+        id += 12;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[3];
+        d[1] = s[2];
+        d[2] = s[1];
+    }
+}
+
+#[rite]
+pub(super) fn gray_to_4bpp_alpha_first_row_wasm128(
+    _token: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+) {
+    let m0 = i8x16(-128, 0, 0, 0, -128, 1, 1, 1, -128, 2, 2, 2, -128, 3, 3, 3);
+    let m1 = i8x16(-128, 4, 4, 4, -128, 5, 5, 5, -128, 6, 6, 6, -128, 7, 7, 7);
+    let m2 = i8x16(
+        -128, 8, 8, 8, -128, 9, 9, 9, -128, 10, 10, 10, -128, 11, 11, 11,
+    );
+    let m3 = i8x16(
+        -128, 12, 12, 12, -128, 13, 13, 13, -128, 14, 14, 14, -128, 15, 15, 15,
+    );
+    let alpha = u32x4_splat(0x000000FF);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 64 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let grays = v128_load(s);
+        for (j, m) in [m0, m1, m2, m3].iter().enumerate() {
+            let d: &mut [u8; 16] = (&mut dst[id + j * 16..id + (j + 1) * 16])
+                .try_into()
+                .unwrap();
+            v128_store(d, v128_or(i8x16_swizzle(grays, *m), alpha));
+        }
+        is += 16;
+        id += 64;
+    }
+    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = 0xFF;
+        d[1] = v;
+        d[2] = v;
+        d[3] = v;
+    }
+}
+
+#[rite]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_row_wasm128(
+    _token: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+) {
+    let m0 = i8x16(1, 0, 0, 0, 3, 2, 2, 2, 5, 4, 4, 4, 7, 6, 6, 6);
+    let m1 = i8x16(9, 8, 8, 8, 11, 10, 10, 10, 13, 12, 12, 12, 15, 14, 14, 14);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 32 <= dlen {
+        let s: &[u8; 16] = src[is..is + 16].try_into().unwrap();
+        let gas = v128_load(s);
+        let d0: &mut [u8; 16] = (&mut dst[id..id + 16]).try_into().unwrap();
+        v128_store(d0, i8x16_swizzle(gas, m0));
+        let d1: &mut [u8; 16] = (&mut dst[id + 16..id + 32]).try_into().unwrap();
+        v128_store(d1, i8x16_swizzle(gas, m1));
+        is += 16;
+        id += 32;
+    }
+    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = ga[1];
+        d[1] = ga[0];
+        d[2] = ga[0];
+        d[3] = ga[0];
+    }
+}
+
+// ===========================================================================
 // WASM arcane contiguous wrappers
 // ===========================================================================
 
@@ -283,6 +573,58 @@ pub(super) fn rgba_to_rgb_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) 
 #[arcane]
 pub(super) fn bgra_to_rgb_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
     bgra_to_rgb_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn rotate_left_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    rotate_left_row_wasm128(t, b);
+}
+#[arcane]
+pub(super) fn copy_rotate_left_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    copy_rotate_left_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn rotate_right_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    rotate_right_row_wasm128(t, b);
+}
+#[arcane]
+pub(super) fn copy_rotate_right_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    copy_rotate_right_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn reverse_4bpp_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    reverse_4bpp_row_wasm128(t, b);
+}
+#[arcane]
+pub(super) fn copy_reverse_4bpp_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    copy_reverse_4bpp_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn fill_alpha_first_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    fill_alpha_first_row_wasm128(t, b);
+}
+#[arcane]
+pub(super) fn rgb_to_argb_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    rgb_to_argb_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn rgb_to_abgr_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    rgb_to_abgr_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn argb_to_rgb_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    argb_to_rgb_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn argb_to_bgr_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    argb_to_bgr_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn gray_to_4bpp_alpha_first_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    gray_to_4bpp_alpha_first_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    gray_alpha_to_4bpp_alpha_first_row_wasm128(t, s, d);
 }
 
 // ===========================================================================
@@ -435,5 +777,183 @@ pub(super) fn bgra_to_rgb_strided_wasm128(
 ) {
     for y in 0..h {
         bgra_to_rgb_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[arcane]
+pub(super) fn rotate_left_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        rotate_left_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_rotate_left_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_rotate_left_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn rotate_right_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        rotate_right_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_rotate_right_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_rotate_right_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn reverse_4bpp_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        reverse_4bpp_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_reverse_4bpp_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_reverse_4bpp_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn fill_alpha_first_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        fill_alpha_first_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn rgb_to_argb_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        rgb_to_argb_row_wasm128(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn rgb_to_abgr_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        rgb_to_abgr_row_wasm128(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn argb_to_rgb_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        argb_to_rgb_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[arcane]
+pub(super) fn argb_to_bgr_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        argb_to_bgr_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[arcane]
+pub(super) fn gray_to_4bpp_alpha_first_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_to_4bpp_alpha_first_row_wasm128(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_alpha_to_4bpp_alpha_first_row_wasm128(
+            t,
+            &src[y * ss..][..w * 2],
+            &mut dst[y * ds..][..w * 4],
+        );
     }
 }

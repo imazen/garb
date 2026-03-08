@@ -61,6 +61,66 @@ const PACK_3X4_PERM_AVX: [i8; 32] = [
     0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 
+// Rotate left by 1 byte per 4-byte pixel: [a,b,c,d]→[b,c,d,a]
+const ROTATE_LEFT_SHUF_AVX: [i8; 32] = [
+    1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12, 1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13,
+    14, 15, 12,
+];
+
+// Rotate right by 1 byte per 4-byte pixel: [a,b,c,d]→[d,a,b,c]
+const ROTATE_RIGHT_SHUF_AVX: [i8; 32] = [
+    3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14, 3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15,
+    12, 13, 14,
+];
+
+// Reverse each 4-byte pixel: [a,b,c,d]→[d,c,b,a]
+const REVERSE_4BPP_SHUF_AVX: [i8; 32] = [
+    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12, 3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15,
+    14, 13, 12,
+];
+
+// Alpha-first mask: byte 0 of each 4-byte pixel = 0xFF
+const ALPHA_FIRST_MASK_AVX: [i8; 32] = [
+    -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1,
+    0, 0, 0,
+];
+
+// RGB → ARGB: [0xFF, r, g, b] from packed RGB
+const RGB_TO_ARGB_SHUF_AVX: [i8; 32] = [
+    -128, 0, 1, 2, -128, 3, 4, 5, -128, 6, 7, 8, -128, 9, 10, 11, -128, 0, 1, 2, -128, 3, 4, 5,
+    -128, 6, 7, 8, -128, 9, 10, 11,
+];
+
+// RGB → ABGR: [0xFF, b, g, r] from packed RGB
+const RGB_TO_ABGR_SHUF_AVX: [i8; 32] = [
+    -128, 2, 1, 0, -128, 5, 4, 3, -128, 8, 7, 6, -128, 11, 10, 9, -128, 2, 1, 0, -128, 5, 4, 3,
+    -128, 8, 7, 6, -128, 11, 10, 9,
+];
+
+// ARGB → RGB: extract bytes 1,2,3 from each 4-byte pixel
+const ARGB_TO_RGB_SHUF_AVX: [i8; 32] = [
+    1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, -128, -128, -128, -128, 1, 2, 3, 5, 6, 7, 9, 10, 11,
+    13, 14, 15, -128, -128, -128, -128,
+];
+
+// ARGB → BGR: extract bytes 3,2,1 from each 4-byte pixel (reverse of channels)
+const ARGB_TO_BGR_SHUF_AVX: [i8; 32] = [
+    3, 2, 1, 7, 6, 5, 11, 10, 9, 15, 14, 13, -128, -128, -128, -128, 3, 2, 1, 7, 6, 5, 11, 10, 9,
+    15, 14, 13, -128, -128, -128, -128,
+];
+
+// Gray expand for alpha-first: [0xFF, g, g, g] from each gray byte
+const GRAY_EXPAND_ALPHA_FIRST_MASK_AVX: [i8; 32] = [
+    -128, 0, 0, 0, -128, 1, 1, 1, -128, 2, 2, 2, -128, 3, 3, 3, -128, 4, 4, 4, -128, 5, 5, 5, -128,
+    6, 6, 6, -128, 7, 7, 7,
+];
+
+// GrayAlpha expand for alpha-first: [a, g, g, g] from [g, a] pairs
+const GA_EXPAND_ALPHA_FIRST_MASK_AVX: [i8; 32] = [
+    1, 0, 0, 0, 3, 2, 2, 2, 5, 4, 4, 4, 7, 6, 6, 6, 9, 8, 8, 8, 11, 10, 10, 10, 13, 12, 12, 12, 15,
+    14, 14, 14,
+];
+
 // ===========================================================================
 // x86-64 AVX2 — core rite row implementations
 // ===========================================================================
@@ -308,6 +368,305 @@ pub(super) fn bgra_to_rgb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
 }
 
 // ===========================================================================
+// x86-64 AVX2 — ARGB/XRGB rite row implementations
+// ===========================================================================
+
+#[rite]
+pub(super) fn rotate_left_row_v3(_token: X64V3Token, row: &mut [u8]) {
+    let mask = _mm256_loadu_si256(&ROTATE_LEFT_SHUF_AVX);
+    let n = row.len();
+    let mut i = 0;
+    while i + 32 <= n {
+        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(arr);
+        let shuffled = _mm256_shuffle_epi8(v, mask);
+        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
+        _mm256_storeu_si256(out, shuffled);
+        i += 32;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let a = px[0];
+        px[0] = px[1];
+        px[1] = px[2];
+        px[2] = px[3];
+        px[3] = a;
+    }
+}
+
+#[rite]
+pub(super) fn copy_rotate_left_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let mask = _mm256_loadu_si256(&ROTATE_LEFT_SHUF_AVX);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 32 <= n {
+        let s: &[u8; 32] = src[i..i + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(s);
+        let shuffled = _mm256_shuffle_epi8(v, mask);
+        let d: &mut [u8; 32] = (&mut dst[i..i + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, shuffled);
+        i += 32;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[1];
+        d[1] = s[2];
+        d[2] = s[3];
+        d[3] = s[0];
+    }
+}
+
+#[rite]
+pub(super) fn rotate_right_row_v3(_token: X64V3Token, row: &mut [u8]) {
+    let mask = _mm256_loadu_si256(&ROTATE_RIGHT_SHUF_AVX);
+    let n = row.len();
+    let mut i = 0;
+    while i + 32 <= n {
+        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(arr);
+        let shuffled = _mm256_shuffle_epi8(v, mask);
+        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
+        _mm256_storeu_si256(out, shuffled);
+        i += 32;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let d = px[3];
+        px[3] = px[2];
+        px[2] = px[1];
+        px[1] = px[0];
+        px[0] = d;
+    }
+}
+
+#[rite]
+pub(super) fn copy_rotate_right_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let mask = _mm256_loadu_si256(&ROTATE_RIGHT_SHUF_AVX);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 32 <= n {
+        let s: &[u8; 32] = src[i..i + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(s);
+        let shuffled = _mm256_shuffle_epi8(v, mask);
+        let d: &mut [u8; 32] = (&mut dst[i..i + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, shuffled);
+        i += 32;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[3];
+        d[1] = s[0];
+        d[2] = s[1];
+        d[3] = s[2];
+    }
+}
+
+#[rite]
+pub(super) fn reverse_4bpp_row_v3(_token: X64V3Token, row: &mut [u8]) {
+    let mask = _mm256_loadu_si256(&REVERSE_4BPP_SHUF_AVX);
+    let n = row.len();
+    let mut i = 0;
+    while i + 32 <= n {
+        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(arr);
+        let shuffled = _mm256_shuffle_epi8(v, mask);
+        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
+        _mm256_storeu_si256(out, shuffled);
+        i += 32;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+        px.copy_from_slice(&v.swap_bytes().to_ne_bytes());
+    }
+}
+
+#[rite]
+pub(super) fn copy_reverse_4bpp_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let mask = _mm256_loadu_si256(&REVERSE_4BPP_SHUF_AVX);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 32 <= n {
+        let s: &[u8; 32] = src[i..i + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(s);
+        let shuffled = _mm256_shuffle_epi8(v, mask);
+        let d: &mut [u8; 32] = (&mut dst[i..i + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, shuffled);
+        i += 32;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[3];
+        d[1] = s[2];
+        d[2] = s[1];
+        d[3] = s[0];
+    }
+}
+
+#[rite]
+pub(super) fn fill_alpha_first_row_v3(_token: X64V3Token, row: &mut [u8]) {
+    let alpha = _mm256_loadu_si256(&ALPHA_FIRST_MASK_AVX);
+    let n = row.len();
+    let mut i = 0;
+    while i + 32 <= n {
+        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(arr);
+        let result = _mm256_or_si256(v, alpha);
+        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
+        _mm256_storeu_si256(out, result);
+        i += 32;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        px[0] = 0xFF;
+    }
+}
+
+#[rite]
+pub(super) fn rgb_to_argb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let perm = _mm256_loadu_si256(&RGB_ALIGN_PERM_AVX);
+    let shuf = _mm256_loadu_si256(&RGB_TO_ARGB_SHUF_AVX);
+    let alpha = _mm256_loadu_si256(&ALPHA_FIRST_MASK_AVX);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 32 <= slen && id + 32 <= dlen {
+        let s: &[u8; 32] = src[is..is + 32].try_into().unwrap();
+        let rgb = _mm256_loadu_si256(s);
+        let aligned = _mm256_permutevar8x32_epi32(rgb, perm);
+        let argb0 = _mm256_shuffle_epi8(aligned, shuf);
+        let argb = _mm256_or_si256(argb0, alpha);
+        let d: &mut [u8; 32] = (&mut dst[id..id + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, argb);
+        is += 24;
+        id += 32;
+    }
+    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = 0xFF;
+        d[1] = s[0];
+        d[2] = s[1];
+        d[3] = s[2];
+    }
+}
+
+#[rite]
+pub(super) fn rgb_to_abgr_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let perm = _mm256_loadu_si256(&RGB_ALIGN_PERM_AVX);
+    let shuf = _mm256_loadu_si256(&RGB_TO_ABGR_SHUF_AVX);
+    let alpha = _mm256_loadu_si256(&ALPHA_FIRST_MASK_AVX);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 32 <= slen && id + 32 <= dlen {
+        let s: &[u8; 32] = src[is..is + 32].try_into().unwrap();
+        let rgb = _mm256_loadu_si256(s);
+        let aligned = _mm256_permutevar8x32_epi32(rgb, perm);
+        let abgr0 = _mm256_shuffle_epi8(aligned, shuf);
+        let abgr = _mm256_or_si256(abgr0, alpha);
+        let d: &mut [u8; 32] = (&mut dst[id..id + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, abgr);
+        is += 24;
+        id += 32;
+    }
+    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = 0xFF;
+        d[1] = s[2];
+        d[2] = s[1];
+        d[3] = s[0];
+    }
+}
+
+#[rite]
+pub(super) fn argb_to_rgb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let shuf = _mm256_loadu_si256(&ARGB_TO_RGB_SHUF_AVX);
+    let pack = _mm256_loadu_si256(&PACK_3X4_PERM_AVX);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 32 <= slen && id + 24 <= dlen {
+        let s: &[u8; 32] = src[is..is + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(s);
+        let stripped = _mm256_shuffle_epi8(v, shuf);
+        let packed = _mm256_permutevar8x32_epi32(stripped, pack);
+        let mut tmp = [0u8; 32];
+        _mm256_storeu_si256(&mut tmp, packed);
+        dst[id..id + 24].copy_from_slice(&tmp[..24]);
+        is += 32;
+        id += 24;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[1];
+        d[1] = s[2];
+        d[2] = s[3];
+    }
+}
+
+#[rite]
+pub(super) fn argb_to_bgr_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let shuf = _mm256_loadu_si256(&ARGB_TO_BGR_SHUF_AVX);
+    let pack = _mm256_loadu_si256(&PACK_3X4_PERM_AVX);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 32 <= slen && id + 24 <= dlen {
+        let s: &[u8; 32] = src[is..is + 32].try_into().unwrap();
+        let v = _mm256_loadu_si256(s);
+        let stripped = _mm256_shuffle_epi8(v, shuf);
+        let packed = _mm256_permutevar8x32_epi32(stripped, pack);
+        let mut tmp = [0u8; 32];
+        _mm256_storeu_si256(&mut tmp, packed);
+        dst[id..id + 24].copy_from_slice(&tmp[..24]);
+        is += 32;
+        id += 24;
+    }
+    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+        d[0] = s[3];
+        d[1] = s[2];
+        d[2] = s[1];
+    }
+}
+
+#[rite]
+pub(super) fn gray_to_4bpp_alpha_first_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
+    let expand = _mm256_loadu_si256(&GRAY_EXPAND_ALPHA_FIRST_MASK_AVX);
+    let alpha = _mm256_loadu_si256(&ALPHA_FIRST_MASK_AVX);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 8 <= slen && id + 32 <= dlen {
+        let gray8 = u64::from_ne_bytes(src[is..is + 8].try_into().unwrap());
+        let grays = _mm256_set1_epi64x(gray8 as i64);
+        let expanded = _mm256_shuffle_epi8(grays, expand);
+        let argb = _mm256_or_si256(expanded, alpha);
+        let d: &mut [u8; 32] = (&mut dst[id..id + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, argb);
+        is += 8;
+        id += 32;
+    }
+    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = 0xFF;
+        d[1] = v;
+        d[2] = v;
+        d[3] = v;
+    }
+}
+
+#[rite]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_row_v3(
+    _token: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+) {
+    let expand = _mm256_loadu_si256(&GA_EXPAND_ALPHA_FIRST_MASK_AVX);
+    let (slen, dlen) = (src.len(), dst.len());
+    let (mut is, mut id) = (0, 0);
+    while is + 16 <= slen && id + 32 <= dlen {
+        let lo = u64::from_ne_bytes(src[is..is + 8].try_into().unwrap());
+        let hi = u64::from_ne_bytes(src[is + 8..is + 16].try_into().unwrap());
+        let gas = _mm256_set_epi64x(hi as i64, lo as i64, hi as i64, lo as i64);
+        let argb = _mm256_shuffle_epi8(gas, expand);
+        let d: &mut [u8; 32] = (&mut dst[id..id + 32]).try_into().unwrap();
+        _mm256_storeu_si256(d, argb);
+        is += 16;
+        id += 32;
+    }
+    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
+        d[0] = ga[1];
+        d[1] = ga[0];
+        d[2] = ga[0];
+        d[3] = ga[0];
+    }
+}
+
+// ===========================================================================
 // x86-64 arcane contiguous wrappers
 // ===========================================================================
 
@@ -354,6 +713,58 @@ pub(super) fn rgba_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
 #[arcane]
 pub(super) fn bgra_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
     bgra_to_rgb_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn rotate_left_impl_v3(t: X64V3Token, b: &mut [u8]) {
+    rotate_left_row_v3(t, b);
+}
+#[arcane]
+pub(super) fn copy_rotate_left_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    copy_rotate_left_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn rotate_right_impl_v3(t: X64V3Token, b: &mut [u8]) {
+    rotate_right_row_v3(t, b);
+}
+#[arcane]
+pub(super) fn copy_rotate_right_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    copy_rotate_right_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn reverse_4bpp_impl_v3(t: X64V3Token, b: &mut [u8]) {
+    reverse_4bpp_row_v3(t, b);
+}
+#[arcane]
+pub(super) fn copy_reverse_4bpp_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    copy_reverse_4bpp_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn fill_alpha_first_impl_v3(t: X64V3Token, b: &mut [u8]) {
+    fill_alpha_first_row_v3(t, b);
+}
+#[arcane]
+pub(super) fn rgb_to_argb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    rgb_to_argb_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn rgb_to_abgr_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    rgb_to_abgr_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn argb_to_rgb_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    argb_to_rgb_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn argb_to_bgr_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    argb_to_bgr_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn gray_to_4bpp_alpha_first_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    gray_to_4bpp_alpha_first_row_v3(t, s, d);
+}
+#[arcane]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_impl_v3(t: X64V3Token, s: &[u8], d: &mut [u8]) {
+    gray_alpha_to_4bpp_alpha_first_row_v3(t, s, d);
 }
 
 // ===========================================================================
@@ -500,6 +911,189 @@ pub(super) fn bgra_to_rgb_strided_v3(
 ) {
     for y in 0..h {
         bgra_to_rgb_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+
+// ===========================================================================
+// x86-64 ARGB/XRGB arcane strided wrappers
+// ===========================================================================
+
+#[arcane]
+pub(super) fn rotate_left_strided_v3(
+    t: X64V3Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        rotate_left_row_v3(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_rotate_left_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_rotate_left_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn rotate_right_strided_v3(
+    t: X64V3Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        rotate_right_row_v3(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_rotate_right_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_rotate_right_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn reverse_4bpp_strided_v3(
+    t: X64V3Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        reverse_4bpp_row_v3(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_reverse_4bpp_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_reverse_4bpp_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn fill_alpha_first_strided_v3(
+    t: X64V3Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        fill_alpha_first_row_v3(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn rgb_to_argb_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        rgb_to_argb_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn rgb_to_abgr_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        rgb_to_abgr_row_v3(t, &src[y * ss..][..w * 3], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn argb_to_rgb_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        argb_to_rgb_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[arcane]
+pub(super) fn argb_to_bgr_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        argb_to_bgr_row_v3(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 3]);
+    }
+}
+#[arcane]
+pub(super) fn gray_to_4bpp_alpha_first_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_to_4bpp_alpha_first_row_v3(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn gray_alpha_to_4bpp_alpha_first_strided_v3(
+    t: X64V3Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        gray_alpha_to_4bpp_alpha_first_row_v3(
+            t,
+            &src[y * ss..][..w * 2],
+            &mut dst[y * ds..][..w * 4],
+        );
     }
 }
 

@@ -430,6 +430,362 @@ pub fn bgra_to_rgb_strided(
     Ok(())
 }
 
+// ===========================================================================
+// ARGB/XRGB operations — contiguous
+// ===========================================================================
+
+/// Rotate each pixel's bytes left by 1: \[A,R,G,B\]→\[R,G,B,A\] (ARGB→RGBA).
+///
+/// Also converts ABGR→BGRA.
+pub fn argb_to_rgba_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 4)?;
+    incant!(rotate_left_impl(buf), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Copy 4bpp pixels, rotating each left by 1 byte: \[A,R,G,B\]→\[R,G,B,A\] (ARGB→RGBA).
+pub fn argb_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 4)?;
+    incant!(copy_rotate_left_impl(src, dst), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Rotate each pixel's bytes right by 1: \[R,G,B,A\]→\[A,R,G,B\] (RGBA→ARGB).
+///
+/// Also converts BGRA→ABGR.
+pub fn rgba_to_argb_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 4)?;
+    incant!(rotate_right_impl(buf), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Copy 4bpp pixels, rotating each right by 1 byte: \[R,G,B,A\]→\[A,R,G,B\] (RGBA→ARGB).
+pub fn rgba_to_argb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 4)?;
+    incant!(
+        copy_rotate_right_impl(src, dst),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Reverse each pixel's 4 bytes: \[A,R,G,B\]→\[B,G,R,A\] (ARGB→BGRA).
+///
+/// Also converts BGRA→ARGB, ABGR→RGBA, RGBA→ABGR.
+pub fn argb_to_bgra_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 4)?;
+    incant!(reverse_4bpp_impl(buf), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Copy 4bpp pixels, reversing each pixel's bytes: \[A,R,G,B\]→\[B,G,R,A\] (ARGB→BGRA).
+pub fn argb_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 4)?;
+    incant!(
+        copy_reverse_4bpp_impl(src, dst),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Set the alpha channel (byte 0) to 255 for every 4bpp pixel.
+///
+/// Works for any alpha-first layout (ARGB, ABGR). Converts XRGB→ARGB.
+pub fn fill_alpha_argb(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 4)?;
+    incant!(fill_alpha_first_impl(buf), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Alias for [`fill_alpha_argb`].
+pub fn fill_alpha_xrgb(buf: &mut [u8]) -> Result<(), SizeError> {
+    fill_alpha_argb(buf)
+}
+
+/// RGB (3 bytes/px) → ARGB (4 bytes/px). Alpha=255, prepended.
+pub fn rgb_to_argb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 3, dst.len(), 4)?;
+    incant!(rgb_to_argb_impl(src, dst), [v3, wasm128, scalar]);
+    Ok(())
+}
+
+/// RGB (3 bytes/px) → ABGR (4 bytes/px). Reverses channel order, alpha=255 prepended.
+pub fn rgb_to_abgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 3, dst.len(), 4)?;
+    incant!(rgb_to_abgr_impl(src, dst), [v3, wasm128, scalar]);
+    Ok(())
+}
+
+/// ARGB (4 bytes/px) → RGB (3 bytes/px). Drops the leading alpha byte.
+pub fn argb_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 3)?;
+    incant!(argb_to_rgb_impl(src, dst), [v3, wasm128, scalar]);
+    Ok(())
+}
+
+/// ARGB (4 bytes/px) → BGR (3 bytes/px). Drops alpha, reverses channel order.
+pub fn argb_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 3)?;
+    incant!(argb_to_bgr_impl(src, dst), [v3, wasm128, scalar]);
+    Ok(())
+}
+
+/// Gray (1 byte/px) → ARGB (4 bytes/px). A=255, R=G=B=gray.
+pub fn gray_to_argb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 1, dst.len(), 4)?;
+    incant!(
+        gray_to_4bpp_alpha_first_impl(src, dst),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// GrayAlpha (2 bytes/px) → ARGB (4 bytes/px). R=G=B=gray, alpha first.
+pub fn gray_alpha_to_argb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 2, dst.len(), 4)?;
+    incant!(
+        gray_alpha_to_4bpp_alpha_first_impl(src, dst),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+// ===========================================================================
+// ARGB/XRGB operations — strided
+// ===========================================================================
+
+/// Rotate each pixel's bytes left by 1 in a strided buffer (ARGB→RGBA).
+pub fn argb_to_rgba_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        rotate_left_strided(buf, width, height, stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Copy 4bpp pixels between strided buffers, rotating left by 1 (ARGB→RGBA).
+pub fn argb_to_rgba_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        copy_rotate_left_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Rotate each pixel's bytes right by 1 in a strided buffer (RGBA→ARGB).
+pub fn rgba_to_argb_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        rotate_right_strided(buf, width, height, stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Copy 4bpp pixels between strided buffers, rotating right by 1 (RGBA→ARGB).
+pub fn rgba_to_argb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        copy_rotate_right_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Reverse each pixel's 4 bytes in a strided buffer (ARGB↔BGRA).
+pub fn argb_to_bgra_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        reverse_4bpp_strided(buf, width, height, stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Copy 4bpp pixels between strided buffers, reversing bytes (ARGB→BGRA).
+pub fn argb_to_bgra_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        copy_reverse_4bpp_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Set alpha (byte 0) to 255 for every 4bpp pixel in a strided buffer (XRGB→ARGB).
+pub fn fill_alpha_argb_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        fill_alpha_first_strided(buf, width, height, stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Alias for [`fill_alpha_argb_strided`].
+pub fn fill_alpha_xrgb_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    fill_alpha_argb_strided(buf, width, height, stride)
+}
+
+/// RGB → ARGB between strided buffers. Alpha=255, prepended.
+pub fn rgb_to_argb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 3)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        rgb_to_argb_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// RGB → ABGR between strided buffers. Alpha=255, channels reversed.
+pub fn rgb_to_abgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 3)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        rgb_to_abgr_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// ARGB → RGB between strided buffers. Drops the leading alpha.
+pub fn argb_to_rgb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 3)?;
+    incant!(
+        argb_to_rgb_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// ARGB → BGR between strided buffers. Drops alpha, reverses channel order.
+pub fn argb_to_bgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 3)?;
+    incant!(
+        argb_to_bgr_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Gray → ARGB between strided buffers. A=255, R=G=B=gray.
+pub fn gray_to_argb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 1)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        gray_to_4bpp_alpha_first_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// GrayAlpha → ARGB between strided buffers. Alpha first, R=G=B=gray.
+pub fn gray_alpha_to_argb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 2)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        gray_alpha_to_4bpp_alpha_first_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
 #[cfg(feature = "experimental")]
 mod experimental_api {
     use super::*;
@@ -1291,4 +1647,336 @@ pub fn bgr_to_rgb_strided(
     dst_stride: usize,
 ) -> Result<(), SizeError> {
     rgb_to_bgr_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+// ARGB aliases — contiguous
+
+/// Alias for [`argb_to_rgba_inplace`] — ABGR→BGRA uses the same rotate.
+#[inline(always)]
+pub fn abgr_to_bgra_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_rgba_inplace(buf)
+}
+
+/// Alias for [`argb_to_rgba`] — ABGR→BGRA uses the same rotate.
+#[inline(always)]
+pub fn abgr_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_rgba(src, dst)
+}
+
+/// Alias for [`rgba_to_argb_inplace`] — BGRA→ABGR uses the same rotate.
+#[inline(always)]
+pub fn bgra_to_abgr_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    rgba_to_argb_inplace(buf)
+}
+
+/// Alias for [`rgba_to_argb`] — BGRA→ABGR uses the same rotate.
+#[inline(always)]
+pub fn bgra_to_abgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    rgba_to_argb(src, dst)
+}
+
+/// Alias for [`argb_to_bgra_inplace`] — reverse is symmetric.
+#[inline(always)]
+pub fn bgra_to_argb_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_bgra_inplace(buf)
+}
+
+/// Alias for [`argb_to_bgra`] — reverse is symmetric.
+#[inline(always)]
+pub fn bgra_to_argb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_bgra(src, dst)
+}
+
+/// Alias for [`argb_to_bgra_inplace`] — ABGR↔RGBA is the same reverse.
+#[inline(always)]
+pub fn abgr_to_rgba_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_bgra_inplace(buf)
+}
+
+/// Alias for [`argb_to_bgra`] — ABGR↔RGBA is the same reverse.
+#[inline(always)]
+pub fn abgr_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_bgra(src, dst)
+}
+
+/// Alias for [`argb_to_bgra_inplace`] — RGBA↔ABGR is the same reverse.
+#[inline(always)]
+pub fn rgba_to_abgr_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_bgra_inplace(buf)
+}
+
+/// Alias for [`argb_to_bgra`] — RGBA↔ABGR is the same reverse.
+#[inline(always)]
+pub fn rgba_to_abgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_bgra(src, dst)
+}
+
+/// Alias for [`fill_alpha_argb`] — ABGR has alpha in the same position.
+#[inline(always)]
+pub fn fill_alpha_abgr(buf: &mut [u8]) -> Result<(), SizeError> {
+    fill_alpha_argb(buf)
+}
+
+/// Alias for [`fill_alpha_argb`] — XBGR has alpha in the same position.
+#[inline(always)]
+pub fn fill_alpha_xbgr(buf: &mut [u8]) -> Result<(), SizeError> {
+    fill_alpha_argb(buf)
+}
+
+/// BGR→ARGB = same byte shuffle as RGB→ABGR.
+#[inline(always)]
+pub fn bgr_to_argb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    rgb_to_abgr(src, dst)
+}
+
+/// BGR→ABGR = same byte shuffle as RGB→ARGB.
+#[inline(always)]
+pub fn bgr_to_abgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    rgb_to_argb(src, dst)
+}
+
+/// Alias for [`argb_to_rgb`] — ABGR→BGR drops the same leading byte.
+#[inline(always)]
+pub fn abgr_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_rgb(src, dst)
+}
+
+/// Alias for [`argb_to_bgr`] — ABGR→RGB drops + reverses same as ARGB→BGR.
+#[inline(always)]
+pub fn abgr_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    argb_to_bgr(src, dst)
+}
+
+/// Alias for [`gray_to_argb`] — R=G=B so output is identical to ABGR.
+#[inline(always)]
+pub fn gray_to_abgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    gray_to_argb(src, dst)
+}
+
+/// Alias for [`gray_alpha_to_argb`] — R=G=B so output is identical to ABGR.
+#[inline(always)]
+pub fn gray_alpha_to_abgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    gray_alpha_to_argb(src, dst)
+}
+
+// ARGB aliases — strided
+
+/// Alias for [`argb_to_rgba_inplace_strided`] — ABGR→BGRA uses the same rotate.
+#[inline(always)]
+pub fn abgr_to_bgra_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_rgba_inplace_strided(buf, width, height, stride)
+}
+
+/// Alias for [`argb_to_rgba_strided`].
+#[inline(always)]
+pub fn abgr_to_bgra_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_rgba_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`rgba_to_argb_inplace_strided`] — BGRA→ABGR uses the same rotate.
+#[inline(always)]
+pub fn bgra_to_abgr_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    rgba_to_argb_inplace_strided(buf, width, height, stride)
+}
+
+/// Alias for [`rgba_to_argb_strided`].
+#[inline(always)]
+pub fn bgra_to_abgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    rgba_to_argb_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`argb_to_bgra_inplace_strided`] — reverse is symmetric.
+#[inline(always)]
+pub fn bgra_to_argb_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_bgra_inplace_strided(buf, width, height, stride)
+}
+
+/// Alias for [`argb_to_bgra_strided`] — reverse is symmetric.
+#[inline(always)]
+pub fn bgra_to_argb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_bgra_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`argb_to_bgra_inplace_strided`] — ABGR↔RGBA is the same reverse.
+#[inline(always)]
+pub fn abgr_to_rgba_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_bgra_inplace_strided(buf, width, height, stride)
+}
+
+/// Alias for [`argb_to_bgra_strided`] — ABGR↔RGBA is the same reverse.
+#[inline(always)]
+pub fn abgr_to_rgba_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_bgra_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`argb_to_bgra_inplace_strided`] — RGBA↔ABGR is the same reverse.
+#[inline(always)]
+pub fn rgba_to_abgr_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_bgra_inplace_strided(buf, width, height, stride)
+}
+
+/// Alias for [`argb_to_bgra_strided`] — RGBA↔ABGR is the same reverse.
+#[inline(always)]
+pub fn rgba_to_abgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_bgra_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`fill_alpha_argb_strided`].
+#[inline(always)]
+pub fn fill_alpha_abgr_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    fill_alpha_argb_strided(buf, width, height, stride)
+}
+
+/// Alias for [`fill_alpha_argb_strided`].
+#[inline(always)]
+pub fn fill_alpha_xbgr_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    fill_alpha_argb_strided(buf, width, height, stride)
+}
+
+/// BGR→ARGB = same byte shuffle as RGB→ABGR.
+#[inline(always)]
+pub fn bgr_to_argb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    rgb_to_abgr_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// BGR→ABGR = same byte shuffle as RGB→ARGB.
+#[inline(always)]
+pub fn bgr_to_abgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    rgb_to_argb_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`argb_to_rgb_strided`] — ABGR→BGR drops the same leading byte.
+#[inline(always)]
+pub fn abgr_to_bgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_rgb_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`argb_to_bgr_strided`] — ABGR→RGB drops + reverses.
+#[inline(always)]
+pub fn abgr_to_rgb_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    argb_to_bgr_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`gray_to_argb_strided`] — R=G=B so identical to ABGR.
+#[inline(always)]
+pub fn gray_to_abgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    gray_to_argb_strided(src, dst, width, height, src_stride, dst_stride)
+}
+
+/// Alias for [`gray_alpha_to_argb_strided`] — R=G=B so identical to ABGR.
+#[inline(always)]
+pub fn gray_alpha_to_abgr_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    gray_alpha_to_argb_strided(src, dst, width, height, src_stride, dst_stride)
 }
