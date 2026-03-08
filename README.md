@@ -24,6 +24,13 @@ stripping channels — so you can get back to the interesting work.
 - Gray → RGBA / BGRA
 - GrayAlpha → RGBA / BGRA
 - Fill alpha (set byte 3 = 255 in each 4-byte pixel, for RGBA/BGRA layouts)
+- ARGB ↔ RGBA / BGRA / ABGR (in-place and copy)
+- RGB → ARGB / ABGR
+- BGR → ARGB / ABGR
+- ARGB / ABGR → RGB / BGR (drop alpha)
+- Gray → ARGB / ABGR
+- GrayAlpha → ARGB / ABGR
+- Fill alpha (set byte 0 = 255 in each 4-byte pixel, for ARGB/ABGR/XRGB/XBGR layouts)
 
 **Experimental** (feature `experimental` — API may change)
 - Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha
@@ -104,6 +111,11 @@ let rgb = vec![255u8, 0, 128];
 let mut bgra = vec![0u8; 4];
 rgb_to_bgra(&rgb, &mut bgra)?;
 assert_eq!(bgra, [128, 0, 255, 255]);
+
+// ARGB → RGBA: rotate bytes left [A,R,G,B] → [R,G,B,A]
+let mut argb = vec![255u8, 128, 0, 64];
+garb::bytes::argb_to_rgba_inplace(&mut argb)?;
+assert_eq!(argb, [128, 0, 64, 255]);
 # Ok::<(), SizeError>(())
 ```
 
@@ -216,9 +228,28 @@ Every function returns `Result<(), SizeError>`. All have `_strided` variants.
 | `gray_to_rgba` | 1bpp → 4bpp (R=G=B=gray, A=255) |
 | `gray_alpha_to_rgba` | 2bpp → 4bpp (R=G=B=gray, A=alpha) |
 | `fill_alpha_rgba` | Set byte 3 to 255 in each 4-byte pixel (alpha-last: RGBA/BGRA) |
+| `argb_to_rgba_inplace` | Rotate bytes left in 4bpp buffer: \[A,R,G,B\]→\[R,G,B,A\] |
+| `argb_to_rgba` | Copy 4bpp, rotating bytes left by 1 (ARGB→RGBA) |
+| `rgba_to_argb_inplace` | Rotate bytes right in 4bpp buffer: \[R,G,B,A\]→\[A,R,G,B\] |
+| `rgba_to_argb` | Copy 4bpp, rotating bytes right by 1 (RGBA→ARGB) |
+| `argb_to_bgra_inplace` | Reverse each pixel's 4 bytes: \[A,R,G,B\]→\[B,G,R,A\] |
+| `argb_to_bgra` | Copy 4bpp, reversing byte order (ARGB→BGRA) |
+| `fill_alpha_argb` | Set byte 0 to 255 in each 4-byte pixel (alpha-first: ARGB/ABGR) |
+| `rgb_to_argb` | 3bpp → 4bpp, alpha=255 prepended |
+| `rgb_to_abgr` | 3bpp → 4bpp, channels reversed, alpha=255 prepended |
+| `argb_to_rgb` | 4bpp → 3bpp, drop leading alpha |
+| `argb_to_bgr` | 4bpp → 3bpp, drop alpha + reverse channels |
+| `gray_to_argb` | 1bpp → 4bpp (A=255, R=G=B=gray) |
+| `gray_alpha_to_argb` | 2bpp → 4bpp (alpha first, R=G=B=gray) |
 
 Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
-`bgr_to_rgb`, `gray_to_bgra`, `gray_alpha_to_bgra`.
+`bgr_to_rgb`, `gray_to_bgra`, `gray_alpha_to_bgra`,
+`abgr_to_bgra_inplace`, `abgr_to_bgra`, `bgra_to_abgr_inplace`, `bgra_to_abgr`,
+`bgra_to_argb_inplace`, `bgra_to_argb`, `abgr_to_rgba_inplace`, `abgr_to_rgba`,
+`rgba_to_abgr_inplace`, `rgba_to_abgr`,
+`fill_alpha_abgr`, `fill_alpha_xrgb`, `fill_alpha_xbgr`,
+`bgr_to_argb`, `bgr_to_abgr`, `abgr_to_bgr`, `abgr_to_rgb`,
+`gray_to_abgr`, `gray_alpha_to_abgr`.
 
 #### Experimental (`feature = "experimental"`)
 
