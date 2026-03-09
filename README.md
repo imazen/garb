@@ -147,32 +147,40 @@ rgb_to_bgra_strided(&rgb_buf, &mut bgra_buf, 60, 100, 192, 256)?;
 
 ### Type-safe conversions (feature `rgb`)
 
-If you're already using the [`rgb`](https://crates.io/crates/rgb) crate,
-`garb::typed_rgb` gives you typed wrappers. In-place swaps return
-reinterpreted references — zero-copy, zero-allocation.
+With the [`rgb`](https://crates.io/crates/rgb) crate, use `garb::convert`
+and `garb::convert_inplace` with typed pixel slices. The right conversion is
+selected at compile time from the src/dst types — no need to remember
+function names. In-place swaps return reinterpreted references (zero-copy).
 
 ```rust
-use rgb::{Rgba, Bgra};
-use garb::typed_rgb;
+use rgb::{Rgba, Bgra, Rgb};
+use garb::{convert, convert_inplace};
 
+// In-place: type-inferred from the return binding
 let mut pixels: Vec<Rgba<u8>> = vec![Rgba::new(255, 0, 128, 255); 100];
-let bgra: &mut [Bgra<u8>] = typed_rgb::rgba_to_bgra_mut(&mut pixels);
+let bgra: &mut [Bgra<u8>] = convert_inplace(&mut pixels);
+
+// Copy: type-inferred from src and dst
+let rgb = vec![Rgb::new(255u8, 0, 128); 100];
+let mut bgra = vec![Bgra::default(); 100];
+convert(&rgb, &mut bgra).unwrap();
 ```
 
 ### Whole-image conversions (feature `imgref`)
 
-`garb::imgref` handles strided `ImgVec` / `ImgRef` / `ImgRefMut` types
-from the [`imgref`](https://crates.io/crates/imgref) crate. In-place swaps
+`garb::convert_imgref` and `garb::convert_imgref_inplace` handle strided
+`ImgVec` / `ImgRef` / `ImgRefMut` types from the
+[`imgref`](https://crates.io/crates/imgref) crate. In-place conversions
 consume and return the `ImgVec` with the buffer reinterpreted. Copy
 conversions take `ImgRef` + `ImgRefMut` — you own the destination buffer.
 
 ```rust
 use rgb::{Rgba, Bgra};
 use imgref::ImgVec;
-use garb::imgref;
+use garb::convert_imgref_inplace;
 
 let rgba_img = ImgVec::new(vec![Rgba::new(255, 0, 128, 200); 640 * 480], 640, 480);
-let bgra_img: ImgVec<Bgra<u8>> = imgref::swap_rgba_to_bgra(rgba_img);
+let bgra_img: ImgVec<Bgra<u8>> = convert_imgref_inplace(rgba_img);
 ```
 
 ## Feature flags
@@ -279,67 +287,45 @@ Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 Aliases: `bgr_to_gray`, `bgra_to_gray`, plus `_identity` and BGR variants
 for all gray conversions.
 
-### `typed_rgb` (feature `rgb`)
+### Generic API — `convert` / `convert_inplace` (feature `rgb`)
 
-Typed wrappers using `rgb` crate pixel types. In-place swaps return
-reinterpreted `&mut` references (zero-copy).
+Type-inferred conversions on `rgb` crate pixel slices. The compiler selects
+the right SIMD-optimized conversion from the source and destination types.
 
-| Function | Signature |
-|----------|-----------|
-| `rgba_to_bgra_mut` | `&mut [Rgba<u8>]` → `&mut [Bgra<u8>]` |
-| `bgra_to_rgba_mut` | `&mut [Bgra<u8>]` → `&mut [Rgba<u8>]` |
-| `rgb_to_bgr_mut` | `&mut [Rgb<u8>]` → `&mut [Bgr<u8>]` |
-| `bgr_to_rgb_mut` | `&mut [Bgr<u8>]` → `&mut [Rgb<u8>]` |
-| `rgba_to_bgra_buf` | `&[Rgba<u8>]` + `&mut [Bgra<u8>]` |
-| `bgra_to_rgba_buf` | `&[Bgra<u8>]` + `&mut [Rgba<u8>]` |
-| `rgb_to_bgra_buf` | `&[Rgb<u8>]` + `&mut [Bgra<u8>]` |
-| `rgb_to_rgba_buf` | `&[Rgb<u8>]` + `&mut [Rgba<u8>]` |
-| `bgr_to_rgba_buf` | `&[Bgr<u8>]` + `&mut [Rgba<u8>]` |
-| `bgr_to_bgra_buf` | `&[Bgr<u8>]` + `&mut [Bgra<u8>]` |
-| `gray_to_rgba_buf` | `&[Gray<u8>]` + `&mut [Rgba<u8>]` |
-| `gray_to_bgra_buf` | `&[Gray<u8>]` + `&mut [Bgra<u8>]` |
-| `gray_alpha_to_rgba_buf` | `&[GrayAlpha<u8>]` + `&mut [Rgba<u8>]` |
-| `gray_alpha_to_bgra_buf` | `&[GrayAlpha<u8>]` + `&mut [Bgra<u8>]` |
-| `rgba_to_rgb_buf` | `&[Rgba<u8>]` + `&mut [Rgb<u8>]` |
-| `bgra_to_bgr_buf` | `&[Bgra<u8>]` + `&mut [Bgr<u8>]` |
-| `bgra_to_rgb_buf` | `&[Bgra<u8>]` + `&mut [Rgb<u8>]` |
-| `rgba_to_bgr_buf` | `&[Rgba<u8>]` + `&mut [Bgr<u8>]` |
-| `fill_alpha_rgba` | Set A=255 in `&mut [Rgba<u8>]` |
-| `fill_alpha_bgra` | Set A=255 in `&mut [Bgra<u8>]` |
+| Function | Description |
+|----------|-------------|
+| `convert(&[S], &mut [D])` | Copy-convert between any supported pixel types |
+| `convert_inplace(&mut [S]) -> &mut [D]` | In-place swap for same-size types (zero-copy) |
+| `typed_rgb::fill_alpha_rgba` | Set A=255 in `&mut [Rgba<u8>]` |
+| `typed_rgb::fill_alpha_bgra` | Set A=255 in `&mut [Bgra<u8>]` |
 
-With `experimental`: `gray_to_rgb_buf`, `gray_alpha_to_rgb_buf`,
-`gray_to_gray_alpha_buf`, `gray_alpha_to_gray_buf`, `rgb_to_gray_*_buf`,
-`rgba_to_gray_*_buf`, `premultiply_rgba_f32`, `unpremultiply_rgba_f32`,
-plus identity and BGR variants.
+Supported `convert` pairs: any combination of `Rgba`, `Bgra`, `Rgb`, `Bgr`,
+`Gray`, `GrayAlpha` where the conversion makes sense (same-bpp swaps,
+3→4 expansion, 4→3 strip, 1→4/2→4 gray expansion).
 
-### `imgref` (feature `imgref`)
+Supported `convert_inplace` pairs: `Rgba↔Bgra`, `Rgb↔Bgr`.
 
-Whole-image conversions on `ImgVec` / `ImgRef` / `ImgRefMut`. In-place
-swaps consume and return an `ImgVec` with the buffer reinterpreted.
+With `experimental`: additional pairs for `Gray↔GrayAlpha`, `Gray↔Rgb`,
+gray identity extraction, weighted luma (`rgb_to_gray_bt709_buf`, etc.),
+and `premultiply_rgba_f32` / `unpremultiply_rgba_f32`.
 
-| Function | Operation |
-|----------|-----------|
-| `swap_rgba_to_bgra` | `ImgVec<Rgba<u8>>` → `ImgVec<Bgra<u8>>` |
-| `swap_bgra_to_rgba` | `ImgVec<Bgra<u8>>` → `ImgVec<Rgba<u8>>` |
-| `convert_rgba_to_bgra` | `ImgRef<Rgba<u8>>` + `ImgRefMut<Bgra<u8>>` |
-| `convert_bgra_to_rgba` | `ImgRef<Bgra<u8>>` + `ImgRefMut<Rgba<u8>>` |
-| `convert_rgb_to_bgra` | `ImgRef<Rgb<u8>>` + `ImgRefMut<Bgra<u8>>` |
-| `convert_rgb_to_rgba` | `ImgRef<Rgb<u8>>` + `ImgRefMut<Rgba<u8>>` |
-| `convert_bgr_to_rgba` | `ImgRef<Bgr<u8>>` + `ImgRefMut<Rgba<u8>>` |
-| `convert_bgr_to_bgra` | `ImgRef<Bgr<u8>>` + `ImgRefMut<Bgra<u8>>` |
-| `convert_gray_to_rgba` | `ImgRef<Gray<u8>>` + `ImgRefMut<Rgba<u8>>` |
-| `convert_gray_to_bgra` | `ImgRef<Gray<u8>>` + `ImgRefMut<Bgra<u8>>` |
-| `convert_gray_alpha_to_rgba` | `ImgRef<GrayAlpha<u8>>` + `ImgRefMut<Rgba<u8>>` |
-| `convert_gray_alpha_to_bgra` | `ImgRef<GrayAlpha<u8>>` + `ImgRefMut<Bgra<u8>>` |
-| `convert_rgba_to_rgb` | `ImgRef<Rgba<u8>>` + `ImgRefMut<Rgb<u8>>` |
-| `convert_bgra_to_rgb` | `ImgRef<Bgra<u8>>` + `ImgRefMut<Rgb<u8>>` |
-| `convert_bgra_to_bgr` | `ImgRef<Bgra<u8>>` + `ImgRefMut<Bgr<u8>>` |
-| `convert_rgba_to_bgr` | `ImgRef<Rgba<u8>>` + `ImgRefMut<Bgr<u8>>` |
+The previous named functions (`rgba_to_bgra_mut`, `rgb_to_bgra_buf`, etc.)
+are deprecated but still available.
 
-With `experimental`: `convert_gray_to_rgb`, `convert_gray_alpha_to_rgb`,
-`convert_gray_to_gray_alpha`, `convert_gray_alpha_to_gray`,
-`convert_rgb_to_gray_*`, `convert_rgba_to_gray_*`, `premultiply_rgba_f32`,
-`unpremultiply_rgba_f32`.
+### Generic API — `convert_imgref` / `convert_imgref_inplace` (feature `imgref`)
+
+Type-inferred conversions on `ImgVec` / `ImgRef` / `ImgRefMut` from the
+[`imgref`](https://crates.io/crates/imgref) crate. Same type pairs as above.
+
+| Function | Description |
+|----------|-------------|
+| `convert_imgref(ImgRef<S>, ImgRefMut<D>)` | Copy-convert between images |
+| `convert_imgref_inplace(ImgVec<S>) -> ImgVec<D>` | In-place, returns reinterpreted image |
+
+With `experimental`: additional pairs plus weighted luma and premultiply.
+
+The previous named functions (`swap_rgba_to_bgra`, `convert_rgb_to_bgra`, etc.)
+are deprecated but still available.
 
 ## License
 
