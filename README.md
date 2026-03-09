@@ -299,15 +299,42 @@ the right SIMD-optimized conversion from the source and destination types.
 | `typed_rgb::fill_alpha_rgba` | Set A=255 in `&mut [Rgba<u8>]` |
 | `typed_rgb::fill_alpha_bgra` | Set A=255 in `&mut [Bgra<u8>]` |
 
-Supported `convert` pairs: any combination of `Rgba`, `Bgra`, `Rgb`, `Bgr`,
-`Gray`, `GrayAlpha` where the conversion makes sense (same-bpp swaps,
-3→4 expansion, 4→3 strip, 1→4/2→4 gray expansion).
+**`convert_inplace` pairs** (same-size, zero-copy):
 
-Supported `convert_inplace` pairs: `Rgba↔Bgra`, `Rgb↔Bgr`.
+| From | To |
+|------|----|
+| `Rgba<u8>` | `Bgra<u8>` |
+| `Bgra<u8>` | `Rgba<u8>` |
+| `Rgb<u8>` | `Bgr<u8>` |
+| `Bgr<u8>` | `Rgb<u8>` |
 
-With `experimental`: additional pairs for `Gray↔GrayAlpha`, `Gray↔Rgb`,
-gray identity extraction, weighted luma (`rgb_to_gray_bt709_buf`, etc.),
-and `premultiply_rgba_f32` / `unpremultiply_rgba_f32`.
+**`convert` pairs** (copy):
+
+| From | To |
+|------|----|
+| `Rgba<u8>` | `Bgra<u8>`, `Rgb<u8>`, `Bgr<u8>` |
+| `Bgra<u8>` | `Rgba<u8>`, `Bgr<u8>`, `Rgb<u8>` |
+| `Rgb<u8>` | `Rgba<u8>`, `Bgra<u8>` |
+| `Bgr<u8>` | `Rgba<u8>`, `Bgra<u8>` |
+| `Gray<u8>` | `Rgba<u8>`, `Bgra<u8>` |
+| `GrayAlpha<u8>` | `Rgba<u8>`, `Bgra<u8>` |
+
+**Additional pairs with `experimental`:**
+
+| From | To |
+|------|----|
+| `Gray<u8>` | `Rgb<u8>`, `Bgr<u8>`, `GrayAlpha<u8>` |
+| `GrayAlpha<u8>` | `Rgb<u8>`, `Bgr<u8>`, `Gray<u8>` |
+| `Rgb<u8>` | `Gray<u8>` (identity) |
+| `Rgba<u8>` | `Gray<u8>` (identity) |
+| `Bgr<u8>` | `Gray<u8>` (identity) |
+| `Bgra<u8>` | `Gray<u8>` (identity) |
+
+Weighted luma conversions (`rgb_to_gray_bt709_buf`, etc.) and
+`premultiply_rgba_f32` / `unpremultiply_rgba_f32` remain as named functions.
+
+ARGB/ABGR types are not in the `rgb` crate, so those conversions are only
+available through `garb::bytes`.
 
 The previous named functions (`rgba_to_bgra_mut`, `rgb_to_bgra_buf`, etc.)
 are deprecated but still available.
