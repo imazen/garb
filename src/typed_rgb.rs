@@ -120,79 +120,79 @@ pub fn fill_alpha_bgra(pixels: &mut [Bgra<u8>]) {
 // ===========================================================================
 
 /// Use [`convert_inplace`](crate::convert_inplace) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_inplace() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_inplace() instead")]
 pub fn rgba_to_bgra_mut(pixels: &mut [Rgba<u8>]) -> &mut [Bgra<u8>] {
     crate::convert_inplace(pixels)
 }
 
 /// Use [`convert_inplace`](crate::convert_inplace) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_inplace() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_inplace() instead")]
 pub fn bgra_to_rgba_mut(pixels: &mut [Bgra<u8>]) -> &mut [Rgba<u8>] {
     crate::convert_inplace(pixels)
 }
 
 /// Use [`convert_inplace`](crate::convert_inplace) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_inplace() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_inplace() instead")]
 pub fn rgb_to_bgr_mut(pixels: &mut [Rgb<u8>]) -> &mut [Bgr<u8>] {
     crate::convert_inplace(pixels)
 }
 
 /// Use [`convert_inplace`](crate::convert_inplace) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_inplace() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_inplace() instead")]
 pub fn bgr_to_rgb_mut(pixels: &mut [Bgr<u8>]) -> &mut [Rgb<u8>] {
     crate::convert_inplace(pixels)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn rgba_to_bgra_buf(src: &[Rgba<u8>], dst: &mut [Bgra<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn bgra_to_rgba_buf(src: &[Bgra<u8>], dst: &mut [Rgba<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn rgb_to_bgra_buf(src: &[Rgb<u8>], dst: &mut [Bgra<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn rgb_to_rgba_buf(src: &[Rgb<u8>], dst: &mut [Rgba<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn bgr_to_rgba_buf(src: &[Bgr<u8>], dst: &mut [Rgba<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn bgr_to_bgra_buf(src: &[Bgr<u8>], dst: &mut [Bgra<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn gray_to_rgba_buf(src: &[Gray<u8>], dst: &mut [Rgba<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn gray_to_bgra_buf(src: &[Gray<u8>], dst: &mut [Bgra<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn gray_alpha_to_rgba_buf(
     src: &[GrayAlpha<u8>],
     dst: &mut [Rgba<u8>],
@@ -201,7 +201,7 @@ pub fn gray_alpha_to_rgba_buf(
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn gray_alpha_to_bgra_buf(
     src: &[GrayAlpha<u8>],
     dst: &mut [Bgra<u8>],
@@ -210,25 +210,25 @@ pub fn gray_alpha_to_bgra_buf(
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn rgba_to_rgb_buf(src: &[Rgba<u8>], dst: &mut [Rgb<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn bgra_to_bgr_buf(src: &[Bgra<u8>], dst: &mut [Bgr<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn bgra_to_rgb_buf(src: &[Bgra<u8>], dst: &mut [Rgb<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
 
 /// Use [`convert`](crate::convert) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
 pub fn rgba_to_bgr_buf(src: &[Rgba<u8>], dst: &mut [Bgr<u8>]) -> Result<(), SizeError> {
     crate::convert(src, dst)
 }
@@ -261,20 +261,20 @@ mod experimental_typed {
     // -----------------------------------------------------------------------
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     pub fn gray_to_rgb_buf(src: &[Gray<u8>], dst: &mut [Rgb<u8>]) -> Result<(), SizeError> {
         crate::convert(src, dst)
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     #[inline(always)]
     pub fn gray_to_bgr_buf(src: &[Gray<u8>], dst: &mut [Bgr<u8>]) -> Result<(), SizeError> {
         crate::convert(src, dst)
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     pub fn gray_alpha_to_rgb_buf(
         src: &[GrayAlpha<u8>],
         dst: &mut [Rgb<u8>],
@@ -283,7 +283,7 @@ mod experimental_typed {
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     #[inline(always)]
     pub fn gray_alpha_to_bgr_buf(
         src: &[GrayAlpha<u8>],
@@ -293,7 +293,7 @@ mod experimental_typed {
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     pub fn gray_to_gray_alpha_buf(
         src: &[Gray<u8>],
         dst: &mut [GrayAlpha<u8>],
@@ -302,7 +302,7 @@ mod experimental_typed {
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     pub fn gray_alpha_to_gray_buf(
         src: &[GrayAlpha<u8>],
         dst: &mut [Gray<u8>],
@@ -311,7 +311,7 @@ mod experimental_typed {
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     pub fn rgb_to_gray_identity_buf(
         src: &[Rgb<u8>],
         dst: &mut [Gray<u8>],
@@ -320,7 +320,7 @@ mod experimental_typed {
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     pub fn rgba_to_gray_identity_buf(
         src: &[Rgba<u8>],
         dst: &mut [Gray<u8>],
@@ -329,7 +329,7 @@ mod experimental_typed {
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     #[inline(always)]
     pub fn bgr_to_gray_identity_buf(
         src: &[Bgr<u8>],
@@ -339,7 +339,7 @@ mod experimental_typed {
     }
 
     /// Use [`convert`](crate::convert) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
     #[inline(always)]
     pub fn bgra_to_gray_identity_buf(
         src: &[Bgra<u8>],

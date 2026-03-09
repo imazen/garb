@@ -121,19 +121,19 @@ impl_convert_image!(Rgba<u8>, Bgr<u8>, crate::bytes::rgba_to_bgr);
 // ===========================================================================
 
 /// Use [`convert_imgref_inplace`](crate::convert_imgref_inplace) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref_inplace() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref_inplace() instead")]
 pub fn swap_rgba_to_bgra(img: ImgVec<Rgba<u8>>) -> ImgVec<Bgra<u8>> {
     crate::convert_imgref_inplace(img)
 }
 
 /// Use [`convert_imgref_inplace`](crate::convert_imgref_inplace) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref_inplace() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref_inplace() instead")]
 pub fn swap_bgra_to_rgba(img: ImgVec<Bgra<u8>>) -> ImgVec<Rgba<u8>> {
     crate::convert_imgref_inplace(img)
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_rgba_to_bgra(
     src: ImgRef<'_, Rgba<u8>>,
     dst: ImgRefMut<'_, Bgra<u8>>,
@@ -142,7 +142,7 @@ pub fn convert_rgba_to_bgra(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_bgra_to_rgba(
     src: ImgRef<'_, Bgra<u8>>,
     dst: ImgRefMut<'_, Rgba<u8>>,
@@ -151,7 +151,7 @@ pub fn convert_bgra_to_rgba(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_rgb_to_bgra(
     src: ImgRef<'_, Rgb<u8>>,
     dst: ImgRefMut<'_, Bgra<u8>>,
@@ -160,7 +160,7 @@ pub fn convert_rgb_to_bgra(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_rgb_to_rgba(
     src: ImgRef<'_, Rgb<u8>>,
     dst: ImgRefMut<'_, Rgba<u8>>,
@@ -169,7 +169,7 @@ pub fn convert_rgb_to_rgba(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_bgr_to_rgba(
     src: ImgRef<'_, Bgr<u8>>,
     dst: ImgRefMut<'_, Rgba<u8>>,
@@ -178,7 +178,7 @@ pub fn convert_bgr_to_rgba(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_bgr_to_bgra(
     src: ImgRef<'_, Bgr<u8>>,
     dst: ImgRefMut<'_, Bgra<u8>>,
@@ -187,7 +187,7 @@ pub fn convert_bgr_to_bgra(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_gray_to_rgba(
     src: ImgRef<'_, Gray<u8>>,
     dst: ImgRefMut<'_, Rgba<u8>>,
@@ -196,7 +196,7 @@ pub fn convert_gray_to_rgba(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_gray_to_bgra(
     src: ImgRef<'_, Gray<u8>>,
     dst: ImgRefMut<'_, Bgra<u8>>,
@@ -205,7 +205,7 @@ pub fn convert_gray_to_bgra(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_gray_alpha_to_rgba(
     src: ImgRef<'_, GrayAlpha<u8>>,
     dst: ImgRefMut<'_, Rgba<u8>>,
@@ -214,7 +214,7 @@ pub fn convert_gray_alpha_to_rgba(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_gray_alpha_to_bgra(
     src: ImgRef<'_, GrayAlpha<u8>>,
     dst: ImgRefMut<'_, Bgra<u8>>,
@@ -223,7 +223,7 @@ pub fn convert_gray_alpha_to_bgra(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_rgba_to_rgb(
     src: ImgRef<'_, Rgba<u8>>,
     dst: ImgRefMut<'_, Rgb<u8>>,
@@ -232,7 +232,7 @@ pub fn convert_rgba_to_rgb(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_bgra_to_rgb(
     src: ImgRef<'_, Bgra<u8>>,
     dst: ImgRefMut<'_, Rgb<u8>>,
@@ -241,7 +241,7 @@ pub fn convert_bgra_to_rgb(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_bgra_to_bgr(
     src: ImgRef<'_, Bgra<u8>>,
     dst: ImgRefMut<'_, Bgr<u8>>,
@@ -250,7 +250,7 @@ pub fn convert_bgra_to_bgr(
 }
 
 /// Use [`convert_imgref`](crate::convert_imgref) instead.
-#[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+#[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
 pub fn convert_rgba_to_bgr(
     src: ImgRef<'_, Rgba<u8>>,
     dst: ImgRefMut<'_, Bgr<u8>>,
@@ -285,7 +285,7 @@ mod experimental_imgref {
     // -----------------------------------------------------------------------
 
     /// Use [`convert_imgref`](crate::convert_imgref) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
     pub fn convert_gray_to_rgb(
         src: ImgRef<'_, Gray<u8>>,
         dst: ImgRefMut<'_, Rgb<u8>>,
@@ -294,7 +294,7 @@ mod experimental_imgref {
     }
 
     /// Use [`convert_imgref`](crate::convert_imgref) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
     pub fn convert_gray_to_bgr(
         src: ImgRef<'_, Gray<u8>>,
         dst: ImgRefMut<'_, Bgr<u8>>,
@@ -303,7 +303,7 @@ mod experimental_imgref {
     }
 
     /// Use [`convert_imgref`](crate::convert_imgref) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
     pub fn convert_gray_alpha_to_rgb(
         src: ImgRef<'_, GrayAlpha<u8>>,
         dst: ImgRefMut<'_, Rgb<u8>>,
@@ -312,7 +312,7 @@ mod experimental_imgref {
     }
 
     /// Use [`convert_imgref`](crate::convert_imgref) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
     pub fn convert_gray_to_gray_alpha(
         src: ImgRef<'_, Gray<u8>>,
         dst: ImgRefMut<'_, GrayAlpha<u8>>,
@@ -321,7 +321,7 @@ mod experimental_imgref {
     }
 
     /// Use [`convert_imgref`](crate::convert_imgref) instead.
-    #[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
     pub fn convert_gray_alpha_to_gray(
         src: ImgRef<'_, GrayAlpha<u8>>,
         dst: ImgRefMut<'_, Gray<u8>>,
@@ -330,7 +330,7 @@ mod experimental_imgref {
     }
 
     /// Identity gray extraction from RGB image.
-    #[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
     pub fn convert_rgb_to_gray_identity(
         src: ImgRef<'_, Rgb<u8>>,
         dst: ImgRefMut<'_, Gray<u8>>,
@@ -339,7 +339,7 @@ mod experimental_imgref {
     }
 
     /// Identity gray extraction from RGBA image.
-    #[deprecated(since = "0.3.0", note = "use garb::convert_imgref() instead")]
+    #[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
     pub fn convert_rgba_to_gray_identity(
         src: ImgRef<'_, Rgba<u8>>,
         dst: ImgRefMut<'_, Gray<u8>>,
