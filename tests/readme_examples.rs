@@ -25,11 +25,11 @@ fn readme_strided() {
 #[cfg(feature = "rgb")]
 #[test]
 fn readme_typed_rgb() {
-    use garb::typed_rgb;
+    use garb::convert_inplace;
     use rgb::{Bgra, Rgba};
 
     let mut pixels: Vec<Rgba<u8>> = vec![Rgba::new(255, 0, 128, 255); 100];
-    let bgra: &mut [Bgra<u8>] = typed_rgb::rgba_to_bgra_mut(&mut pixels);
+    let bgra: &mut [Bgra<u8>] = convert_inplace(&mut pixels);
     assert_eq!(
         bgra[0],
         Bgra {
@@ -45,11 +45,11 @@ fn readme_typed_rgb() {
 #[test]
 fn readme_imgref() {
     use ::imgref::ImgVec;
-    use garb::imgref;
+    use garb::convert_imgref_inplace;
     use rgb::{Bgra, Rgba};
 
     let rgba_img = ImgVec::new(vec![Rgba::new(255, 0, 128, 200); 640 * 480], 640, 480);
-    let bgra_img: ImgVec<Bgra<u8>> = imgref::swap_rgba_to_bgra(rgba_img);
+    let bgra_img: ImgVec<Bgra<u8>> = convert_imgref_inplace(rgba_img);
     assert_eq!(bgra_img.width(), 640);
     assert_eq!(bgra_img.height(), 480);
 }

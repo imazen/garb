@@ -95,3 +95,122 @@ impl core::fmt::Display for SizeError {
 }
 
 impl core::error::Error for SizeError {}
+
+// ===========================================================================
+// Generic conversion traits
+// ===========================================================================
+
+/// Copy-convert a pixel slice: `&[Src]` → `&mut [Dst]`.
+///
+/// Implemented for every valid `(Src, Dst)` pair when `feature = "rgb"`.
+/// Use [`convert`] for the free-function form.
+#[cfg(feature = "rgb")]
+pub trait ConvertTo<Dst>: Sized {
+    /// Convert pixels from `src` into `dst`.
+    fn convert_to(src: &[Self], dst: &mut [Dst]) -> Result<(), SizeError>;
+}
+
+/// In-place pixel conversion: `&mut [Src]` → `&mut [Dst]` (same pixel size).
+///
+/// Only implemented for same-size pixel pairs (e.g. 4bpp↔4bpp, 3bpp↔3bpp).
+/// Use [`convert_inplace`] for the free-function form.
+#[cfg(feature = "rgb")]
+pub trait ConvertInplace<Dst>: Sized {
+    /// Convert pixels in-place and return the buffer reinterpreted as `Dst`.
+    fn convert_inplace(buf: &mut [Self]) -> &mut [Dst];
+}
+
+/// Copy-convert pixel slices. Type inference selects the right conversion.
+///
+/// ```rust
+/// use rgb::{Rgb, Bgra};
+/// use garb::convert;
+///
+/// let rgb = vec![Rgb::new(255u8, 0, 128); 2];
+/// let mut bgra = vec![Bgra::default(); 2];
+/// convert(&rgb, &mut bgra).unwrap();
+/// assert_eq!(bgra[0], Bgra { b: 128, g: 0, r: 255, a: 255 });
+/// ```
+#[cfg(feature = "rgb")]
+#[inline(always)]
+pub fn convert<S: ConvertTo<D>, D>(src: &[S], dst: &mut [D]) -> Result<(), SizeError> {
+    S::convert_to(src, dst)
+}
+
+/// In-place pixel conversion. Returns the buffer reinterpreted as the target type.
+///
+/// ```rust
+/// use rgb::{Rgba, Bgra};
+/// use garb::convert_inplace;
+///
+/// let mut pixels = vec![Rgba::new(255u8, 0, 128, 255); 2];
+/// let bgra: &mut [Bgra<u8>] = convert_inplace(&mut pixels);
+/// assert_eq!(bgra[0], Bgra { b: 128, g: 0, r: 255, a: 255 });
+/// ```
+#[cfg(feature = "rgb")]
+#[inline(always)]
+pub fn convert_inplace<S: ConvertInplace<D>, D>(buf: &mut [S]) -> &mut [D] {
+    S::convert_inplace(buf)
+}
+
+/// Copy-convert an image: `ImgRef<Src>` → `ImgRefMut<Dst>`.
+///
+/// Implemented for every valid `(Src, Dst)` pair when `feature = "imgref"`.
+/// Use [`convert_imgref`] for the free-function form.
+#[cfg(feature = "imgref")]
+pub trait ConvertImage<Dst>: Sized {
+    /// Convert pixels from `src` image into `dst` image.
+    fn convert_image(
+        src: ::imgref::ImgRef<'_, Self>,
+        dst: ::imgref::ImgRefMut<'_, Dst>,
+    ) -> Result<(), SizeError>;
+}
+
+/// In-place image conversion: consumes `ImgVec<Src>`, returns `ImgVec<Dst>`.
+///
+/// Only implemented for same-size pixel pairs.
+/// Use [`convert_imgref_inplace`] for the free-function form.
+#[cfg(feature = "imgref")]
+pub trait ConvertImageInplace<Dst>: Sized {
+    /// Convert an image in-place and return it reinterpreted as `Dst`.
+    fn convert_image_inplace(img: ::imgref::ImgVec<Self>) -> ::imgref::ImgVec<Dst>;
+}
+
+/// Copy-convert an image. Type inference selects the right conversion.
+///
+/// ```rust
+/// use rgb::{Rgb, Bgra};
+/// use imgref::{ImgVec, ImgRefMut};
+/// use garb::convert_imgref;
+///
+/// let src = ImgVec::new(vec![Rgb::new(255u8, 0, 128); 4], 2, 2);
+/// let mut dst_buf = vec![Bgra::default(); 4];
+/// let dst = ImgRefMut::new(&mut dst_buf, 2, 2);
+/// convert_imgref(src.as_ref(), dst).unwrap();
+/// ```
+#[cfg(feature = "imgref")]
+#[inline(always)]
+pub fn convert_imgref<S: ConvertImage<D>, D>(
+    src: ::imgref::ImgRef<'_, S>,
+    dst: ::imgref::ImgRefMut<'_, D>,
+) -> Result<(), SizeError> {
+    S::convert_image(src, dst)
+}
+
+/// In-place image conversion. Consumes and returns the image with reinterpreted pixels.
+///
+/// ```rust
+/// use rgb::{Rgba, Bgra};
+/// use imgref::ImgVec;
+/// use garb::convert_imgref_inplace;
+///
+/// let img = ImgVec::new(vec![Rgba::new(255u8, 0, 128, 200); 4], 2, 2);
+/// let bgra_img: ImgVec<Bgra<u8>> = convert_imgref_inplace(img);
+/// ```
+#[cfg(feature = "imgref")]
+#[inline(always)]
+pub fn convert_imgref_inplace<S: ConvertImageInplace<D>, D>(
+    img: ::imgref::ImgVec<S>,
+) -> ::imgref::ImgVec<D> {
+    S::convert_image_inplace(img)
+}
