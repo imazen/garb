@@ -1463,6 +1463,172 @@ mod experimental_api {
         );
         Ok(())
     }
+    // ===========================================================================
+    // Packed pixel format expansion (2bpp → 4bpp, little-endian)
+    // ===========================================================================
+    //
+    // These functions expand packed 16-bit pixel formats into standard 8-bit
+    // RGBA or BGRA. The source data is a byte slice containing **little-endian**
+    // u16 values (low byte first). This is the native byte order on x86, ARM,
+    // WASM, and most modern platforms.
+    //
+    // ## Bit layouts
+    //
+    // **RGB565** — 2 bytes per pixel, no alpha:
+    // ```text
+    //   u16 bit:  15 14 13 12 11 | 10  9  8  7  6  5 |  4  3  2  1  0
+    //   channel:  R4 R3 R2 R1 R0 | G5 G4 G3 G2 G1 G0 | B4 B3 B2 B1 B0
+    // ```
+    // Matches OpenGL `GL_UNSIGNED_SHORT_5_6_5`, Vulkan `VK_FORMAT_R5G6B5_UNORM_PACK16`,
+    // Android `Bitmap.Config.RGB_565`, Direct3D `DXGI_FORMAT_B5G6R5_UNORM` (note:
+    // D3D labels this B5G6R5 but the bit layout is identical — R in the high bits).
+    //
+    // **RGBA4444** — 2 bytes per pixel, with alpha:
+    // ```text
+    //   u16 bit:  15 14 13 12 | 11 10  9  8 |  7  6  5  4 |  3  2  1  0
+    //   channel:  R3 R2 R1 R0 | G3 G2 G1 G0 | B3 B2 B1 B0 | A3 A2 A1 A0
+    // ```
+    // Matches OpenGL `GL_UNSIGNED_SHORT_4_4_4_4`, Vulkan `VK_FORMAT_R4G4B4A4_UNORM_PACK16`.
+    //
+    // ## Big-endian source data
+    //
+    // If your source data stores the u16 values in big-endian byte order (high
+    // byte first), swap each byte pair before calling:
+    // ```rust,ignore
+    // for pair in src.chunks_exact_mut(2) { pair.swap(0, 1); }
+    // ```
+    // Then call the conversion function as normal. A dedicated `_be` variant
+    // may be added in a future release if there is demand.
+    //
+    // ## Channel expansion
+    //
+    // Sub-byte channels are expanded to 8 bits by replicating the MSBs into
+    // the vacated LSBs. This maps the full source range exactly onto [0, 255]:
+    // - 5-bit: `v << 3 | v >> 2` (0→0, 31→255)
+    // - 6-bit: `v << 2 | v >> 4` (0→0, 63→255)
+    // - 4-bit: `v << 4 | v`      (0→0, 15→255)
+
+    /// RGB565 (little-endian u16, 2 bytes/px) → RGBA (4 bytes/px). Alpha set to 255.
+    ///
+    /// Source bit layout per u16: `R[15:11] G[10:5] B[4:0]`.
+    /// See [module-level docs](self#packed-pixel-format-expansion-2bpp--4bpp-little-endian)
+    /// for byte-order details.
+    pub fn rgb565_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 2, dst.len(), 4)?;
+        incant!(rgb565_to_rgba_impl(src, dst), [scalar]);
+        Ok(())
+    }
+
+    /// RGB565 (little-endian u16, 2 bytes/px) → BGRA (4 bytes/px). Alpha set to 255.
+    ///
+    /// Source bit layout per u16: `R[15:11] G[10:5] B[4:0]`.
+    /// Output byte order: `[B, G, R, A]`.
+    pub fn rgb565_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 2, dst.len(), 4)?;
+        incant!(rgb565_to_bgra_impl(src, dst), [scalar]);
+        Ok(())
+    }
+
+    /// RGBA4444 (little-endian u16, 2 bytes/px) → RGBA (4 bytes/px).
+    ///
+    /// Source bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
+    pub fn rgba4444_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 2, dst.len(), 4)?;
+        incant!(rgba4444_to_rgba_impl(src, dst), [scalar]);
+        Ok(())
+    }
+
+    /// RGBA4444 (little-endian u16, 2 bytes/px) → BGRA (4 bytes/px).
+    ///
+    /// Source bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
+    /// Output byte order: `[B, G, R, A]`.
+    pub fn rgba4444_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 2, dst.len(), 4)?;
+        incant!(rgba4444_to_bgra_impl(src, dst), [scalar]);
+        Ok(())
+    }
+
+    // Strided packed format conversions
+
+    /// RGB565 (LE, 2 bytes/px) → RGBA (4 bytes/px) between strided buffers.
+    ///
+    /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+    pub fn rgb565_to_rgba_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 2)?;
+        check_strided(dst.len(), width, height, dst_stride, 4)?;
+        incant!(
+            rgb565_to_rgba_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
+
+    /// RGB565 (LE, 2 bytes/px) → BGRA (4 bytes/px) between strided buffers.
+    ///
+    /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+    pub fn rgb565_to_bgra_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 2)?;
+        check_strided(dst.len(), width, height, dst_stride, 4)?;
+        incant!(
+            rgb565_to_bgra_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
+
+    /// RGBA4444 (LE, 2 bytes/px) → RGBA (4 bytes/px) between strided buffers.
+    ///
+    /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+    pub fn rgba4444_to_rgba_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 2)?;
+        check_strided(dst.len(), width, height, dst_stride, 4)?;
+        incant!(
+            rgba4444_to_rgba_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
+
+    /// RGBA4444 (LE, 2 bytes/px) → BGRA (4 bytes/px) between strided buffers.
+    ///
+    /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+    pub fn rgba4444_to_bgra_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 2)?;
+        check_strided(dst.len(), width, height, dst_stride, 4)?;
+        incant!(
+            rgba4444_to_bgra_strided(src, dst, width, height, src_stride, dst_stride),
+            [scalar]
+        );
+        Ok(())
+    }
 } // mod experimental_api
 #[cfg(feature = "experimental")]
 pub use experimental_api::*;

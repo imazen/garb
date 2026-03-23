@@ -1803,3 +1803,311 @@ mod experimental_premul_tests {
         assert_eq!(a, b, "rgba unpremul alias should match");
     }
 } // mod experimental_premul_tests
+
+#[cfg(feature = "experimental")]
+mod packed_format_tests {
+    use super::*;
+
+    /// Encode a single RGB565 pixel as little-endian bytes.
+    fn encode_rgb565(r5: u16, g6: u16, b5: u16) -> [u8; 2] {
+        let v = (r5 << 11) | (g6 << 5) | b5;
+        v.to_le_bytes()
+    }
+
+    /// Encode a single RGBA4444 pixel as little-endian bytes.
+    fn encode_rgba4444(r4: u16, g4: u16, b4: u16, a4: u16) -> [u8; 2] {
+        let v = (r4 << 12) | (g4 << 8) | (b4 << 4) | a4;
+        v.to_le_bytes()
+    }
+
+    /// Expand 5-bit value to 8-bit using MSB replication.
+    fn expand5(v: u8) -> u8 {
+        (v << 3) | (v >> 2)
+    }
+    /// Expand 6-bit value to 8-bit using MSB replication.
+    fn expand6(v: u8) -> u8 {
+        (v << 2) | (v >> 4)
+    }
+    /// Expand 4-bit value to 8-bit using nibble duplication.
+    fn expand4(v: u8) -> u8 {
+        (v << 4) | v
+    }
+
+    /// Reference: RGB565 (LE) → RGBA.
+    fn ref_rgb565_to_rgba(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 2;
+        let mut out = vec![0u8; n * 4];
+        for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+            let v = u16::from_le_bytes([s[0], s[1]]);
+            let r5 = ((v >> 11) & 0x1F) as u8;
+            let g6 = ((v >> 5) & 0x3F) as u8;
+            let b5 = (v & 0x1F) as u8;
+            d[0] = expand5(r5);
+            d[1] = expand6(g6);
+            d[2] = expand5(b5);
+            d[3] = 0xFF;
+        }
+        out
+    }
+
+    /// Reference: RGB565 (LE) → BGRA.
+    fn ref_rgb565_to_bgra(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 2;
+        let mut out = vec![0u8; n * 4];
+        for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+            let v = u16::from_le_bytes([s[0], s[1]]);
+            let r5 = ((v >> 11) & 0x1F) as u8;
+            let g6 = ((v >> 5) & 0x3F) as u8;
+            let b5 = (v & 0x1F) as u8;
+            d[0] = expand5(b5);
+            d[1] = expand6(g6);
+            d[2] = expand5(r5);
+            d[3] = 0xFF;
+        }
+        out
+    }
+
+    /// Reference: RGBA4444 (LE) → RGBA.
+    fn ref_rgba4444_to_rgba(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 2;
+        let mut out = vec![0u8; n * 4];
+        for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+            let v = u16::from_le_bytes([s[0], s[1]]);
+            d[0] = expand4(((v >> 12) & 0xF) as u8);
+            d[1] = expand4(((v >> 8) & 0xF) as u8);
+            d[2] = expand4(((v >> 4) & 0xF) as u8);
+            d[3] = expand4((v & 0xF) as u8);
+        }
+        out
+    }
+
+    /// Reference: RGBA4444 (LE) → BGRA.
+    fn ref_rgba4444_to_bgra(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 2;
+        let mut out = vec![0u8; n * 4];
+        for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+            let v = u16::from_le_bytes([s[0], s[1]]);
+            d[0] = expand4(((v >> 4) & 0xF) as u8); // B
+            d[1] = expand4(((v >> 8) & 0xF) as u8); // G
+            d[2] = expand4(((v >> 12) & 0xF) as u8); // R
+            d[3] = expand4((v & 0xF) as u8); // A
+        }
+        out
+    }
+
+    #[test]
+    fn rgb565_known_values() {
+        // All zeros → black, alpha 255
+        let src = encode_rgb565(0, 0, 0);
+        let mut dst = [0u8; 4];
+        rgb565_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [0, 0, 0, 255]);
+
+        // All ones → white, alpha 255
+        let src = encode_rgb565(31, 63, 31);
+        rgb565_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [255, 255, 255, 255]);
+
+        // Pure red (5-bit max)
+        let src = encode_rgb565(31, 0, 0);
+        rgb565_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [255, 0, 0, 255]);
+
+        // Pure green (6-bit max)
+        let src = encode_rgb565(0, 63, 0);
+        rgb565_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [0, 255, 0, 255]);
+
+        // Pure blue (5-bit max)
+        let src = encode_rgb565(0, 0, 31);
+        rgb565_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [0, 0, 255, 255]);
+
+        // Mid-range: R=16, G=32, B=16
+        let src = encode_rgb565(16, 32, 16);
+        rgb565_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [expand5(16), expand6(32), expand5(16), 255]);
+    }
+
+    #[test]
+    fn rgba4444_known_values() {
+        // All zeros
+        let src = encode_rgba4444(0, 0, 0, 0);
+        let mut dst = [0u8; 4];
+        rgba4444_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [0, 0, 0, 0]);
+
+        // All max
+        let src = encode_rgba4444(15, 15, 15, 15);
+        rgba4444_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [255, 255, 255, 255]);
+
+        // Pure red, full alpha
+        let src = encode_rgba4444(15, 0, 0, 15);
+        rgba4444_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [255, 0, 0, 255]);
+
+        // Half alpha
+        let src = encode_rgba4444(8, 4, 2, 7);
+        rgba4444_to_rgba(&src, &mut dst).unwrap();
+        assert_eq!(dst, [expand4(8), expand4(4), expand4(2), expand4(7)]);
+    }
+
+    #[test]
+    fn rgb565_bgra_known_values() {
+        // White → BGRA [255, 255, 255, 255]
+        let src = encode_rgb565(31, 63, 31);
+        let mut dst = [0u8; 4];
+        rgb565_to_bgra(&src, &mut dst).unwrap();
+        assert_eq!(dst, [255, 255, 255, 255]);
+
+        // Pure red → BGRA [0, 0, 255, 255]
+        let src = encode_rgb565(31, 0, 0);
+        rgb565_to_bgra(&src, &mut dst).unwrap();
+        assert_eq!(dst, [0, 0, 255, 255]);
+    }
+
+    #[test]
+    fn permutation_rgb565_to_rgba() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64] {
+                let src = make_2bpp(n);
+                let expected = ref_rgb565_to_rgba(&src);
+                let mut dst = vec![0u8; n * 4];
+                rgb565_to_rgba(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "rgb565_to_rgba n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("rgb565_to_rgba: {report}");
+    }
+
+    #[test]
+    fn permutation_rgb565_to_bgra() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64] {
+                let src = make_2bpp(n);
+                let expected = ref_rgb565_to_bgra(&src);
+                let mut dst = vec![0u8; n * 4];
+                rgb565_to_bgra(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "rgb565_to_bgra n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("rgb565_to_bgra: {report}");
+    }
+
+    #[test]
+    fn permutation_rgba4444_to_rgba() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64] {
+                let src = make_2bpp(n);
+                let expected = ref_rgba4444_to_rgba(&src);
+                let mut dst = vec![0u8; n * 4];
+                rgba4444_to_rgba(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "rgba4444_to_rgba n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("rgba4444_to_rgba: {report}");
+    }
+
+    #[test]
+    fn permutation_rgba4444_to_bgra() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64] {
+                let src = make_2bpp(n);
+                let expected = ref_rgba4444_to_bgra(&src);
+                let mut dst = vec![0u8; n * 4];
+                rgba4444_to_bgra(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "rgba4444_to_bgra n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("rgba4444_to_bgra: {report}");
+    }
+
+    #[test]
+    fn packed_size_errors() {
+        // Empty source
+        assert_eq!(
+            rgb565_to_rgba(&[], &mut [0; 4]),
+            Err(SizeError::NotPixelAligned)
+        );
+        // Odd byte count (not pixel-aligned)
+        assert_eq!(
+            rgb565_to_rgba(&[0; 3], &mut [0; 8]),
+            Err(SizeError::NotPixelAligned)
+        );
+        // Dst too small
+        assert_eq!(
+            rgb565_to_rgba(&[0; 4], &mut [0; 4]),
+            Err(SizeError::PixelCountMismatch)
+        );
+        // Same for RGBA4444
+        assert_eq!(
+            rgba4444_to_rgba(&[0; 1], &mut [0; 4]),
+            Err(SizeError::NotPixelAligned)
+        );
+        assert_eq!(
+            rgba4444_to_rgba(&[0; 4], &mut [0; 4]),
+            Err(SizeError::PixelCountMismatch)
+        );
+    }
+
+    #[test]
+    fn packed_strided_basic() {
+        // 2×2 image with stride > width
+        let w = 2;
+        let h = 2;
+        let src_stride = w * 2 + 4; // 4 bytes padding per row
+        let dst_stride = w * 4 + 8; // 8 bytes padding per row
+
+        // Build source: 2 pixels per row + padding
+        let mut src = vec![0u8; (h - 1) * src_stride + w * 2];
+        // Row 0: two known pixels
+        src[0..2].copy_from_slice(&encode_rgb565(31, 0, 0)); // red
+        src[2..4].copy_from_slice(&encode_rgb565(0, 63, 0)); // green
+        // Row 1: two known pixels
+        src[src_stride..src_stride + 2].copy_from_slice(&encode_rgb565(0, 0, 31)); // blue
+        src[src_stride + 2..src_stride + 4].copy_from_slice(&encode_rgb565(31, 63, 31)); // white
+
+        let mut dst = vec![0u8; (h - 1) * dst_stride + w * 4];
+        rgb565_to_rgba_strided(&src, &mut dst, w, h, src_stride, dst_stride).unwrap();
+
+        // Check row 0
+        assert_eq!(&dst[0..4], &[255, 0, 0, 255]); // red
+        assert_eq!(&dst[4..8], &[0, 255, 0, 255]); // green
+        // Check row 1
+        assert_eq!(&dst[dst_stride..dst_stride + 4], &[0, 0, 255, 255]); // blue
+        assert_eq!(&dst[dst_stride + 4..dst_stride + 8], &[255, 255, 255, 255]); // white
+    }
+
+    #[test]
+    fn rgb565_expansion_boundaries() {
+        // Verify every 5-bit value expands correctly (0→0, 31→255)
+        for v in 0..32u16 {
+            let src = encode_rgb565(v, 0, 0);
+            let mut dst = [0u8; 4];
+            rgb565_to_rgba(&src, &mut dst).unwrap();
+            let expected = ((v << 3) | (v >> 2)) as u8;
+            assert_eq!(dst[0], expected, "5-bit expand({v})");
+        }
+        // Verify every 6-bit value expands correctly (0→0, 63→255)
+        for v in 0..64u16 {
+            let src = encode_rgb565(0, v, 0);
+            let mut dst = [0u8; 4];
+            rgb565_to_rgba(&src, &mut dst).unwrap();
+            let expected = ((v << 2) | (v >> 4)) as u8;
+            assert_eq!(dst[1], expected, "6-bit expand({v})");
+        }
+    }
+
+    #[test]
+    fn rgba4444_expansion_boundaries() {
+        // Verify every 4-bit value expands correctly (0→0, 15→255)
+        for v in 0..16u16 {
+            let src = encode_rgba4444(v, 0, 0, 0);
+            let mut dst = [0u8; 4];
+            rgba4444_to_rgba(&src, &mut dst).unwrap();
+            let expected = ((v << 4) | v) as u8;
+            assert_eq!(dst[0], expected, "4-bit expand({v})");
+        }
+    }
+}
