@@ -33,6 +33,8 @@ stripping channels — so you can get back to the interesting work.
 - Fill alpha (set byte 0 = 255 in each 4-byte pixel, for ARGB/ABGR/XRGB/XBGR layouts)
 
 **Experimental** (feature `experimental` — API may change)
+- RGB565 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
+- RGBA4444 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
 - Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha
 - RGB / RGBA / BGR / BGRA → Gray (weighted luma: BT.709, BT.601, BT.2020; or identity)
 - Depth conversion: u8 ↔ u16, u8 ↔ f32, u16 ↔ f32
@@ -188,7 +190,7 @@ let bgra_img: ImgVec<Bgra<u8>> = convert_imgref_inplace(rgba_img);
 | Feature  | Default | What it adds |
 |----------|---------|--------------|
 | `std`    | yes     | Enables `std` on dependencies (e.g. `archmage`) |
-| `experimental` | no | Gray layout, weighted luma, depth conversion, f32 premul (API may change) |
+| `experimental` | no | Packed formats (RGB565, RGBA4444), gray layout, weighted luma, depth conversion, f32 premul (API may change) |
 | `rgb`    | no      | `garb::typed_rgb` — conversions on `Rgba<u8>`, `Bgra<u8>`, etc. |
 | `imgref` | no      | `garb::imgref` — whole-image conversions on `ImgVec` / `ImgRef` (implies `rgb`) |
 
@@ -263,6 +265,10 @@ Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 
 | Function | Operation |
 |----------|-----------|
+| `rgb565_to_rgba` | RGB565 (LE u16, 2bpp) → RGBA (4bpp), A=255 |
+| `rgb565_to_bgra` | RGB565 (LE u16, 2bpp) → BGRA (4bpp), A=255 |
+| `rgba4444_to_rgba` | RGBA4444 (LE u16, 2bpp) → RGBA (4bpp) |
+| `rgba4444_to_bgra` | RGBA4444 (LE u16, 2bpp) → BGRA (4bpp) |
 | `gray_to_rgb` | 1bpp → 3bpp (R=G=B=gray) |
 | `gray_alpha_to_rgb` | 2bpp → 3bpp (R=G=B=gray, drop alpha) |
 | `gray_to_gray_alpha` | 1bpp → 2bpp (A=255) |
