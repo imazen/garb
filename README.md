@@ -34,11 +34,14 @@ stripping channels — so you can get back to the interesting work.
 
 **Experimental** (feature `experimental` — API may change)
 - RGB565 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
+- RGBA / BGRA → RGB565 (lossy compress, round-to-nearest, auto-vectorized)
 - RGBA4444 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
+- RGBA / BGRA → RGBA4444 (lossy compress, round-to-nearest, auto-vectorized)
+- u8 alpha premultiply for RGBA / BGRA (exact integer, auto-vectorized)
 - Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha
 - RGB / RGBA / BGR / BGRA → Gray (weighted luma: BT.709, BT.601, BT.2020; or identity)
 - Depth conversion: u8 ↔ u16, u8 ↔ f32, u16 ↔ f32
-- F32 alpha premultiply / unpremultiply (in-place and copy, AVX2 SIMD)
+- f32 alpha premultiply / unpremultiply (in-place and copy, AVX2 SIMD)
 
 All operations have `_strided` variants for images with padding between rows
 (common in video frames and GPU textures).
@@ -267,8 +270,14 @@ Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 |----------|-----------|
 | `rgb565_to_rgba` | RGB565 (LE u16, 2bpp) → RGBA (4bpp), A=255 |
 | `rgb565_to_bgra` | RGB565 (LE u16, 2bpp) → BGRA (4bpp), A=255 |
+| `rgba_to_rgb565` | RGBA (4bpp) → RGB565 (LE u16, 2bpp), lossy, alpha dropped |
+| `bgra_to_rgb565` | BGRA (4bpp) → RGB565 (LE u16, 2bpp), lossy, alpha dropped |
 | `rgba4444_to_rgba` | RGBA4444 (LE u16, 2bpp) → RGBA (4bpp) |
 | `rgba4444_to_bgra` | RGBA4444 (LE u16, 2bpp) → BGRA (4bpp) |
+| `rgba_to_rgba4444` | RGBA (4bpp) → RGBA4444 (LE u16, 2bpp), lossy |
+| `bgra_to_rgba4444` | BGRA (4bpp) → RGBA4444 (LE u16, 2bpp), lossy |
+| `premultiply_alpha_rgba_u8` | Premultiply alpha in `[R,G,B,A]` u8 buffer (in-place) |
+| `premultiply_alpha_rgba_u8_copy` | Premultiply alpha u8, copy variant |
 | `gray_to_rgb` | 1bpp → 3bpp (R=G=B=gray) |
 | `gray_alpha_to_rgb` | 2bpp → 3bpp (R=G=B=gray, drop alpha) |
 | `gray_to_gray_alpha` | 1bpp → 2bpp (A=255) |
@@ -290,8 +299,9 @@ Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 | `premultiply_alpha_f32_copy` | Premultiply alpha, copy variant |
 | `unpremultiply_alpha_f32_copy` | Unpremultiply alpha, copy variant |
 
-Aliases: `bgr_to_gray`, `bgra_to_gray`, plus `_identity` and BGR variants
-for all gray conversions.
+Aliases: `premultiply_alpha_bgra_u8`, `premultiply_alpha_bgra_u8_copy`,
+`bgr_to_gray`, `bgra_to_gray`, plus `_identity` and BGR variants for all
+gray conversions. All functions have `_strided` variants.
 
 ### Generic API — `convert` / `convert_inplace` (feature `rgb`)
 
