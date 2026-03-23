@@ -1817,17 +1817,17 @@ mod premul_u8_tests {
     fn premul_u8_known_values() {
         // Full alpha: no change
         let mut buf = vec![128, 64, 32, 255];
-        premultiply_alpha_u8(&mut buf).unwrap();
+        premultiply_alpha_rgba_u8(&mut buf).unwrap();
         assert_eq!(buf, [128, 64, 32, 255]);
 
         // Zero alpha: all channels become 0
         let mut buf = vec![255, 128, 64, 0];
-        premultiply_alpha_u8(&mut buf).unwrap();
+        premultiply_alpha_rgba_u8(&mut buf).unwrap();
         assert_eq!(buf, [0, 0, 0, 0]);
 
         // Half alpha
         let mut buf = vec![200, 100, 50, 128];
-        premultiply_alpha_u8(&mut buf).unwrap();
+        premultiply_alpha_rgba_u8(&mut buf).unwrap();
         // 200*128/255 ≈ 100.4 → 100, 100*128/255 ≈ 50.2 → 50, 50*128/255 ≈ 25.1 → 25
         assert_eq!(buf[0], ref_premul(200, 128));
         assert_eq!(buf[1], ref_premul(100, 128));
@@ -1839,9 +1839,9 @@ mod premul_u8_tests {
     fn premul_u8_copy_matches_inplace() {
         let src: Vec<u8> = (0..256).map(|i| (i % 251) as u8).collect();
         let mut inplace = src.clone();
-        premultiply_alpha_u8(&mut inplace).unwrap();
+        premultiply_alpha_rgba_u8(&mut inplace).unwrap();
         let mut copy_dst = vec![0u8; src.len()];
-        premultiply_alpha_u8_copy(&src, &mut copy_dst).unwrap();
+        premultiply_alpha_rgba_u8_copy(&src, &mut copy_dst).unwrap();
         assert_eq!(inplace, copy_dst);
     }
 
@@ -1851,7 +1851,7 @@ mod premul_u8_tests {
         for a in 0..=255u8 {
             for c in 0..=255u8 {
                 let mut buf = [c, 0, 0, a];
-                premultiply_alpha_u8(&mut buf).unwrap();
+                premultiply_alpha_rgba_u8(&mut buf).unwrap();
                 let expected = ref_premul(c, a);
                 assert_eq!(
                     buf[0], expected,
@@ -1871,7 +1871,7 @@ mod premul_u8_tests {
         // Already premultiplied: premul again should not change if c <= a
         for a in 0..=255u8 {
             let mut buf = [a, a, a, a]; // max premul value
-            premultiply_alpha_u8(&mut buf).unwrap();
+            premultiply_alpha_rgba_u8(&mut buf).unwrap();
             // premul(a, a) = a*a/255, which is ≤ a
             assert!(buf[0] <= a);
             assert_eq!(buf[3], a);
@@ -1883,7 +1883,7 @@ mod premul_u8_tests {
         let mut a = vec![200u8, 100, 50, 128, 255, 0, 128, 64];
         let mut b = a.clone();
         let mut c = a.clone();
-        premultiply_alpha_u8(&mut a).unwrap();
+        premultiply_alpha_rgba_u8(&mut a).unwrap();
         premultiply_alpha_rgba_u8(&mut b).unwrap();
         premultiply_alpha_bgra_u8(&mut c).unwrap();
         assert_eq!(a, b);
@@ -1898,7 +1898,7 @@ mod premul_u8_tests {
 
                 // In-place
                 let mut buf = src.clone();
-                premultiply_alpha_u8(&mut buf).unwrap();
+                premultiply_alpha_rgba_u8(&mut buf).unwrap();
                 for (i, (s, d)) in src.chunks_exact(4).zip(buf.chunks_exact(4)).enumerate() {
                     let a = s[3];
                     assert_eq!(d[0], ref_premul(s[0], a), "n={n} i={i} R tier={perm}");
@@ -1909,7 +1909,7 @@ mod premul_u8_tests {
 
                 // Copy
                 let mut dst = vec![0u8; src.len()];
-                premultiply_alpha_u8_copy(&src, &mut dst).unwrap();
+                premultiply_alpha_rgba_u8_copy(&src, &mut dst).unwrap();
                 assert_eq!(dst, buf, "copy vs inplace n={n} tier={perm}");
             }
         });
@@ -1919,15 +1919,15 @@ mod premul_u8_tests {
     #[test]
     fn premul_u8_size_errors() {
         assert_eq!(
-            premultiply_alpha_u8(&mut [0; 3]),
+            premultiply_alpha_rgba_u8(&mut [0; 3]),
             Err(SizeError::NotPixelAligned)
         );
         assert_eq!(
-            premultiply_alpha_u8(&mut []),
+            premultiply_alpha_rgba_u8(&mut []),
             Err(SizeError::NotPixelAligned)
         );
         assert_eq!(
-            premultiply_alpha_u8_copy(&[0; 8], &mut [0; 4]),
+            premultiply_alpha_rgba_u8_copy(&[0; 8], &mut [0; 4]),
             Err(SizeError::PixelCountMismatch)
         );
     }
