@@ -1617,6 +1617,140 @@ mod experimental_api {
         rgba4444_to_bgra_strided_impl(src, dst, width, height, src_stride, dst_stride);
         Ok(())
     }
+    // ===========================================================================
+    // Packed pixel format compression (4bpp → 2bpp, little-endian)
+    // ===========================================================================
+    //
+    // Compress standard 8-bit RGBA or BGRA pixels into packed 16-bit formats.
+    // Output is **little-endian** u16 values, matching the expand functions.
+    //
+    // ## Lossy compression
+    //
+    // These conversions are lossy — 8-bit channels are rounded to fewer bits.
+    // The rounding formula `(v * max_N + 128) >> 8` guarantees:
+    // - **Perfect roundtrip** for values that originated from N bits:
+    //   `expand(compress(expand(x))) == expand(x)` for all x in [0, max_N]
+    // - **Nearest match** for arbitrary 8-bit values
+    // - **Endpoints preserved**: 0→0, 255→max_N
+    //
+    // For RGB565, alpha is **dropped** (ignored). For RGBA4444, alpha is
+    // compressed to 4 bits using the same rounding.
+    //
+    // ## Bit layouts
+    //
+    // Same as the expand functions:
+    // - **RGB565**: `R[15:11] G[10:5] B[4:0]`
+    // - **RGBA4444**: `R[15:12] G[11:8] B[7:4] A[3:0]`
+
+    /// RGBA (4 bytes/px) → RGB565 (little-endian u16, 2 bytes/px). Alpha dropped.
+    ///
+    /// Lossy: 8-bit channels are rounded to 5/6/5 bits.
+    /// Output bit layout per u16: `R[15:11] G[10:5] B[4:0]`.
+    pub fn rgba_to_rgb565(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 4, dst.len(), 2)?;
+        rgba_to_rgb565_impl(src, dst);
+        Ok(())
+    }
+
+    /// BGRA (4 bytes/px) → RGB565 (little-endian u16, 2 bytes/px). Alpha dropped.
+    ///
+    /// Lossy: 8-bit channels are rounded to 5/6/5 bits.
+    /// Output bit layout per u16: `R[15:11] G[10:5] B[4:0]`.
+    pub fn bgra_to_rgb565(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 4, dst.len(), 2)?;
+        bgra_to_rgb565_impl(src, dst);
+        Ok(())
+    }
+
+    /// RGBA (4 bytes/px) → RGBA4444 (little-endian u16, 2 bytes/px).
+    ///
+    /// Lossy: 8-bit channels are rounded to 4 bits each.
+    /// Output bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
+    pub fn rgba_to_rgba4444(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 4, dst.len(), 2)?;
+        rgba_to_rgba4444_impl(src, dst);
+        Ok(())
+    }
+
+    /// BGRA (4 bytes/px) → RGBA4444 (little-endian u16, 2 bytes/px).
+    ///
+    /// Lossy: 8-bit channels are rounded to 4 bits each.
+    /// Output bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
+    pub fn bgra_to_rgba4444(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 4, dst.len(), 2)?;
+        bgra_to_rgba4444_impl(src, dst);
+        Ok(())
+    }
+
+    // Strided compress conversions
+
+    /// RGBA (4 bytes/px) → RGB565 (LE, 2 bytes/px) between strided buffers. Alpha dropped.
+    ///
+    /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+    pub fn rgba_to_rgb565_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 4)?;
+        check_strided(dst.len(), width, height, dst_stride, 2)?;
+        rgba_to_rgb565_strided_impl(src, dst, width, height, src_stride, dst_stride);
+        Ok(())
+    }
+
+    /// BGRA (4 bytes/px) → RGB565 (LE, 2 bytes/px) between strided buffers. Alpha dropped.
+    ///
+    /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+    pub fn bgra_to_rgb565_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 4)?;
+        check_strided(dst.len(), width, height, dst_stride, 2)?;
+        bgra_to_rgb565_strided_impl(src, dst, width, height, src_stride, dst_stride);
+        Ok(())
+    }
+
+    /// RGBA (4 bytes/px) → RGBA4444 (LE, 2 bytes/px) between strided buffers.
+    ///
+    /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+    pub fn rgba_to_rgba4444_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 4)?;
+        check_strided(dst.len(), width, height, dst_stride, 2)?;
+        rgba_to_rgba4444_strided_impl(src, dst, width, height, src_stride, dst_stride);
+        Ok(())
+    }
+
+    /// BGRA (4 bytes/px) → RGBA4444 (LE, 2 bytes/px) between strided buffers.
+    ///
+    /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+    pub fn bgra_to_rgba4444_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 4)?;
+        check_strided(dst.len(), width, height, dst_stride, 2)?;
+        bgra_to_rgba4444_strided_impl(src, dst, width, height, src_stride, dst_stride);
+        Ok(())
+    }
 } // mod experimental_api
 #[cfg(feature = "experimental")]
 pub use experimental_api::*;

@@ -1328,6 +1328,167 @@ mod experimental {
             }
         }
     }
+    // -----------------------------------------------------------------------
+    // Packed pixel format compression (4bpp → 2bpp)
+    // -----------------------------------------------------------------------
+    //
+    // ## Rounding
+    //
+    // Channels are compressed from 8 bits using round-to-nearest:
+    //   compress_N(v) = (v * max_N + 128) >> 8
+    // where max_N is the maximum value for N bits (31, 63, or 15).
+    //
+    // This guarantees:
+    // - Perfect roundtrip: expand(compress(expand(x))) == expand(x) for all x
+    // - Nearest match for values not from N bits
+    // - Endpoints preserved: 0→0, 255→max
+    //
+    // Alpha is ignored (dropped) for RGB565, preserved for RGBA4444.
+    // Output is little-endian u16, matching the expand functions.
+
+    // Contiguous compress dispatchers
+
+    /// RGBA (4bpp) → RGB565 (LE u16, 2bpp). Alpha dropped.
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgba_to_rgb565_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+        for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
+            let r5 = (s[0] as u16 * 31 + 128) >> 8;
+            let g6 = (s[1] as u16 * 63 + 128) >> 8;
+            let b5 = (s[2] as u16 * 31 + 128) >> 8;
+            d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
+        }
+    }
+
+    /// BGRA (4bpp) → RGB565 (LE u16, 2bpp). Alpha dropped.
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn bgra_to_rgb565_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+        for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
+            let r5 = (s[2] as u16 * 31 + 128) >> 8;
+            let g6 = (s[1] as u16 * 63 + 128) >> 8;
+            let b5 = (s[0] as u16 * 31 + 128) >> 8;
+            d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
+        }
+    }
+
+    /// RGBA (4bpp) → RGBA4444 (LE u16, 2bpp).
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgba_to_rgba4444_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+        for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
+            let r4 = (s[0] as u16 * 15 + 128) >> 8;
+            let g4 = (s[1] as u16 * 15 + 128) >> 8;
+            let b4 = (s[2] as u16 * 15 + 128) >> 8;
+            let a4 = (s[3] as u16 * 15 + 128) >> 8;
+            d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
+        }
+    }
+
+    /// BGRA (4bpp) → RGBA4444 (LE u16, 2bpp).
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn bgra_to_rgba4444_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+        for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
+            let r4 = (s[2] as u16 * 15 + 128) >> 8;
+            let g4 = (s[1] as u16 * 15 + 128) >> 8;
+            let b4 = (s[0] as u16 * 15 + 128) >> 8;
+            let a4 = (s[3] as u16 * 15 + 128) >> 8;
+            d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
+        }
+    }
+
+    // Strided compress dispatchers
+
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgba_to_rgb565_strided_impl(
+        _: SimdToken,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            for (s, d) in src[y * ss..][..w * 4]
+                .chunks_exact(4)
+                .zip(dst[y * ds..][..w * 2].chunks_exact_mut(2))
+            {
+                let r5 = (s[0] as u16 * 31 + 128) >> 8;
+                let g6 = (s[1] as u16 * 63 + 128) >> 8;
+                let b5 = (s[2] as u16 * 31 + 128) >> 8;
+                d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
+            }
+        }
+    }
+
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn bgra_to_rgb565_strided_impl(
+        _: SimdToken,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            for (s, d) in src[y * ss..][..w * 4]
+                .chunks_exact(4)
+                .zip(dst[y * ds..][..w * 2].chunks_exact_mut(2))
+            {
+                let r5 = (s[2] as u16 * 31 + 128) >> 8;
+                let g6 = (s[1] as u16 * 63 + 128) >> 8;
+                let b5 = (s[0] as u16 * 31 + 128) >> 8;
+                d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
+            }
+        }
+    }
+
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgba_to_rgba4444_strided_impl(
+        _: SimdToken,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            for (s, d) in src[y * ss..][..w * 4]
+                .chunks_exact(4)
+                .zip(dst[y * ds..][..w * 2].chunks_exact_mut(2))
+            {
+                let r4 = (s[0] as u16 * 15 + 128) >> 8;
+                let g4 = (s[1] as u16 * 15 + 128) >> 8;
+                let b4 = (s[2] as u16 * 15 + 128) >> 8;
+                let a4 = (s[3] as u16 * 15 + 128) >> 8;
+                d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
+            }
+        }
+    }
+
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn bgra_to_rgba4444_strided_impl(
+        _: SimdToken,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            for (s, d) in src[y * ss..][..w * 4]
+                .chunks_exact(4)
+                .zip(dst[y * ds..][..w * 2].chunks_exact_mut(2))
+            {
+                let r4 = (s[2] as u16 * 15 + 128) >> 8;
+                let g4 = (s[1] as u16 * 15 + 128) >> 8;
+                let b4 = (s[0] as u16 * 15 + 128) >> 8;
+                let a4 = (s[3] as u16 * 15 + 128) >> 8;
+                d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
+            }
+        }
+    }
 }
 
 #[cfg(feature = "experimental")]

@@ -2233,4 +2233,256 @@ mod packed_format_tests {
             }
         }
     }
+
+    // === Compress direction tests ===
+
+    /// Reference: compress 8-bit to 5-bit with round-to-nearest.
+    fn compress5(v: u8) -> u8 {
+        ((v as u16 * 31 + 128) >> 8) as u8
+    }
+    fn compress6(v: u8) -> u8 {
+        ((v as u16 * 63 + 128) >> 8) as u8
+    }
+    fn compress4(v: u8) -> u8 {
+        ((v as u16 * 15 + 128) >> 8) as u8
+    }
+
+    /// Reference: RGBA → RGB565 (LE).
+    fn ref_rgba_to_rgb565(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 4;
+        let mut out = vec![0u8; n * 2];
+        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(2)) {
+            let r5 = compress5(s[0]) as u16;
+            let g6 = compress6(s[1]) as u16;
+            let b5 = compress5(s[2]) as u16;
+            d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
+        }
+        out
+    }
+
+    /// Reference: BGRA → RGB565 (LE).
+    fn ref_bgra_to_rgb565(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 4;
+        let mut out = vec![0u8; n * 2];
+        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(2)) {
+            let r5 = compress5(s[2]) as u16;
+            let g6 = compress6(s[1]) as u16;
+            let b5 = compress5(s[0]) as u16;
+            d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
+        }
+        out
+    }
+
+    /// Reference: RGBA → RGBA4444 (LE).
+    fn ref_rgba_to_rgba4444(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 4;
+        let mut out = vec![0u8; n * 2];
+        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(2)) {
+            let r4 = compress4(s[0]) as u16;
+            let g4 = compress4(s[1]) as u16;
+            let b4 = compress4(s[2]) as u16;
+            let a4 = compress4(s[3]) as u16;
+            d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
+        }
+        out
+    }
+
+    /// Reference: BGRA → RGBA4444 (LE).
+    fn ref_bgra_to_rgba4444(src: &[u8]) -> Vec<u8> {
+        let n = src.len() / 4;
+        let mut out = vec![0u8; n * 2];
+        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(2)) {
+            let r4 = compress4(s[2]) as u16;
+            let g4 = compress4(s[1]) as u16;
+            let b4 = compress4(s[0]) as u16;
+            let a4 = compress4(s[3]) as u16;
+            d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
+        }
+        out
+    }
+
+    #[test]
+    fn rgba_to_rgb565_known_values() {
+        let mut dst = [0u8; 2];
+        // Black
+        rgba_to_rgb565(&[0, 0, 0, 255], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0);
+        // White
+        rgba_to_rgb565(&[255, 255, 255, 255], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0xFFFF);
+        // Pure red
+        rgba_to_rgb565(&[255, 0, 0, 255], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0xF800);
+        // Pure green
+        rgba_to_rgb565(&[0, 255, 0, 255], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0x07E0);
+        // Pure blue
+        rgba_to_rgb565(&[0, 0, 255, 255], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0x001F);
+        // Alpha is ignored
+        rgba_to_rgb565(&[255, 255, 255, 0], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0xFFFF);
+    }
+
+    #[test]
+    fn rgba_to_rgba4444_known_values() {
+        let mut dst = [0u8; 2];
+        // Black transparent
+        rgba_to_rgba4444(&[0, 0, 0, 0], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0);
+        // White opaque
+        rgba_to_rgba4444(&[255, 255, 255, 255], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0xFFFF);
+        // Red opaque
+        rgba_to_rgba4444(&[255, 0, 0, 255], &mut dst).unwrap();
+        assert_eq!(u16::from_le_bytes(dst), 0xF00F);
+    }
+
+    #[test]
+    fn rgb565_roundtrip_exhaustive() {
+        // expand(compress(expand(x))) == expand(x) for all x in [0..32/64/32]
+        // Build all 65536 packed values, expand, compress, expand again
+        let mut packed = vec![0u8; 65536 * 2];
+        for i in 0u32..65536 {
+            packed[i as usize * 2..][..2].copy_from_slice(&(i as u16).to_le_bytes());
+        }
+        let mut expanded = vec![0u8; 65536 * 4];
+        rgb565_to_rgba(&packed, &mut expanded).unwrap();
+
+        let mut recompressed = vec![0u8; 65536 * 2];
+        rgba_to_rgb565(&expanded, &mut recompressed).unwrap();
+
+        let mut re_expanded = vec![0u8; 65536 * 4];
+        rgb565_to_rgba(&recompressed, &mut re_expanded).unwrap();
+
+        assert_eq!(expanded, re_expanded, "RGB565 roundtrip failed");
+    }
+
+    #[test]
+    fn rgba4444_roundtrip_exhaustive() {
+        let mut packed = vec![0u8; 65536 * 2];
+        for i in 0u32..65536 {
+            packed[i as usize * 2..][..2].copy_from_slice(&(i as u16).to_le_bytes());
+        }
+        let mut expanded = vec![0u8; 65536 * 4];
+        rgba4444_to_rgba(&packed, &mut expanded).unwrap();
+
+        let mut recompressed = vec![0u8; 65536 * 2];
+        rgba_to_rgba4444(&expanded, &mut recompressed).unwrap();
+
+        let mut re_expanded = vec![0u8; 65536 * 4];
+        rgba4444_to_rgba(&recompressed, &mut re_expanded).unwrap();
+
+        assert_eq!(expanded, re_expanded, "RGBA4444 roundtrip failed");
+    }
+
+    #[test]
+    fn compress_endpoints() {
+        // 0→0, 255→max for all bit depths
+        assert_eq!(compress5(0), 0);
+        assert_eq!(compress5(255), 31);
+        assert_eq!(compress6(0), 0);
+        assert_eq!(compress6(255), 63);
+        assert_eq!(compress4(0), 0);
+        assert_eq!(compress4(255), 15);
+    }
+
+    #[test]
+    fn permutation_rgba_to_rgb565() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64] {
+                let src = make_4bpp(n);
+                let expected = ref_rgba_to_rgb565(&src);
+                let mut dst = vec![0u8; n * 2];
+                rgba_to_rgb565(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "rgba_to_rgb565 n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("rgba_to_rgb565: {report}");
+    }
+
+    #[test]
+    fn permutation_bgra_to_rgb565() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64] {
+                let src = make_4bpp(n);
+                let expected = ref_bgra_to_rgb565(&src);
+                let mut dst = vec![0u8; n * 2];
+                bgra_to_rgb565(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "bgra_to_rgb565 n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("bgra_to_rgb565: {report}");
+    }
+
+    #[test]
+    fn permutation_rgba_to_rgba4444() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64] {
+                let src = make_4bpp(n);
+                let expected = ref_rgba_to_rgba4444(&src);
+                let mut dst = vec![0u8; n * 2];
+                rgba_to_rgba4444(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "rgba_to_rgba4444 n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("rgba_to_rgba4444: {report}");
+    }
+
+    #[test]
+    fn permutation_bgra_to_rgba4444() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 64] {
+                let src = make_4bpp(n);
+                let expected = ref_bgra_to_rgba4444(&src);
+                let mut dst = vec![0u8; n * 2];
+                bgra_to_rgba4444(&src, &mut dst).unwrap();
+                assert_eq!(dst, expected, "bgra_to_rgba4444 n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("bgra_to_rgba4444: {report}");
+    }
+
+    #[test]
+    fn compress_size_errors() {
+        // Empty
+        assert_eq!(
+            rgba_to_rgb565(&[], &mut [0; 2]),
+            Err(SizeError::NotPixelAligned)
+        );
+        // Not 4-byte aligned
+        assert_eq!(
+            rgba_to_rgb565(&[0; 3], &mut [0; 2]),
+            Err(SizeError::NotPixelAligned)
+        );
+        // Dst too small
+        assert_eq!(
+            rgba_to_rgb565(&[0; 8], &mut [0; 2]),
+            Err(SizeError::PixelCountMismatch)
+        );
+        // Same for RGBA4444
+        assert_eq!(
+            rgba_to_rgba4444(&[0; 5], &mut [0; 2]),
+            Err(SizeError::NotPixelAligned)
+        );
+        assert_eq!(
+            rgba_to_rgba4444(&[0; 8], &mut [0; 2]),
+            Err(SizeError::PixelCountMismatch)
+        );
+    }
+
+    #[test]
+    fn compress_bgra_matches_swapped_rgba() {
+        // BGRA→RGB565 should give same result as swapping R/B then RGBA→RGB565
+        let bgra = make_4bpp(64);
+        let mut rgba = bgra.clone();
+        for px in rgba.chunks_exact_mut(4) {
+            px.swap(0, 2);
+        }
+        let mut dst_from_bgra = vec![0u8; 64 * 2];
+        let mut dst_from_rgba = vec![0u8; 64 * 2];
+        bgra_to_rgb565(&bgra, &mut dst_from_bgra).unwrap();
+        rgba_to_rgb565(&rgba, &mut dst_from_rgba).unwrap();
+        assert_eq!(dst_from_bgra, dst_from_rgba);
+    }
 }
