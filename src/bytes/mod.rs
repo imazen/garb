@@ -1515,7 +1515,7 @@ mod experimental_api {
     /// for byte-order details.
     pub fn rgb565_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 4)?;
-        incant!(rgb565_to_rgba_impl(src, dst), [scalar]);
+        rgb565_to_rgba_impl(src, dst);
         Ok(())
     }
 
@@ -1525,7 +1525,7 @@ mod experimental_api {
     /// Output byte order: `[B, G, R, A]`.
     pub fn rgb565_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 4)?;
-        incant!(rgb565_to_bgra_impl(src, dst), [scalar]);
+        rgb565_to_bgra_impl(src, dst);
         Ok(())
     }
 
@@ -1534,7 +1534,7 @@ mod experimental_api {
     /// Source bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
     pub fn rgba4444_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 4)?;
-        incant!(rgba4444_to_rgba_impl(src, dst), [scalar]);
+        rgba4444_to_rgba_impl(src, dst);
         Ok(())
     }
 
@@ -1544,7 +1544,7 @@ mod experimental_api {
     /// Output byte order: `[B, G, R, A]`.
     pub fn rgba4444_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 4)?;
-        incant!(rgba4444_to_bgra_impl(src, dst), [scalar]);
+        rgba4444_to_bgra_impl(src, dst);
         Ok(())
     }
 
@@ -1563,10 +1563,7 @@ mod experimental_api {
     ) -> Result<(), SizeError> {
         check_strided(src.len(), width, height, src_stride, 2)?;
         check_strided(dst.len(), width, height, dst_stride, 4)?;
-        incant!(
-            rgb565_to_rgba_strided(src, dst, width, height, src_stride, dst_stride),
-            [scalar]
-        );
+        rgb565_to_rgba_strided_impl(src, dst, width, height, src_stride, dst_stride);
         Ok(())
     }
 
@@ -1583,10 +1580,7 @@ mod experimental_api {
     ) -> Result<(), SizeError> {
         check_strided(src.len(), width, height, src_stride, 2)?;
         check_strided(dst.len(), width, height, dst_stride, 4)?;
-        incant!(
-            rgb565_to_bgra_strided(src, dst, width, height, src_stride, dst_stride),
-            [scalar]
-        );
+        rgb565_to_bgra_strided_impl(src, dst, width, height, src_stride, dst_stride);
         Ok(())
     }
 
@@ -1603,10 +1597,7 @@ mod experimental_api {
     ) -> Result<(), SizeError> {
         check_strided(src.len(), width, height, src_stride, 2)?;
         check_strided(dst.len(), width, height, dst_stride, 4)?;
-        incant!(
-            rgba4444_to_rgba_strided(src, dst, width, height, src_stride, dst_stride),
-            [scalar]
-        );
+        rgba4444_to_rgba_strided_impl(src, dst, width, height, src_stride, dst_stride);
         Ok(())
     }
 
@@ -1623,10 +1614,7 @@ mod experimental_api {
     ) -> Result<(), SizeError> {
         check_strided(src.len(), width, height, src_stride, 2)?;
         check_strided(dst.len(), width, height, dst_stride, 4)?;
-        incant!(
-            rgba4444_to_bgra_strided(src, dst, width, height, src_stride, dst_stride),
-            [scalar]
-        );
+        rgba4444_to_bgra_strided_impl(src, dst, width, height, src_stride, dst_stride);
         Ok(())
     }
 } // mod experimental_api

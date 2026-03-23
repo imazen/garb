@@ -1165,9 +1165,10 @@ mod experimental {
     // vacated low bits, which maps the full source range [0, max] to [0, 255]
     // exactly (e.g. 5-bit 31 → `31<<3 | 31>>2` = 255, 6-bit 63 → `63<<2 | 63>>4` = 255).
 
-    /// RGB565 (LE u16) → RGBA: R=[15:11], G=[10:5], B=[4:0], A=255.
-    pub(in crate::bytes) fn rgb565_to_rgba_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
-        for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+    // Packed format contiguous dispatchers (autoversion generates per-tier variants)
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgb565_to_rgba_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+        for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r5 = (v >> 11) & 0x1F;
             let g6 = (v >> 5) & 0x3F;
@@ -1178,10 +1179,9 @@ mod experimental {
             d[3] = 0xFF;
         }
     }
-
-    /// RGB565 (LE u16) → BGRA: B=[4:0]→d[0], G=[10:5]→d[1], R=[15:11]→d[2], A=255.
-    pub(in crate::bytes) fn rgb565_to_bgra_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
-        for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgb565_to_bgra_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+        for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r5 = (v >> 11) & 0x1F;
             let g6 = (v >> 5) & 0x3F;
@@ -1192,14 +1192,9 @@ mod experimental {
             d[3] = 0xFF;
         }
     }
-
-    /// RGBA4444 (LE u16) → RGBA: R=[15:12], G=[11:8], B=[7:4], A=[3:0].
-    pub(in crate::bytes) fn rgba4444_to_rgba_row_scalar(
-        _t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-    ) {
-        for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgba4444_to_rgba_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+        for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r4 = (v >> 12) & 0xF;
             let g4 = (v >> 8) & 0xF;
@@ -1211,14 +1206,9 @@ mod experimental {
             d[3] = (a4 << 4 | a4) as u8;
         }
     }
-
-    /// RGBA4444 (LE u16) → BGRA: B=[7:4]→d[0], G=[11:8]→d[1], R=[15:12]→d[2], A=[3:0]→d[3].
-    pub(in crate::bytes) fn rgba4444_to_bgra_row_scalar(
-        _t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-    ) {
-        for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgba4444_to_bgra_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+        for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r4 = (v >> 12) & 0xF;
             let g4 = (v >> 8) & 0xF;
@@ -1231,23 +1221,10 @@ mod experimental {
         }
     }
 
-    // Packed format contiguous wrappers
-    pub(in crate::bytes) fn rgb565_to_rgba_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        rgb565_to_rgba_row_scalar(t, s, d);
-    }
-    pub(in crate::bytes) fn rgb565_to_bgra_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        rgb565_to_bgra_row_scalar(t, s, d);
-    }
-    pub(in crate::bytes) fn rgba4444_to_rgba_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        rgba4444_to_rgba_row_scalar(t, s, d);
-    }
-    pub(in crate::bytes) fn rgba4444_to_bgra_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        rgba4444_to_bgra_row_scalar(t, s, d);
-    }
-
-    // Packed format strided wrappers
-    pub(in crate::bytes) fn rgb565_to_rgba_strided_scalar(
-        t: ScalarToken,
+    // Packed format strided dispatchers
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgb565_to_rgba_strided_impl(
+        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1256,11 +1233,24 @@ mod experimental {
         ds: usize,
     ) {
         for y in 0..h {
-            rgb565_to_rgba_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+            for (s, d) in src[y * ss..][..w * 2]
+                .chunks_exact(2)
+                .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            {
+                let v = u16::from_le_bytes([s[0], s[1]]);
+                let r5 = (v >> 11) & 0x1F;
+                let g6 = (v >> 5) & 0x3F;
+                let b5 = v & 0x1F;
+                d[0] = (r5 << 3 | r5 >> 2) as u8;
+                d[1] = (g6 << 2 | g6 >> 4) as u8;
+                d[2] = (b5 << 3 | b5 >> 2) as u8;
+                d[3] = 0xFF;
+            }
         }
     }
-    pub(in crate::bytes) fn rgb565_to_bgra_strided_scalar(
-        t: ScalarToken,
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgb565_to_bgra_strided_impl(
+        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1269,11 +1259,24 @@ mod experimental {
         ds: usize,
     ) {
         for y in 0..h {
-            rgb565_to_bgra_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+            for (s, d) in src[y * ss..][..w * 2]
+                .chunks_exact(2)
+                .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            {
+                let v = u16::from_le_bytes([s[0], s[1]]);
+                let r5 = (v >> 11) & 0x1F;
+                let g6 = (v >> 5) & 0x3F;
+                let b5 = v & 0x1F;
+                d[0] = (b5 << 3 | b5 >> 2) as u8;
+                d[1] = (g6 << 2 | g6 >> 4) as u8;
+                d[2] = (r5 << 3 | r5 >> 2) as u8;
+                d[3] = 0xFF;
+            }
         }
     }
-    pub(in crate::bytes) fn rgba4444_to_rgba_strided_scalar(
-        t: ScalarToken,
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgba4444_to_rgba_strided_impl(
+        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1282,11 +1285,25 @@ mod experimental {
         ds: usize,
     ) {
         for y in 0..h {
-            rgba4444_to_rgba_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+            for (s, d) in src[y * ss..][..w * 2]
+                .chunks_exact(2)
+                .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            {
+                let v = u16::from_le_bytes([s[0], s[1]]);
+                let r4 = (v >> 12) & 0xF;
+                let g4 = (v >> 8) & 0xF;
+                let b4 = (v >> 4) & 0xF;
+                let a4 = v & 0xF;
+                d[0] = (r4 << 4 | r4) as u8;
+                d[1] = (g4 << 4 | g4) as u8;
+                d[2] = (b4 << 4 | b4) as u8;
+                d[3] = (a4 << 4 | a4) as u8;
+            }
         }
     }
-    pub(in crate::bytes) fn rgba4444_to_bgra_strided_scalar(
-        t: ScalarToken,
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn rgba4444_to_bgra_strided_impl(
+        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1295,7 +1312,20 @@ mod experimental {
         ds: usize,
     ) {
         for y in 0..h {
-            rgba4444_to_bgra_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
+            for (s, d) in src[y * ss..][..w * 2]
+                .chunks_exact(2)
+                .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            {
+                let v = u16::from_le_bytes([s[0], s[1]]);
+                let r4 = (v >> 12) & 0xF;
+                let g4 = (v >> 8) & 0xF;
+                let b4 = (v >> 4) & 0xF;
+                let a4 = v & 0xF;
+                d[0] = (b4 << 4 | b4) as u8;
+                d[1] = (g4 << 4 | g4) as u8;
+                d[2] = (r4 << 4 | r4) as u8;
+                d[3] = (a4 << 4 | a4) as u8;
+            }
         }
     }
 }

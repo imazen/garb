@@ -488,6 +488,71 @@ fn bench_unpremul_f32(c: &mut Criterion) {
     group.finish();
 }
 
+// === Naive baselines for packed formats ===
+
+#[cfg(feature = "experimental")]
+fn naive_rgb565_to_rgba(src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+        let v = u16::from_le_bytes([s[0], s[1]]);
+        let r5 = (v >> 11) & 0x1F;
+        let g6 = (v >> 5) & 0x3F;
+        let b5 = v & 0x1F;
+        d[0] = (r5 << 3 | r5 >> 2) as u8;
+        d[1] = (g6 << 2 | g6 >> 4) as u8;
+        d[2] = (b5 << 3 | b5 >> 2) as u8;
+        d[3] = 0xFF;
+    }
+}
+
+#[cfg(feature = "experimental")]
+fn naive_rgba4444_to_rgba(src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+        let v = u16::from_le_bytes([s[0], s[1]]);
+        let r4 = (v >> 12) & 0xF;
+        let g4 = (v >> 8) & 0xF;
+        let b4 = (v >> 4) & 0xF;
+        let a4 = v & 0xF;
+        d[0] = (r4 << 4 | r4) as u8;
+        d[1] = (g4 << 4 | g4) as u8;
+        d[2] = (b4 << 4 | b4) as u8;
+        d[3] = (a4 << 4 | a4) as u8;
+    }
+}
+
+#[cfg(feature = "experimental")]
+fn bench_rgb565_to_rgba(c: &mut Criterion) {
+    let mut group = c.benchmark_group("rgb565_to_rgba");
+    let src_n = W * H * 2;
+    let dst_n = W * H * 4;
+    group.throughput(Throughput::Bytes(dst_n as u64));
+    let src: Vec<u8> = (0..src_n).map(|i| (i % 251) as u8).collect();
+    bench_copy(
+        &mut group,
+        garb::bytes::rgb565_to_rgba,
+        naive_rgb565_to_rgba,
+        &src,
+        dst_n,
+    );
+    group.finish();
+}
+
+#[cfg(feature = "experimental")]
+fn bench_rgba4444_to_rgba(c: &mut Criterion) {
+    let mut group = c.benchmark_group("rgba4444_to_rgba");
+    let src_n = W * H * 2;
+    let dst_n = W * H * 4;
+    group.throughput(Throughput::Bytes(dst_n as u64));
+    let src: Vec<u8> = (0..src_n).map(|i| (i % 251) as u8).collect();
+    bench_copy(
+        &mut group,
+        garb::bytes::rgba4444_to_rgba,
+        naive_rgba4444_to_rgba,
+        &src,
+        dst_n,
+    );
+    group.finish();
+}
+
 // === Custom main for tier detection before criterion runs ===
 
 fn main() {
@@ -508,6 +573,8 @@ fn main() {
         bench_rgba_to_gray_bt709(&mut criterion);
         bench_premul_f32(&mut criterion);
         bench_unpremul_f32(&mut criterion);
+        bench_rgb565_to_rgba(&mut criterion);
+        bench_rgba4444_to_rgba(&mut criterion);
     }
     criterion.final_summary();
 }
