@@ -2110,4 +2110,127 @@ mod packed_format_tests {
             assert_eq!(dst[0], expected, "4-bit expand({v})");
         }
     }
+
+    #[test]
+    fn rgb565_to_rgba_exhaustive() {
+        // Test ALL 65536 possible RGB565 values
+        let mut src = vec![0u8; 65536 * 2];
+        for i in 0u32..65536 {
+            let le = (i as u16).to_le_bytes();
+            src[i as usize * 2] = le[0];
+            src[i as usize * 2 + 1] = le[1];
+        }
+        let mut dst = vec![0u8; 65536 * 4];
+        rgb565_to_rgba(&src, &mut dst).unwrap();
+        for i in 0u32..65536 {
+            let v = i as u16;
+            let r5 = ((v >> 11) & 0x1F) as u8;
+            let g6 = ((v >> 5) & 0x3F) as u8;
+            let b5 = (v & 0x1F) as u8;
+            let expected = [expand5(r5), expand6(g6), expand5(b5), 255];
+            let got = &dst[i as usize * 4..i as usize * 4 + 4];
+            assert_eq!(got, &expected, "RGB565→RGBA mismatch at 0x{i:04X}");
+        }
+    }
+
+    #[test]
+    fn rgb565_to_bgra_exhaustive() {
+        let mut src = vec![0u8; 65536 * 2];
+        for i in 0u32..65536 {
+            let le = (i as u16).to_le_bytes();
+            src[i as usize * 2] = le[0];
+            src[i as usize * 2 + 1] = le[1];
+        }
+        let mut dst = vec![0u8; 65536 * 4];
+        rgb565_to_bgra(&src, &mut dst).unwrap();
+        for i in 0u32..65536 {
+            let v = i as u16;
+            let r5 = ((v >> 11) & 0x1F) as u8;
+            let g6 = ((v >> 5) & 0x3F) as u8;
+            let b5 = (v & 0x1F) as u8;
+            let expected = [expand5(b5), expand6(g6), expand5(r5), 255];
+            let got = &dst[i as usize * 4..i as usize * 4 + 4];
+            assert_eq!(got, &expected, "RGB565→BGRA mismatch at 0x{i:04X}");
+        }
+    }
+
+    #[test]
+    fn rgba4444_to_rgba_exhaustive() {
+        let mut src = vec![0u8; 65536 * 2];
+        for i in 0u32..65536 {
+            let le = (i as u16).to_le_bytes();
+            src[i as usize * 2] = le[0];
+            src[i as usize * 2 + 1] = le[1];
+        }
+        let mut dst = vec![0u8; 65536 * 4];
+        rgba4444_to_rgba(&src, &mut dst).unwrap();
+        for i in 0u32..65536 {
+            let v = i as u16;
+            let r4 = ((v >> 12) & 0xF) as u8;
+            let g4 = ((v >> 8) & 0xF) as u8;
+            let b4 = ((v >> 4) & 0xF) as u8;
+            let a4 = (v & 0xF) as u8;
+            let expected = [expand4(r4), expand4(g4), expand4(b4), expand4(a4)];
+            let got = &dst[i as usize * 4..i as usize * 4 + 4];
+            assert_eq!(got, &expected, "RGBA4444→RGBA mismatch at 0x{i:04X}");
+        }
+    }
+
+    #[test]
+    fn rgba4444_to_bgra_exhaustive() {
+        let mut src = vec![0u8; 65536 * 2];
+        for i in 0u32..65536 {
+            let le = (i as u16).to_le_bytes();
+            src[i as usize * 2] = le[0];
+            src[i as usize * 2 + 1] = le[1];
+        }
+        let mut dst = vec![0u8; 65536 * 4];
+        rgba4444_to_bgra(&src, &mut dst).unwrap();
+        for i in 0u32..65536 {
+            let v = i as u16;
+            let r4 = ((v >> 12) & 0xF) as u8;
+            let g4 = ((v >> 8) & 0xF) as u8;
+            let b4 = ((v >> 4) & 0xF) as u8;
+            let a4 = (v & 0xF) as u8;
+            let expected = [expand4(b4), expand4(g4), expand4(r4), expand4(a4)];
+            let got = &dst[i as usize * 4..i as usize * 4 + 4];
+            assert_eq!(got, &expected, "RGBA4444→BGRA mismatch at 0x{i:04X}");
+        }
+    }
+
+    #[test]
+    fn strided_padding_untouched() {
+        for w in [1, 3, 7, 16, 31, 64] {
+            let h = 4;
+            let src_stride = w * 2 + 6;
+            let dst_stride = w * 4 + 12;
+            let src_total = (h - 1) * src_stride + w * 2;
+            let dst_total = (h - 1) * dst_stride + w * 4;
+            let mut src = vec![0xDDu8; src_total];
+            for y in 0..h {
+                for x in 0..w * 2 {
+                    src[y * src_stride + x] = ((y * w * 2 + x) % 251) as u8;
+                }
+            }
+            let mut dst = vec![0xEEu8; dst_total];
+            rgb565_to_rgba_strided(&src, &mut dst, w, h, src_stride, dst_stride).unwrap();
+
+            // Per-row output must match contiguous
+            for y in 0..h {
+                let row_src = &src[y * src_stride..y * src_stride + w * 2];
+                let mut expected = vec![0u8; w * 4];
+                rgb565_to_rgba(row_src, &mut expected).unwrap();
+                let got = &dst[y * dst_stride..y * dst_stride + w * 4];
+                assert_eq!(got, &expected[..], "strided mismatch w={w} row={y}");
+            }
+
+            // Padding bytes must be untouched
+            for y in 0..h - 1 {
+                let pad = &dst[y * dst_stride + w * 4..(y + 1) * dst_stride];
+                for (j, &b) in pad.iter().enumerate() {
+                    assert_eq!(b, 0xEE, "padding overwritten w={w} y={y} offset={j}");
+                }
+            }
+        }
+    }
 }
