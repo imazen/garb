@@ -1464,6 +1464,86 @@ mod experimental_api {
         Ok(())
     }
     // ===========================================================================
+    // u8 alpha premultiplication (RGBA/BGRA, alpha-last at byte 3)
+    // ===========================================================================
+
+    /// Premultiply alpha for u8 RGBA pixels in-place: `C' = round(C × A / 255)`.
+    ///
+    /// Each pixel is 4 bytes with alpha at byte 3. Works for any alpha-last
+    /// layout (RGBA, BGRA). Uses the exact integer formula — no precision loss
+    /// beyond the inherent quantization to u8.
+    ///
+    /// The buffer must be a multiple of 4 bytes and non-empty.
+    pub fn premultiply_alpha_u8(buf: &mut [u8]) -> Result<(), SizeError> {
+        check_inplace(buf.len(), 4)?;
+        premul_u8_impl(buf);
+        Ok(())
+    }
+
+    /// Premultiply alpha for u8 RGBA pixels, copying from `src` to `dst`.
+    ///
+    /// Each pixel is 4 bytes with alpha at byte 3.
+    pub fn premultiply_alpha_u8_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        check_copy(src.len(), 4, dst.len(), 4)?;
+        premul_u8_copy_impl(src, dst);
+        Ok(())
+    }
+
+    /// Alias for [`premultiply_alpha_u8`] — BGRA has alpha at the same position.
+    #[inline(always)]
+    pub fn premultiply_alpha_rgba_u8(buf: &mut [u8]) -> Result<(), SizeError> {
+        premultiply_alpha_u8(buf)
+    }
+
+    /// Alias for [`premultiply_alpha_u8`] — BGRA has alpha at the same position.
+    #[inline(always)]
+    pub fn premultiply_alpha_bgra_u8(buf: &mut [u8]) -> Result<(), SizeError> {
+        premultiply_alpha_u8(buf)
+    }
+
+    /// Alias for [`premultiply_alpha_u8_copy`].
+    #[inline(always)]
+    pub fn premultiply_alpha_rgba_u8_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        premultiply_alpha_u8_copy(src, dst)
+    }
+
+    /// Alias for [`premultiply_alpha_u8_copy`].
+    #[inline(always)]
+    pub fn premultiply_alpha_bgra_u8_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+        premultiply_alpha_u8_copy(src, dst)
+    }
+
+    /// Premultiply alpha for u8 RGBA pixels in a strided buffer.
+    ///
+    /// `width` is pixels per row. `stride` is bytes between row starts.
+    /// Must be ≥ `width × 4`.
+    pub fn premultiply_alpha_u8_strided(
+        buf: &mut [u8],
+        width: usize,
+        height: usize,
+        stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(buf.len(), width, height, stride, 4)?;
+        premul_u8_strided_impl(buf, width, height, stride);
+        Ok(())
+    }
+
+    /// Premultiply alpha for u8 RGBA pixels between strided buffers.
+    pub fn premultiply_alpha_u8_copy_strided(
+        src: &[u8],
+        dst: &mut [u8],
+        width: usize,
+        height: usize,
+        src_stride: usize,
+        dst_stride: usize,
+    ) -> Result<(), SizeError> {
+        check_strided(src.len(), width, height, src_stride, 4)?;
+        check_strided(dst.len(), width, height, dst_stride, 4)?;
+        premul_u8_copy_strided_impl(src, dst, width, height, src_stride, dst_stride);
+        Ok(())
+    }
+
+    // ===========================================================================
     // Packed pixel format expansion (2bpp → 4bpp, little-endian)
     // ===========================================================================
     //

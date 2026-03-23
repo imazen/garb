@@ -1489,6 +1489,88 @@ mod experimental {
             }
         }
     }
+    // -----------------------------------------------------------------------
+    // u8 alpha premultiplication (RGBA, alpha-last)
+    // -----------------------------------------------------------------------
+    //
+    // Premultiply: c' = (c * a + 128 + ((c * a + 128) >> 8)) >> 8
+    //
+    // This is the exact integer formula for round(c * a / 255). The naive
+    // `(c * a + 127) / 255` is also exact but uses division; the shift-based
+    // form above is equivalent and faster. Proof: for all (c, a) in [0,255]²,
+    // both formulas produce the same result, which equals round(c * a / 255.0).
+    //
+    // Alpha channel is preserved unchanged.
+
+    /// Fast exact div-by-255: round(x * a / 255).
+    #[inline(always)]
+    fn premul_u8(c: u8, a: u8) -> u8 {
+        let t = c as u32 * a as u32 + 128;
+        ((t + (t >> 8)) >> 8) as u8
+    }
+
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn premul_u8_impl(_: SimdToken, buf: &mut [u8]) {
+        for px in buf.chunks_exact_mut(4) {
+            let a = px[3];
+            px[0] = premul_u8(px[0], a);
+            px[1] = premul_u8(px[1], a);
+            px[2] = premul_u8(px[2], a);
+        }
+    }
+
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn premul_u8_copy_impl(_: SimdToken, src: &[u8], dst: &mut [u8]) {
+        for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+            let a = s[3];
+            d[0] = premul_u8(s[0], a);
+            d[1] = premul_u8(s[1], a);
+            d[2] = premul_u8(s[2], a);
+            d[3] = a;
+        }
+    }
+
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn premul_u8_strided_impl(
+        _: SimdToken,
+        buf: &mut [u8],
+        w: usize,
+        h: usize,
+        stride: usize,
+    ) {
+        for y in 0..h {
+            for px in buf[y * stride..][..w * 4].chunks_exact_mut(4) {
+                let a = px[3];
+                px[0] = premul_u8(px[0], a);
+                px[1] = premul_u8(px[1], a);
+                px[2] = premul_u8(px[2], a);
+            }
+        }
+    }
+
+    #[autoversion(v3, neon, wasm128)]
+    pub(in crate::bytes) fn premul_u8_copy_strided_impl(
+        _: SimdToken,
+        src: &[u8],
+        dst: &mut [u8],
+        w: usize,
+        h: usize,
+        ss: usize,
+        ds: usize,
+    ) {
+        for y in 0..h {
+            for (s, d) in src[y * ss..][..w * 4]
+                .chunks_exact(4)
+                .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            {
+                let a = s[3];
+                d[0] = premul_u8(s[0], a);
+                d[1] = premul_u8(s[1], a);
+                d[2] = premul_u8(s[2], a);
+                d[3] = a;
+            }
+        }
+    }
 }
 
 #[cfg(feature = "experimental")]

@@ -1805,6 +1805,135 @@ mod experimental_premul_tests {
 } // mod experimental_premul_tests
 
 #[cfg(feature = "experimental")]
+mod premul_u8_tests {
+    use super::*;
+
+    /// Reference: exact div-by-255 via integer math.
+    fn ref_premul(c: u8, a: u8) -> u8 {
+        ((c as u32 * a as u32 + 127) / 255) as u8
+    }
+
+    #[test]
+    fn premul_u8_known_values() {
+        // Full alpha: no change
+        let mut buf = vec![128, 64, 32, 255];
+        premultiply_alpha_u8(&mut buf).unwrap();
+        assert_eq!(buf, [128, 64, 32, 255]);
+
+        // Zero alpha: all channels become 0
+        let mut buf = vec![255, 128, 64, 0];
+        premultiply_alpha_u8(&mut buf).unwrap();
+        assert_eq!(buf, [0, 0, 0, 0]);
+
+        // Half alpha
+        let mut buf = vec![200, 100, 50, 128];
+        premultiply_alpha_u8(&mut buf).unwrap();
+        // 200*128/255 ≈ 100.4 → 100, 100*128/255 ≈ 50.2 → 50, 50*128/255 ≈ 25.1 → 25
+        assert_eq!(buf[0], ref_premul(200, 128));
+        assert_eq!(buf[1], ref_premul(100, 128));
+        assert_eq!(buf[2], ref_premul(50, 128));
+        assert_eq!(buf[3], 128);
+    }
+
+    #[test]
+    fn premul_u8_copy_matches_inplace() {
+        let src: Vec<u8> = (0..256).map(|i| (i % 251) as u8).collect();
+        let mut inplace = src.clone();
+        premultiply_alpha_u8(&mut inplace).unwrap();
+        let mut copy_dst = vec![0u8; src.len()];
+        premultiply_alpha_u8_copy(&src, &mut copy_dst).unwrap();
+        assert_eq!(inplace, copy_dst);
+    }
+
+    #[test]
+    fn premul_u8_exhaustive_channel() {
+        // Test all (channel, alpha) pairs for a single channel
+        for a in 0..=255u8 {
+            for c in 0..=255u8 {
+                let mut buf = [c, 0, 0, a];
+                premultiply_alpha_u8(&mut buf).unwrap();
+                let expected = ref_premul(c, a);
+                assert_eq!(
+                    buf[0], expected,
+                    "premul({c}, {a}): got {}, expected {expected}",
+                    buf[0]
+                );
+                // Alpha preserved
+                assert_eq!(buf[3], a);
+                // Result must be ≤ alpha (premul invariant)
+                assert!(buf[0] <= a, "premul({c}, {a}) = {} > alpha {a}", buf[0]);
+            }
+        }
+    }
+
+    #[test]
+    fn premul_u8_idempotent_at_extremes() {
+        // Already premultiplied: premul again should not change if c <= a
+        for a in 0..=255u8 {
+            let mut buf = [a, a, a, a]; // max premul value
+            premultiply_alpha_u8(&mut buf).unwrap();
+            // premul(a, a) = a*a/255, which is ≤ a
+            assert!(buf[0] <= a);
+            assert_eq!(buf[3], a);
+        }
+    }
+
+    #[test]
+    fn premul_u8_aliases() {
+        let mut a = vec![200u8, 100, 50, 128, 255, 0, 128, 64];
+        let mut b = a.clone();
+        let mut c = a.clone();
+        premultiply_alpha_u8(&mut a).unwrap();
+        premultiply_alpha_rgba_u8(&mut b).unwrap();
+        premultiply_alpha_bgra_u8(&mut c).unwrap();
+        assert_eq!(a, b);
+        assert_eq!(a, c);
+    }
+
+    #[test]
+    fn permutation_premul_u8() {
+        let report = for_each_token_permutation(policy(), |perm| {
+            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33] {
+                let src = make_4bpp(n);
+
+                // In-place
+                let mut buf = src.clone();
+                premultiply_alpha_u8(&mut buf).unwrap();
+                for (i, (s, d)) in src.chunks_exact(4).zip(buf.chunks_exact(4)).enumerate() {
+                    let a = s[3];
+                    assert_eq!(d[0], ref_premul(s[0], a), "n={n} i={i} R tier={perm}");
+                    assert_eq!(d[1], ref_premul(s[1], a), "n={n} i={i} G tier={perm}");
+                    assert_eq!(d[2], ref_premul(s[2], a), "n={n} i={i} B tier={perm}");
+                    assert_eq!(d[3], a, "n={n} i={i} A tier={perm}");
+                }
+
+                // Copy
+                let mut dst = vec![0u8; src.len()];
+                premultiply_alpha_u8_copy(&src, &mut dst).unwrap();
+                assert_eq!(dst, buf, "copy vs inplace n={n} tier={perm}");
+            }
+        });
+        std::eprintln!("premul_u8: {report}");
+    }
+
+    #[test]
+    fn premul_u8_size_errors() {
+        assert_eq!(
+            premultiply_alpha_u8(&mut [0; 3]),
+            Err(SizeError::NotPixelAligned)
+        );
+        assert_eq!(
+            premultiply_alpha_u8(&mut []),
+            Err(SizeError::NotPixelAligned)
+        );
+        assert_eq!(
+            premultiply_alpha_u8_copy(&[0; 8], &mut [0; 4]),
+            Err(SizeError::PixelCountMismatch)
+        );
+    }
+}
+
+#[cfg(feature = "experimental")]
 mod packed_format_tests {
     use super::*;
 
