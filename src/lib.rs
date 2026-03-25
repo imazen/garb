@@ -55,6 +55,8 @@
 
 #![no_std]
 #![forbid(unsafe_code)]
+// TODO(0.3.0): migrate #[autoversion] functions from SimdToken to ScalarToken
+#![allow(deprecated)]
 
 #[cfg(feature = "imgref")]
 extern crate alloc;
