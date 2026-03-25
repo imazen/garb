@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.5
+
+### Fixed
+
+- **Fixed alignment panics on unaligned `&[u8]` buffers.** `bytemuck::cast_slice`
+  replaced with `try_cast_slice` + scalar fallback, so byte-level functions no
+  longer panic when the input isn't naturally aligned (e.g. `Vec<u8>` on Windows).
+  Closes [#1](https://github.com/imazen/garb/issues/1).
+
+### Added
+
+- README badges (crates.io, docs.rs, CI, license, MSRV).
+- Alignment benchmarks comparing aligned vs unaligned buffers across SIMD tiers.
+
+### Changed
+
+- CI now tests on Windows x86_64, Windows aarch64, Windows i686, macOS Intel,
+  macOS aarch64, Linux x86_64, Linux aarch64, and wasm32.
+
 ## 0.2.4
 
 Archmage migration + dep bumps. No public API changes.
