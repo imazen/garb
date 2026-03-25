@@ -244,7 +244,7 @@ fn permutation_strided_swap_br() {
                 );
             }
             // Padding untouched
-            for i in (w * 4)..(stride / 1) {
+            for i in (w * 4)..stride {
                 assert_eq!(
                     buf[y * stride + i],
                     0xCC,
@@ -1133,13 +1133,14 @@ mod experimental_tests {
     /// Verify that for each matrix, gray→rgb→gray is identity (weights sum to 256).
     #[test]
     fn luma_roundtrip_identity() {
-        let matrices: &[(
+        type LumaEntry = (
             fn(&[u8], &mut [u8]) -> Result<(), SizeError>,
-            &str,
+            &'static str,
             u16,
             u16,
             u16,
-        )] = &[
+        );
+        let matrices: &[LumaEntry] = &[
             (rgb_to_gray_bt709, "BT.709", 54, 183, 19),
             (rgb_to_gray_bt601, "BT.601", 77, 150, 29),
             (rgb_to_gray_bt2020, "BT.2020", 67, 174, 15),

@@ -1167,7 +1167,7 @@ mod experimental {
 
     // Packed format contiguous dispatchers (autoversion generates per-tier variants)
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn rgb565_to_rgba_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+    pub(in crate::bytes) fn rgb565_to_rgba_impl(s: &[u8], d: &mut [u8]) {
         for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r5 = (v >> 11) & 0x1F;
@@ -1180,7 +1180,7 @@ mod experimental {
         }
     }
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn rgb565_to_bgra_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+    pub(in crate::bytes) fn rgb565_to_bgra_impl(s: &[u8], d: &mut [u8]) {
         for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r5 = (v >> 11) & 0x1F;
@@ -1193,7 +1193,7 @@ mod experimental {
         }
     }
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn rgba4444_to_rgba_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+    pub(in crate::bytes) fn rgba4444_to_rgba_impl(s: &[u8], d: &mut [u8]) {
         for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r4 = (v >> 12) & 0xF;
@@ -1207,7 +1207,7 @@ mod experimental {
         }
     }
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn rgba4444_to_bgra_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+    pub(in crate::bytes) fn rgba4444_to_bgra_impl(s: &[u8], d: &mut [u8]) {
         for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r4 = (v >> 12) & 0xF;
@@ -1224,7 +1224,6 @@ mod experimental {
     // Packed format strided dispatchers
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn rgb565_to_rgba_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1250,7 +1249,6 @@ mod experimental {
     }
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn rgb565_to_bgra_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1276,7 +1274,6 @@ mod experimental {
     }
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn rgba4444_to_rgba_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1303,7 +1300,6 @@ mod experimental {
     }
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn rgba4444_to_bgra_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1350,7 +1346,7 @@ mod experimental {
 
     /// RGBA (4bpp) → RGB565 (LE u16, 2bpp). Alpha dropped.
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn rgba_to_rgb565_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+    pub(in crate::bytes) fn rgba_to_rgb565_impl(s: &[u8], d: &mut [u8]) {
         for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
             let r5 = (s[0] as u16 * 31 + 128) >> 8;
             let g6 = (s[1] as u16 * 63 + 128) >> 8;
@@ -1361,7 +1357,7 @@ mod experimental {
 
     /// BGRA (4bpp) → RGB565 (LE u16, 2bpp). Alpha dropped.
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn bgra_to_rgb565_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+    pub(in crate::bytes) fn bgra_to_rgb565_impl(s: &[u8], d: &mut [u8]) {
         for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
             let r5 = (s[2] as u16 * 31 + 128) >> 8;
             let g6 = (s[1] as u16 * 63 + 128) >> 8;
@@ -1372,7 +1368,7 @@ mod experimental {
 
     /// RGBA (4bpp) → RGBA4444 (LE u16, 2bpp).
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn rgba_to_rgba4444_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+    pub(in crate::bytes) fn rgba_to_rgba4444_impl(s: &[u8], d: &mut [u8]) {
         for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
             let r4 = (s[0] as u16 * 15 + 128) >> 8;
             let g4 = (s[1] as u16 * 15 + 128) >> 8;
@@ -1384,7 +1380,7 @@ mod experimental {
 
     /// BGRA (4bpp) → RGBA4444 (LE u16, 2bpp).
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn bgra_to_rgba4444_impl(_: SimdToken, s: &[u8], d: &mut [u8]) {
+    pub(in crate::bytes) fn bgra_to_rgba4444_impl(s: &[u8], d: &mut [u8]) {
         for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
             let r4 = (s[2] as u16 * 15 + 128) >> 8;
             let g4 = (s[1] as u16 * 15 + 128) >> 8;
@@ -1398,7 +1394,6 @@ mod experimental {
 
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn rgba_to_rgb565_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1421,7 +1416,6 @@ mod experimental {
 
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn bgra_to_rgb565_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1444,7 +1438,6 @@ mod experimental {
 
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn rgba_to_rgba4444_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1468,7 +1461,6 @@ mod experimental {
 
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn bgra_to_rgba4444_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
@@ -1510,7 +1502,7 @@ mod experimental {
     }
 
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn premul_u8_impl(_: SimdToken, buf: &mut [u8]) {
+    pub(in crate::bytes) fn premul_u8_impl(buf: &mut [u8]) {
         for px in buf.chunks_exact_mut(4) {
             let a = px[3];
             px[0] = premul_u8(px[0], a);
@@ -1520,7 +1512,7 @@ mod experimental {
     }
 
     #[autoversion(v3, neon, wasm128)]
-    pub(in crate::bytes) fn premul_u8_copy_impl(_: SimdToken, src: &[u8], dst: &mut [u8]) {
+    pub(in crate::bytes) fn premul_u8_copy_impl(src: &[u8], dst: &mut [u8]) {
         for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
             let a = s[3];
             d[0] = premul_u8(s[0], a);
@@ -1532,7 +1524,6 @@ mod experimental {
 
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn premul_u8_strided_impl(
-        _: SimdToken,
         buf: &mut [u8],
         w: usize,
         h: usize,
@@ -1550,7 +1541,6 @@ mod experimental {
 
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn premul_u8_copy_strided_impl(
-        _: SimdToken,
         src: &[u8],
         dst: &mut [u8],
         w: usize,
