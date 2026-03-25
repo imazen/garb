@@ -210,6 +210,160 @@ fn permutation_gray_alpha_to_rgba() {
 }
 
 // -----------------------------------------------------------------------
+// Unaligned buffer tests — ensure SIMD tail paths don't panic on
+// buffers whose base address is not 4-byte aligned (issue #2)
+// -----------------------------------------------------------------------
+
+/// Create a buffer of `len` bytes at an address that is NOT 4-byte aligned.
+/// Returns (backing_vec, misaligned_slice_range) so the caller can borrow.
+fn make_unaligned_buf(len: usize) -> (Vec<u8>, usize) {
+    // Allocate extra bytes so we can find a misaligned offset
+    let mut buf = vec![0u8; len + 4];
+    let base = buf.as_ptr() as usize;
+    let offset = match base % 4 {
+        0 => 1, // aligned → shift by 1
+        1 => 0, // already misaligned
+        2 => 1, // 2+1=3, still misaligned
+        3 => 2, // 3+2=5, still misaligned
+        _ => unreachable!(),
+    };
+    debug_assert_ne!((base + offset) % 4, 0, "should be misaligned");
+    // Fill with pattern data
+    for i in 0..len {
+        buf[offset + i] = (i % 251) as u8;
+    }
+    (buf, offset)
+}
+
+#[test]
+fn unaligned_swap_br_inplace() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let (mut buf, off) = make_unaligned_buf(n * 4);
+            let expected = ref_swap_br(&buf[off..off + n * 4]);
+            rgba_to_bgra_inplace(&mut buf[off..off + n * 4]).unwrap();
+            assert_eq!(
+                &buf[off..off + n * 4],
+                &expected[..],
+                "unaligned swap_br_inplace n={n} tier={perm}"
+            );
+        }
+    });
+    std::eprintln!("unaligned_swap_br_inplace: {report}");
+}
+
+#[test]
+fn unaligned_copy_swap_br() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let (src_buf, src_off) = make_unaligned_buf(n * 4);
+            let (mut dst_buf, dst_off) = make_unaligned_buf(n * 4);
+            let expected = ref_copy_swap_br(&src_buf[src_off..src_off + n * 4]);
+            rgba_to_bgra(
+                &src_buf[src_off..src_off + n * 4],
+                &mut dst_buf[dst_off..dst_off + n * 4],
+            )
+            .unwrap();
+            assert_eq!(
+                &dst_buf[dst_off..dst_off + n * 4],
+                &expected[..],
+                "unaligned copy_swap_br n={n} tier={perm}"
+            );
+        }
+    });
+    std::eprintln!("unaligned_copy_swap_br: {report}");
+}
+
+#[test]
+fn unaligned_fill_alpha() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let (mut buf, off) = make_unaligned_buf(n * 4);
+            let expected = ref_fill_alpha(&buf[off..off + n * 4]);
+            fill_alpha_rgba(&mut buf[off..off + n * 4]).unwrap();
+            assert_eq!(
+                &buf[off..off + n * 4],
+                &expected[..],
+                "unaligned fill_alpha n={n} tier={perm}"
+            );
+        }
+    });
+    std::eprintln!("unaligned_fill_alpha: {report}");
+}
+
+#[test]
+fn unaligned_rgb_to_bgra() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_3bpp(n);
+            let (mut dst_buf, dst_off) = make_unaligned_buf(n * 4);
+            let expected = ref_rgb_to_bgra(&src);
+            rgb_to_bgra(&src, &mut dst_buf[dst_off..dst_off + n * 4]).unwrap();
+            assert_eq!(
+                &dst_buf[dst_off..dst_off + n * 4],
+                &expected[..],
+                "unaligned rgb_to_bgra n={n} tier={perm}"
+            );
+        }
+    });
+    std::eprintln!("unaligned_rgb_to_bgra: {report}");
+}
+
+#[test]
+fn unaligned_rgb_to_rgba() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_3bpp(n);
+            let (mut dst_buf, dst_off) = make_unaligned_buf(n * 4);
+            let expected = ref_rgb_to_rgba(&src);
+            rgb_to_rgba(&src, &mut dst_buf[dst_off..dst_off + n * 4]).unwrap();
+            assert_eq!(
+                &dst_buf[dst_off..dst_off + n * 4],
+                &expected[..],
+                "unaligned rgb_to_rgba n={n} tier={perm}"
+            );
+        }
+    });
+    std::eprintln!("unaligned_rgb_to_rgba: {report}");
+}
+
+#[test]
+fn unaligned_gray_to_rgba() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_1bpp(n);
+            let (mut dst_buf, dst_off) = make_unaligned_buf(n * 4);
+            let expected = ref_gray_to_4bpp(&src);
+            gray_to_rgba(&src, &mut dst_buf[dst_off..dst_off + n * 4]).unwrap();
+            assert_eq!(
+                &dst_buf[dst_off..dst_off + n * 4],
+                &expected[..],
+                "unaligned gray_to_rgba n={n} tier={perm}"
+            );
+        }
+    });
+    std::eprintln!("unaligned_gray_to_rgba: {report}");
+}
+
+#[test]
+fn unaligned_gray_alpha_to_rgba() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_2bpp(n);
+            let (mut dst_buf, dst_off) = make_unaligned_buf(n * 4);
+            let expected = ref_gray_alpha_to_4bpp(&src);
+            gray_alpha_to_rgba(&src, &mut dst_buf[dst_off..dst_off + n * 4]).unwrap();
+            assert_eq!(
+                &dst_buf[dst_off..dst_off + n * 4],
+                &expected[..],
+                "unaligned gray_alpha_to_rgba n={n} tier={perm}"
+            );
+        }
+    });
+    std::eprintln!("unaligned_gray_alpha_to_rgba: {report}");
+}
+
+// -----------------------------------------------------------------------
 // Strided variants — also tested at every tier
 // -----------------------------------------------------------------------
 

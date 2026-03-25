@@ -628,9 +628,8 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
-        for (s, d) in src.iter().zip(dst16.iter_mut()) {
-            *d = (*s as u16) * 257;
+        for (s, d) in src.iter().zip(dst.chunks_exact_mut(2)) {
+            d.copy_from_slice(&((*s as u16) * 257).to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn convert_u16_to_u8_row_scalar(
@@ -638,9 +637,9 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        let src16: &[u16] = bytemuck::cast_slice(src);
-        for (s, d) in src16.iter().zip(dst.iter_mut()) {
-            *d = ((*s as u32 * 255 + 32768) >> 16) as u8;
+        for (s, d) in src.chunks_exact(2).zip(dst.iter_mut()) {
+            let v = u16::from_ne_bytes([s[0], s[1]]);
+            *d = ((v as u32 * 255 + 32768) >> 16) as u8;
         }
     }
     pub(in crate::bytes) fn convert_u8_to_f32_row_scalar(
@@ -648,9 +647,8 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
-        for (s, d) in src.iter().zip(dst_f.iter_mut()) {
-            *d = *s as f32 / 255.0;
+        for (s, d) in src.iter().zip(dst.chunks_exact_mut(4)) {
+            d.copy_from_slice(&(*s as f32 / 255.0).to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn convert_f32_to_u8_row_scalar(
@@ -658,9 +656,9 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        let src_f: &[f32] = bytemuck::cast_slice(src);
-        for (s, d) in src_f.iter().zip(dst.iter_mut()) {
-            *d = (s.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        for (s, d) in src.chunks_exact(4).zip(dst.iter_mut()) {
+            let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
+            *d = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         }
     }
     pub(in crate::bytes) fn convert_u16_to_f32_row_scalar(
@@ -668,10 +666,9 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        let src16: &[u16] = bytemuck::cast_slice(src);
-        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
-        for (s, d) in src16.iter().zip(dst_f.iter_mut()) {
-            *d = *s as f32 / 65535.0;
+        for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+            let v = u16::from_ne_bytes([s[0], s[1]]);
+            d.copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn convert_f32_to_u16_row_scalar(
@@ -679,10 +676,9 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        let src_f: &[f32] = bytemuck::cast_slice(src);
-        let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
-        for (s, d) in src_f.iter().zip(dst16.iter_mut()) {
-            *d = (s.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+        for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(2)) {
+            let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
+            d.copy_from_slice(&((v.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16).to_ne_bytes());
         }
     }
 
@@ -1011,12 +1007,14 @@ mod experimental {
     // -----------------------------------------------------------------------
 
     pub(in crate::bytes) fn premul_f32_row_scalar(_t: ScalarToken, buf: &mut [u8]) {
-        let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
-        for px in floats.chunks_exact_mut(4) {
-            let a = px[3];
-            px[0] *= a;
-            px[1] *= a;
-            px[2] *= a;
+        for px in buf.chunks_exact_mut(16) {
+            let r = f32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+            let g = f32::from_ne_bytes([px[4], px[5], px[6], px[7]]);
+            let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
+            let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
+            px[0..4].copy_from_slice(&(r * a).to_ne_bytes());
+            px[4..8].copy_from_slice(&(g * a).to_ne_bytes());
+            px[8..12].copy_from_slice(&(b * a).to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn premul_f32_copy_row_scalar(
@@ -1024,29 +1022,30 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        let src_f: &[f32] = bytemuck::cast_slice(src);
-        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
-        for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
-            let a = s[3];
-            d[0] = s[0] * a;
-            d[1] = s[1] * a;
-            d[2] = s[2] * a;
-            d[3] = a;
+        for (s, d) in src.chunks_exact(16).zip(dst.chunks_exact_mut(16)) {
+            let r = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
+            let g = f32::from_ne_bytes([s[4], s[5], s[6], s[7]]);
+            let b = f32::from_ne_bytes([s[8], s[9], s[10], s[11]]);
+            let a = f32::from_ne_bytes([s[12], s[13], s[14], s[15]]);
+            d[0..4].copy_from_slice(&(r * a).to_ne_bytes());
+            d[4..8].copy_from_slice(&(g * a).to_ne_bytes());
+            d[8..12].copy_from_slice(&(b * a).to_ne_bytes());
+            d[12..16].copy_from_slice(&a.to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn unpremul_f32_row_scalar(_t: ScalarToken, buf: &mut [u8]) {
-        let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
-        for px in floats.chunks_exact_mut(4) {
-            let a = px[3];
+        for px in buf.chunks_exact_mut(16) {
+            let r = f32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+            let g = f32::from_ne_bytes([px[4], px[5], px[6], px[7]]);
+            let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
+            let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
             if a == 0.0 {
-                px[0] = 0.0;
-                px[1] = 0.0;
-                px[2] = 0.0;
+                px[0..12].fill(0);
             } else {
                 let inv_a = 1.0 / a;
-                px[0] *= inv_a;
-                px[1] *= inv_a;
-                px[2] *= inv_a;
+                px[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());
+                px[4..8].copy_from_slice(&(g * inv_a).to_ne_bytes());
+                px[8..12].copy_from_slice(&(b * inv_a).to_ne_bytes());
             }
         }
     }
@@ -1055,21 +1054,19 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        let src_f: &[f32] = bytemuck::cast_slice(src);
-        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
-        for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
-            let a = s[3];
+        for (s, d) in src.chunks_exact(16).zip(dst.chunks_exact_mut(16)) {
+            let r = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
+            let g = f32::from_ne_bytes([s[4], s[5], s[6], s[7]]);
+            let b = f32::from_ne_bytes([s[8], s[9], s[10], s[11]]);
+            let a = f32::from_ne_bytes([s[12], s[13], s[14], s[15]]);
             if a == 0.0 {
-                d[0] = 0.0;
-                d[1] = 0.0;
-                d[2] = 0.0;
-                d[3] = 0.0;
+                d.fill(0);
             } else {
                 let inv_a = 1.0 / a;
-                d[0] = s[0] * inv_a;
-                d[1] = s[1] * inv_a;
-                d[2] = s[2] * inv_a;
-                d[3] = a;
+                d[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());
+                d[4..8].copy_from_slice(&(g * inv_a).to_ne_bytes());
+                d[8..12].copy_from_slice(&(b * inv_a).to_ne_bytes());
+                d[12..16].copy_from_slice(&a.to_ne_bytes());
             }
         }
     }

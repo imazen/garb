@@ -138,8 +138,9 @@ pub(super) fn swap_br_row_v3(_token: X64V3Token, row: &mut [u8]) {
         _mm256_storeu_si256(out, shuffled);
         i += 32;
     }
-    for v in bytemuck::cast_slice_mut::<u8, u32>(&mut row[i..]) {
-        *v = swap_br_u32(*v);
+    for px in row[i..].chunks_exact_mut(4) {
+        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+        px.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
 }
 
@@ -156,11 +157,9 @@ pub(super) fn copy_swap_br_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]
         _mm256_storeu_si256(d, shuffled);
         i += 32;
     }
-    for (s, d) in bytemuck::cast_slice::<u8, u32>(&src[i..])
-        .iter()
-        .zip(bytemuck::cast_slice_mut::<u8, u32>(&mut dst[i..]))
-    {
-        *d = swap_br_u32(*s);
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        let v = u32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
+        d.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
 }
 
@@ -177,8 +176,9 @@ pub(super) fn fill_alpha_row_v3(_token: X64V3Token, row: &mut [u8]) {
         _mm256_storeu_si256(out, result);
         i += 32;
     }
-    for v in bytemuck::cast_slice_mut::<u8, u32>(&mut row[i..]) {
-        *v |= 0xFF00_0000;
+    for px in row[i..].chunks_exact_mut(4) {
+        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+        px.copy_from_slice(&(v | 0xFF00_0000).to_ne_bytes());
     }
 }
 
@@ -200,9 +200,11 @@ pub(super) fn rgb_to_bgra_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
         is += 24;
         id += 32;
     }
-    let dst32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (s, d) in src[is..].chunks_exact(3).zip(dst32.iter_mut()) {
-        *d = s[2] as u32 | ((s[1] as u32) << 8) | ((s[0] as u32) << 16) | 0xFF00_0000;
+    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+        d.copy_from_slice(
+            &(s[2] as u32 | ((s[1] as u32) << 8) | ((s[0] as u32) << 16) | 0xFF00_0000)
+                .to_ne_bytes(),
+        );
     }
 }
 
@@ -224,9 +226,11 @@ pub(super) fn rgb_to_rgba_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
         is += 24;
         id += 32;
     }
-    let dst32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (s, d) in src[is..].chunks_exact(3).zip(dst32.iter_mut()) {
-        *d = s[0] as u32 | ((s[1] as u32) << 8) | ((s[2] as u32) << 16) | 0xFF00_0000;
+    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+        d.copy_from_slice(
+            &(s[0] as u32 | ((s[1] as u32) << 8) | ((s[2] as u32) << 16) | 0xFF00_0000)
+                .to_ne_bytes(),
+        );
     }
 }
 
@@ -246,10 +250,9 @@ pub(super) fn gray_to_4bpp_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]
         is += 8;
         id += 32;
     }
-    let dst32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (&v, d) in src[is..].iter().zip(dst32.iter_mut()) {
+    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
         let g = v as u32;
-        *d = g | (g << 8) | (g << 16) | 0xFF00_0000;
+        d.copy_from_slice(&(g | (g << 8) | (g << 16) | 0xFF00_0000).to_ne_bytes());
     }
 }
 
@@ -268,10 +271,9 @@ pub(super) fn gray_alpha_to_4bpp_row_v3(_token: X64V3Token, src: &[u8], dst: &mu
         is += 16;
         id += 32;
     }
-    let dst32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (ga, d) in src[is..].chunks_exact(2).zip(dst32.iter_mut()) {
+    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
         let g = ga[0] as u32;
-        *d = g | (g << 8) | (g << 16) | ((ga[1] as u32) << 24);
+        d.copy_from_slice(&(g | (g << 8) | (g << 16) | ((ga[1] as u32) << 24)).to_ne_bytes());
     }
 }
 
@@ -1113,33 +1115,29 @@ mod experimental {
     pub(in crate::bytes) fn convert_u8_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
         let mul257 = _mm256_set1_epi16(257);
         let n = src.len();
-        let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
         let mut i = 0;
         while i + 16 <= n {
             let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
             let v = _mm_loadu_si128(s);
             let wide = _mm256_cvtepu8_epi16(v);
             let result = _mm256_mullo_epi16(wide, mul257);
-            let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst16[i..i + 16])
-                .try_into()
-                .unwrap();
+            let d: &mut [u8; 32] = (&mut dst[i * 2..i * 2 + 32]).try_into().unwrap();
             _mm256_storeu_si256(d, result);
             i += 16;
         }
         for j in i..n {
-            dst16[j] = (src[j] as u16) * 257;
+            dst[j * 2..j * 2 + 2].copy_from_slice(&((src[j] as u16 * 257).to_ne_bytes()));
         }
     }
 
     #[rite]
     pub(in crate::bytes) fn convert_u16_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-        let src16: &[u16] = bytemuck::cast_slice(src);
         let mul255 = _mm256_set1_epi32(255);
         let add_half = _mm256_set1_epi32(32768);
-        let n = src16.len();
+        let n = src.len() / 2;
         let mut i = 0;
         while i + 8 <= n {
-            let s: &[u8; 16] = bytemuck::cast_slice(&src16[i..i + 8]).try_into().unwrap();
+            let s: &[u8; 16] = src[i * 2..i * 2 + 16].try_into().unwrap();
             let v = _mm_loadu_si128(s);
             let wide = _mm256_cvtepu16_epi32(v);
             let prod = _mm256_add_epi32(_mm256_mullo_epi32(wide, mul255), add_half);
@@ -1155,7 +1153,8 @@ mod experimental {
             i += 8;
         }
         for j in i..n {
-            dst[j] = ((src16[j] as u32 * 255 + 32768) >> 16) as u8;
+            let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
+            dst[j] = ((v as u32 * 255 + 32768) >> 16) as u8;
         }
     }
 
@@ -1163,7 +1162,6 @@ mod experimental {
     pub(in crate::bytes) fn convert_u8_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
         let scale = _mm256_set1_ps(1.0 / 255.0);
         let n = src.len();
-        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
         let mut i = 0;
         while i + 8 <= n {
             let mut tmp = [0u8; 16];
@@ -1172,28 +1170,25 @@ mod experimental {
             let wide32 = _mm256_cvtepu8_epi32(v);
             let floats = _mm256_cvtepi32_ps(wide32);
             let result = _mm256_mul_ps(floats, scale);
-            let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst_f[i..i + 8])
-                .try_into()
-                .unwrap();
+            let d: &mut [u8; 32] = (&mut dst[i * 4..i * 4 + 32]).try_into().unwrap();
             _mm256_storeu_si256(d, _mm256_castps_si256(result));
             i += 8;
         }
         for j in i..n {
-            dst_f[j] = src[j] as f32 / 255.0;
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 / 255.0).to_ne_bytes());
         }
     }
 
     #[rite]
     pub(in crate::bytes) fn convert_f32_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-        let src_f: &[f32] = bytemuck::cast_slice(src);
         let scale = _mm256_set1_ps(255.0);
         let half = _mm256_set1_ps(0.5);
         let zero = _mm256_setzero_ps();
         let one = _mm256_set1_ps(1.0);
-        let n = src_f.len();
+        let n = src.len() / 4;
         let mut i = 0;
         while i + 8 <= n {
-            let s: &[u8; 32] = bytemuck::cast_slice(&src_f[i..i + 8]).try_into().unwrap();
+            let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
             let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
             let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
             let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
@@ -1209,45 +1204,43 @@ mod experimental {
             i += 8;
         }
         for j in i..n {
-            dst[j] = (src_f[j].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            let v =
+                f32::from_ne_bytes([src[j * 4], src[j * 4 + 1], src[j * 4 + 2], src[j * 4 + 3]]);
+            dst[j] = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         }
     }
 
     #[rite]
     pub(in crate::bytes) fn convert_u16_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-        let src16: &[u16] = bytemuck::cast_slice(src);
         let scale = _mm256_set1_ps(1.0 / 65535.0);
-        let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
-        let n = src16.len();
+        let n = src.len() / 2;
         let mut i = 0;
         while i + 8 <= n {
-            let s: &[u8; 16] = bytemuck::cast_slice(&src16[i..i + 8]).try_into().unwrap();
+            let s: &[u8; 16] = src[i * 2..i * 2 + 16].try_into().unwrap();
             let v = _mm_loadu_si128(s);
             let wide32 = _mm256_cvtepu16_epi32(v);
             let floats = _mm256_cvtepi32_ps(wide32);
             let result = _mm256_mul_ps(floats, scale);
-            let d: &mut [u8; 32] = bytemuck::cast_slice_mut(&mut dst_f[i..i + 8])
-                .try_into()
-                .unwrap();
+            let d: &mut [u8; 32] = (&mut dst[i * 4..i * 4 + 32]).try_into().unwrap();
             _mm256_storeu_si256(d, _mm256_castps_si256(result));
             i += 8;
         }
         for j in i..n {
-            dst_f[j] = src16[j] as f32 / 65535.0;
+            let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
         }
     }
 
     #[rite]
     pub(in crate::bytes) fn convert_f32_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-        let src_f: &[f32] = bytemuck::cast_slice(src);
         let scale = _mm256_set1_ps(65535.0);
         let half = _mm256_set1_ps(0.5);
         let zero = _mm256_setzero_ps();
         let one = _mm256_set1_ps(1.0);
-        let n = src_f.len();
+        let n = src.len() / 4;
         let mut i = 0;
         while i + 8 <= n {
-            let s: &[u8; 32] = bytemuck::cast_slice(&src_f[i..i + 8]).try_into().unwrap();
+            let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
             let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
             let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
             let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
@@ -1259,9 +1252,11 @@ mod experimental {
             dst[i * 2..i * 2 + 16].copy_from_slice(&tmp[..16]);
             i += 8;
         }
-        let dst16: &mut [u16] = bytemuck::cast_slice_mut(dst);
         for j in i..n {
-            dst16[j] = (src_f[j].clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+            let v =
+                f32::from_ne_bytes([src[j * 4], src[j * 4 + 1], src[j * 4 + 2], src[j * 4 + 3]]);
+            let u16_val = (v.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+            dst[j * 2..j * 2 + 2].copy_from_slice(&u16_val.to_ne_bytes());
         }
     }
 
@@ -1438,12 +1433,14 @@ mod experimental {
             i += 2;
         }
         if i < n {
-            let floats: &mut [f32] = bytemuck::cast_slice_mut(&mut buf[i * 16..]);
-            for px in floats.chunks_exact_mut(4) {
-                let a = px[3];
-                px[0] *= a;
-                px[1] *= a;
-                px[2] *= a;
+            for px in buf[i * 16..].chunks_exact_mut(16) {
+                let r = f32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+                let g = f32::from_ne_bytes([px[4], px[5], px[6], px[7]]);
+                let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
+                let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
+                px[0..4].copy_from_slice(&(r * a).to_ne_bytes());
+                px[4..8].copy_from_slice(&(g * a).to_ne_bytes());
+                px[8..12].copy_from_slice(&(b * a).to_ne_bytes());
             }
         }
     }
@@ -1463,14 +1460,18 @@ mod experimental {
             i += 2;
         }
         if i < n {
-            let src_f: &[f32] = bytemuck::cast_slice(&src[i * 16..]);
-            let dst_f: &mut [f32] = bytemuck::cast_slice_mut(&mut dst[i * 16..]);
-            for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
-                let a = s[3];
-                d[0] = s[0] * a;
-                d[1] = s[1] * a;
-                d[2] = s[2] * a;
-                d[3] = a;
+            for (s, d) in src[i * 16..]
+                .chunks_exact(16)
+                .zip(dst[i * 16..].chunks_exact_mut(16))
+            {
+                let r = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
+                let g = f32::from_ne_bytes([s[4], s[5], s[6], s[7]]);
+                let b = f32::from_ne_bytes([s[8], s[9], s[10], s[11]]);
+                let a = f32::from_ne_bytes([s[12], s[13], s[14], s[15]]);
+                d[0..4].copy_from_slice(&(r * a).to_ne_bytes());
+                d[4..8].copy_from_slice(&(g * a).to_ne_bytes());
+                d[8..12].copy_from_slice(&(b * a).to_ne_bytes());
+                d[12..16].copy_from_slice(&a.to_ne_bytes());
             }
         }
     }
@@ -1495,18 +1496,18 @@ mod experimental {
             i += 2;
         }
         if i < n {
-            let floats: &mut [f32] = bytemuck::cast_slice_mut(&mut buf[i * 16..]);
-            for px in floats.chunks_exact_mut(4) {
-                let a = px[3];
+            for px in buf[i * 16..].chunks_exact_mut(16) {
+                let r = f32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+                let g = f32::from_ne_bytes([px[4], px[5], px[6], px[7]]);
+                let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
+                let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
                 if a == 0.0 {
-                    px[0] = 0.0;
-                    px[1] = 0.0;
-                    px[2] = 0.0;
+                    px[0..12].fill(0);
                 } else {
                     let inv_a = 1.0 / a;
-                    px[0] *= inv_a;
-                    px[1] *= inv_a;
-                    px[2] *= inv_a;
+                    px[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());
+                    px[4..8].copy_from_slice(&(g * inv_a).to_ne_bytes());
+                    px[8..12].copy_from_slice(&(b * inv_a).to_ne_bytes());
                 }
             }
         }
@@ -1532,21 +1533,22 @@ mod experimental {
             i += 2;
         }
         if i < n {
-            let src_f: &[f32] = bytemuck::cast_slice(&src[i * 16..]);
-            let dst_f: &mut [f32] = bytemuck::cast_slice_mut(&mut dst[i * 16..]);
-            for (s, d) in src_f.chunks_exact(4).zip(dst_f.chunks_exact_mut(4)) {
-                let a = s[3];
+            for (s, d) in src[i * 16..]
+                .chunks_exact(16)
+                .zip(dst[i * 16..].chunks_exact_mut(16))
+            {
+                let r = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
+                let g = f32::from_ne_bytes([s[4], s[5], s[6], s[7]]);
+                let b = f32::from_ne_bytes([s[8], s[9], s[10], s[11]]);
+                let a = f32::from_ne_bytes([s[12], s[13], s[14], s[15]]);
                 if a == 0.0 {
-                    d[0] = 0.0;
-                    d[1] = 0.0;
-                    d[2] = 0.0;
-                    d[3] = 0.0;
+                    d.fill(0);
                 } else {
                     let inv_a = 1.0 / a;
-                    d[0] = s[0] * inv_a;
-                    d[1] = s[1] * inv_a;
-                    d[2] = s[2] * inv_a;
-                    d[3] = a;
+                    d[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());
+                    d[4..8].copy_from_slice(&(g * inv_a).to_ne_bytes());
+                    d[8..12].copy_from_slice(&(b * inv_a).to_ne_bytes());
+                    d[12..16].copy_from_slice(&a.to_ne_bytes());
                 }
             }
         }

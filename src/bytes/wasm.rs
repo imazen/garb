@@ -18,8 +18,9 @@ pub(super) fn swap_br_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
         v128_store(out, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for v in bytemuck::cast_slice_mut::<u8, u32>(&mut row[i..]) {
-        *v = swap_br_u32(*v);
+    for px in row[i..].chunks_exact_mut(4) {
+        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+        px.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
 }
 
@@ -35,11 +36,9 @@ pub(super) fn copy_swap_br_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &m
         v128_store(d, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for (s, d) in bytemuck::cast_slice::<u8, u32>(&src[i..])
-        .iter()
-        .zip(bytemuck::cast_slice_mut::<u8, u32>(&mut dst[i..]))
-    {
-        *d = swap_br_u32(*s);
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        let v = u32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
+        d.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
 }
 
@@ -55,8 +54,9 @@ pub(super) fn fill_alpha_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
         v128_store(out, v128_or(v, alpha));
         i += 16;
     }
-    for v in bytemuck::cast_slice_mut::<u8, u32>(&mut row[i..]) {
-        *v |= 0xFF00_0000;
+    for px in row[i..].chunks_exact_mut(4) {
+        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+        px.copy_from_slice(&(v | 0xFF00_0000).to_ne_bytes());
     }
 }
 
@@ -73,9 +73,11 @@ pub(super) fn rgb_to_bgra_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 12;
         id += 16;
     }
-    let d32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (s, d) in src[is..].chunks_exact(3).zip(d32.iter_mut()) {
-        *d = s[2] as u32 | ((s[1] as u32) << 8) | ((s[0] as u32) << 16) | 0xFF00_0000;
+    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+        d.copy_from_slice(
+            &(s[2] as u32 | ((s[1] as u32) << 8) | ((s[0] as u32) << 16) | 0xFF00_0000)
+                .to_ne_bytes(),
+        );
     }
 }
 
@@ -92,9 +94,11 @@ pub(super) fn rgb_to_rgba_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 12;
         id += 16;
     }
-    let d32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (s, d) in src[is..].chunks_exact(3).zip(d32.iter_mut()) {
-        *d = s[0] as u32 | ((s[1] as u32) << 8) | ((s[2] as u32) << 16) | 0xFF00_0000;
+    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+        d.copy_from_slice(
+            &(s[0] as u32 | ((s[1] as u32) << 8) | ((s[2] as u32) << 16) | 0xFF00_0000)
+                .to_ne_bytes(),
+        );
     }
 }
 
@@ -123,10 +127,9 @@ pub(super) fn gray_to_4bpp_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &m
         is += 16;
         id += 64;
     }
-    let d32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (&v, d) in src[is..].iter().zip(d32.iter_mut()) {
+    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
         let g = v as u32;
-        *d = g | (g << 8) | (g << 16) | 0xFF00_0000;
+        d.copy_from_slice(&(g | (g << 8) | (g << 16) | 0xFF00_0000).to_ne_bytes());
     }
 }
 
@@ -146,10 +149,9 @@ pub(super) fn gray_alpha_to_4bpp_row_wasm128(_token: Wasm128Token, src: &[u8], d
         is += 16;
         id += 32;
     }
-    let d32 = bytemuck::cast_slice_mut::<u8, u32>(&mut dst[id..]);
-    for (ga, d) in src[is..].chunks_exact(2).zip(d32.iter_mut()) {
+    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
         let g = ga[0] as u32;
-        *d = g | (g << 8) | (g << 16) | ((ga[1] as u32) << 24);
+        d.copy_from_slice(&(g | (g << 8) | (g << 16) | ((ga[1] as u32) << 24)).to_ne_bytes());
     }
 }
 
