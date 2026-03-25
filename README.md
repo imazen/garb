@@ -3,6 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/garb?style=for-the-badge)](https://crates.io/crates/garb)
 [![docs.rs](https://img.shields.io/docsrs/garb?style=for-the-badge)](https://docs.rs/garb)
 [![CI](https://img.shields.io/github/actions/workflow/status/imazen/garb/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/imazen/garb/actions/workflows/ci.yml)
+[![codecov](https://img.shields.io/codecov/c/github/imazen/garb?style=for-the-badge)](https://codecov.io/gh/imazen/garb)
 [![License](https://img.shields.io/crates/l/garb?style=for-the-badge)](https://github.com/imazen/garb#license)
 [![MSRV](https://img.shields.io/badge/MSRV-1.89-blue?style=for-the-badge)](https://github.com/imazen/garb)
 
