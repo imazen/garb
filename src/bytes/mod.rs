@@ -1606,9 +1606,8 @@ mod experimental_api {
 
     /// RGB565 (little-endian u16, 2 bytes/px) → RGBA (4 bytes/px). Alpha set to 255.
     ///
-    /// Source bit layout per u16: `R[15:11] G[10:5] B[4:0]`.
-    /// See [module-level docs](self#packed-pixel-format-expansion-2bpp--4bpp-little-endian)
-    /// for byte-order details.
+    /// Source bit layout per u16 (little-endian): `R[15:11] G[10:5] B[4:0]`.
+    /// Sub-byte channels are expanded to 8 bits by MSB replication.
     pub fn rgb565_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 4)?;
         rgb565_to_rgba_impl(src, dst);
