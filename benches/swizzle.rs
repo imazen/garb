@@ -553,6 +553,128 @@ fn bench_rgba4444_to_rgba(c: &mut Criterion) {
     group.finish();
 }
 
+// === Unaligned buffer benchmarks ===
+// These benchmark the exact code paths changed in the alignment fix (issue #2).
+// Each group tests {simd, scalar} × {aligned, unaligned}.
+
+/// Create a buffer of `len` bytes at an address that is NOT 4-byte aligned.
+fn make_unaligned(len: usize) -> (Vec<u8>, usize) {
+    let mut buf = vec![0u8; len + 4];
+    let base = buf.as_ptr() as usize;
+    let offset = match base % 4 {
+        0 => 1,
+        1 => 0,
+        2 => 1,
+        3 => 2,
+        _ => unreachable!(),
+    };
+    for i in 0..len {
+        buf[offset + i] = (i % 251) as u8;
+    }
+    (buf, offset)
+}
+
+/// Benchmark an in-place op at each tier × alignment.
+fn bench_inplace_tiers(
+    group: &mut BenchmarkGroup<WallTime>,
+    garb_fn: fn(&mut [u8]) -> Result<(), garb::SizeError>,
+    n: usize,
+) {
+    let aligned: Vec<u8> = (0..n).map(|i| (i % 251) as u8).collect();
+
+    group.bench_function("simd/aligned", |b| {
+        let mut v = aligned.clone();
+        b.iter(|| garb_fn(&mut v).unwrap());
+    });
+    group.bench_function("simd/unaligned", |b| {
+        let (mut buf, off) = make_unaligned(n);
+        b.iter(|| garb_fn(&mut buf[off..off + n]).unwrap());
+    });
+
+    disable_all_simd();
+    group.bench_function("scalar/aligned", |b| {
+        let mut v = aligned.clone();
+        b.iter(|| garb_fn(&mut v).unwrap());
+    });
+    group.bench_function("scalar/unaligned", |b| {
+        let (mut buf, off) = make_unaligned(n);
+        b.iter(|| garb_fn(&mut buf[off..off + n]).unwrap());
+    });
+    enable_all_simd();
+}
+
+/// Benchmark a copy op at each tier × alignment (dst unaligned).
+fn bench_copy_tiers(
+    group: &mut BenchmarkGroup<WallTime>,
+    garb_fn: fn(&[u8], &mut [u8]) -> Result<(), garb::SizeError>,
+    src_n: usize,
+    dst_n: usize,
+) {
+    let src: Vec<u8> = (0..src_n).map(|i| (i % 251) as u8).collect();
+
+    group.bench_function("simd/aligned", |b| {
+        let mut dst = vec![0u8; dst_n];
+        b.iter(|| garb_fn(&src, &mut dst).unwrap());
+    });
+    group.bench_function("simd/unaligned", |b| {
+        let (mut buf, off) = make_unaligned(dst_n);
+        b.iter(|| garb_fn(&src, &mut buf[off..off + dst_n]).unwrap());
+    });
+
+    disable_all_simd();
+    group.bench_function("scalar/aligned", |b| {
+        let mut dst = vec![0u8; dst_n];
+        b.iter(|| garb_fn(&src, &mut dst).unwrap());
+    });
+    group.bench_function("scalar/unaligned", |b| {
+        let (mut buf, off) = make_unaligned(dst_n);
+        b.iter(|| garb_fn(&src, &mut buf[off..off + dst_n]).unwrap());
+    });
+    enable_all_simd();
+}
+
+fn bench_alignment_swap_inplace(c: &mut Criterion) {
+    let n = W * H * 4;
+    let mut group = c.benchmark_group("alignment/4bpp_swap_inplace");
+    group.throughput(Throughput::Bytes(n as u64));
+    bench_inplace_tiers(&mut group, garb::bytes::rgba_to_bgra_inplace, n);
+    group.finish();
+}
+
+fn bench_alignment_swap_copy(c: &mut Criterion) {
+    let n = W * H * 4;
+    let mut group = c.benchmark_group("alignment/4bpp_swap_copy");
+    group.throughput(Throughput::Bytes(n as u64));
+    bench_copy_tiers(&mut group, garb::bytes::rgba_to_bgra, n, n);
+    group.finish();
+}
+
+fn bench_alignment_fill_alpha(c: &mut Criterion) {
+    let n = W * H * 4;
+    let mut group = c.benchmark_group("alignment/fill_alpha");
+    group.throughput(Throughput::Bytes(n as u64));
+    bench_inplace_tiers(&mut group, garb::bytes::fill_alpha_rgba, n);
+    group.finish();
+}
+
+fn bench_alignment_rgb_to_rgba(c: &mut Criterion) {
+    let src_n = W * H * 3;
+    let dst_n = W * H * 4;
+    let mut group = c.benchmark_group("alignment/rgb_to_rgba");
+    group.throughput(Throughput::Bytes(dst_n as u64));
+    bench_copy_tiers(&mut group, garb::bytes::rgb_to_rgba, src_n, dst_n);
+    group.finish();
+}
+
+fn bench_alignment_gray_to_rgba(c: &mut Criterion) {
+    let src_n = W * H;
+    let dst_n = W * H * 4;
+    let mut group = c.benchmark_group("alignment/gray_to_rgba");
+    group.throughput(Throughput::Bytes(dst_n as u64));
+    bench_copy_tiers(&mut group, garb::bytes::gray_to_rgba, src_n, dst_n);
+    group.finish();
+}
+
 // === Custom main for tier detection before criterion runs ===
 
 fn main() {
@@ -576,5 +698,12 @@ fn main() {
         bench_rgb565_to_rgba(&mut criterion);
         bench_rgba4444_to_rgba(&mut criterion);
     }
+    // Aligned vs unaligned × SIMD tier comparisons (issue #2)
+    bench_alignment_swap_inplace(&mut criterion);
+    bench_alignment_swap_copy(&mut criterion);
+    bench_alignment_fill_alpha(&mut criterion);
+    bench_alignment_rgb_to_rgba(&mut criterion);
+    bench_alignment_gray_to_rgba(&mut criterion);
+
     criterion.final_summary();
 }
