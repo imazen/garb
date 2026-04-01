@@ -2892,3 +2892,185 @@ mod packed_format_tests {
         unaligned_bgra_to_rgba4444: bgra_to_rgba4444, 4, 2;
     }
 }
+
+// ===========================================================================
+// BRAG format tests
+// ===========================================================================
+
+fn ref_rgba_to_brag(src: &[u8]) -> Vec<u8> {
+    let mut out = src.to_vec();
+    for px in out.chunks_exact_mut(4) {
+        let [r, g, b, a] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = r;
+        px[2] = a;
+        px[3] = g;
+    }
+    out
+}
+
+fn ref_brag_to_rgba(src: &[u8]) -> Vec<u8> {
+    let mut out = src.to_vec();
+    for px in out.chunks_exact_mut(4) {
+        let [b, r, a, g] = [px[0], px[1], px[2], px[3]];
+        px[0] = r;
+        px[1] = g;
+        px[2] = b;
+        px[3] = a;
+    }
+    out
+}
+
+fn ref_bgra_to_brag(src: &[u8]) -> Vec<u8> {
+    let mut out = src.to_vec();
+    for px in out.chunks_exact_mut(4) {
+        let [b, g, r, a] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = r;
+        px[2] = a;
+        px[3] = g;
+    }
+    out
+}
+
+fn ref_brag_to_bgra(src: &[u8]) -> Vec<u8> {
+    let mut out = src.to_vec();
+    for px in out.chunks_exact_mut(4) {
+        let [b, r, a, g] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = g;
+        px[2] = r;
+        px[3] = a;
+    }
+    out
+}
+
+#[test]
+fn permutation_rgba_to_brag_inplace() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let mut data = make_4bpp(n);
+            let expected = ref_rgba_to_brag(&data);
+            rgba_to_brag_inplace(&mut data).unwrap();
+            assert_eq!(data, expected, "rgba_to_brag_inplace n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgba_to_brag_inplace: {report}");
+}
+
+#[test]
+fn permutation_rgba_to_brag_copy() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_rgba_to_brag(&src);
+            let mut dst = vec![0u8; n * 4];
+            rgba_to_brag(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "rgba_to_brag copy n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("rgba_to_brag copy: {report}");
+}
+
+#[test]
+fn permutation_brag_to_rgba_inplace() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let mut data = make_4bpp(n);
+            let expected = ref_brag_to_rgba(&data);
+            brag_to_rgba_inplace(&mut data).unwrap();
+            assert_eq!(data, expected, "brag_to_rgba_inplace n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("brag_to_rgba_inplace: {report}");
+}
+
+#[test]
+fn permutation_brag_to_rgba_copy() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_brag_to_rgba(&src);
+            let mut dst = vec![0u8; n * 4];
+            brag_to_rgba(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "brag_to_rgba copy n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("brag_to_rgba copy: {report}");
+}
+
+#[test]
+fn permutation_bgra_to_brag_inplace() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let mut data = make_4bpp(n);
+            let expected = ref_bgra_to_brag(&data);
+            bgra_to_brag_inplace(&mut data).unwrap();
+            assert_eq!(data, expected, "bgra_to_brag_inplace n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("bgra_to_brag_inplace: {report}");
+}
+
+#[test]
+fn permutation_bgra_to_brag_copy() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_bgra_to_brag(&src);
+            let mut dst = vec![0u8; n * 4];
+            bgra_to_brag(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "bgra_to_brag copy n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("bgra_to_brag copy: {report}");
+}
+
+#[test]
+fn permutation_brag_to_bgra_inplace() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let mut data = make_4bpp(n);
+            let expected = ref_brag_to_bgra(&data);
+            brag_to_bgra_inplace(&mut data).unwrap();
+            assert_eq!(data, expected, "brag_to_bgra_inplace n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("brag_to_bgra_inplace: {report}");
+}
+
+#[test]
+fn permutation_brag_to_bgra_copy() {
+    let report = for_each_token_permutation(policy(), |perm| {
+        for &n in TEST_PIXEL_COUNTS {
+            let src = make_4bpp(n);
+            let expected = ref_brag_to_bgra(&src);
+            let mut dst = vec![0u8; n * 4];
+            brag_to_bgra(&src, &mut dst).unwrap();
+            assert_eq!(dst, expected, "brag_to_bgra copy n={n} tier={perm}");
+        }
+    });
+    std::eprintln!("brag_to_bgra copy: {report}");
+}
+
+#[test]
+fn brag_round_trip_rgba() {
+    for &n in TEST_PIXEL_COUNTS {
+        let original = make_4bpp(n);
+        let mut buf = original.clone();
+        rgba_to_brag_inplace(&mut buf).unwrap();
+        brag_to_rgba_inplace(&mut buf).unwrap();
+        assert_eq!(buf, original, "RGBA→BRAG→RGBA round-trip n={n}");
+    }
+}
+
+#[test]
+fn brag_round_trip_bgra() {
+    for &n in TEST_PIXEL_COUNTS {
+        let original = make_4bpp(n);
+        let mut buf = original.clone();
+        bgra_to_brag_inplace(&mut buf).unwrap();
+        brag_to_bgra_inplace(&mut buf).unwrap();
+        assert_eq!(buf, original, "BGRA→BRAG→BGRA round-trip n={n}");
+    }
+}

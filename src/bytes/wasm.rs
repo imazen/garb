@@ -959,3 +959,303 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_strided_wasm128(
         );
     }
 }
+
+// ===========================================================================
+// BRAG format shuffles
+// ===========================================================================
+
+#[rite]
+pub(super) fn rgba_to_brag_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    let mask = i8x16(2, 0, 3, 1, 6, 4, 7, 5, 10, 8, 11, 9, 14, 12, 15, 13);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        v128_store(out, i8x16_swizzle(v128_load(arr), mask));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let [r, g, b, a] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = r;
+        px[2] = a;
+        px[3] = g;
+    }
+}
+
+#[rite]
+pub(super) fn copy_rgba_to_brag_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(2, 0, 3, 1, 6, 4, 7, 5, 10, 8, 11, 9, 14, 12, 15, 13);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        v128_store(d, i8x16_swizzle(v128_load(s), mask));
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[2];
+        d[1] = s[0];
+        d[2] = s[3];
+        d[3] = s[1];
+    }
+}
+
+#[rite]
+pub(super) fn brag_to_rgba_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    let mask = i8x16(1, 3, 0, 2, 5, 7, 4, 6, 9, 11, 8, 10, 13, 15, 12, 14);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        v128_store(out, i8x16_swizzle(v128_load(arr), mask));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let [b, r, a, g] = [px[0], px[1], px[2], px[3]];
+        px[0] = r;
+        px[1] = g;
+        px[2] = b;
+        px[3] = a;
+    }
+}
+
+#[rite]
+pub(super) fn copy_brag_to_rgba_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(1, 3, 0, 2, 5, 7, 4, 6, 9, 11, 8, 10, 13, 15, 12, 14);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        v128_store(d, i8x16_swizzle(v128_load(s), mask));
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[1];
+        d[1] = s[3];
+        d[2] = s[0];
+        d[3] = s[2];
+    }
+}
+
+#[rite]
+pub(super) fn bgra_to_brag_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    let mask = i8x16(0, 2, 3, 1, 4, 6, 7, 5, 8, 10, 11, 9, 12, 14, 15, 13);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        v128_store(out, i8x16_swizzle(v128_load(arr), mask));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let [b, g, r, a] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = r;
+        px[2] = a;
+        px[3] = g;
+    }
+}
+
+#[rite]
+pub(super) fn copy_bgra_to_brag_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(0, 2, 3, 1, 4, 6, 7, 5, 8, 10, 11, 9, 12, 14, 15, 13);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        v128_store(d, i8x16_swizzle(v128_load(s), mask));
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[0];
+        d[1] = s[2];
+        d[2] = s[3];
+        d[3] = s[1];
+    }
+}
+
+#[rite]
+pub(super) fn brag_to_bgra_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
+    let mask = i8x16(0, 3, 1, 2, 4, 7, 5, 6, 8, 11, 9, 10, 12, 15, 13, 14);
+    let n = row.len();
+    let mut i = 0;
+    while i + 16 <= n {
+        let arr: &[u8; 16] = row[i..i + 16].try_into().unwrap();
+        let out: &mut [u8; 16] = (&mut row[i..i + 16]).try_into().unwrap();
+        v128_store(out, i8x16_swizzle(v128_load(arr), mask));
+        i += 16;
+    }
+    for px in row[i..].chunks_exact_mut(4) {
+        let [b, r, a, g] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = g;
+        px[2] = r;
+        px[3] = a;
+    }
+}
+
+#[rite]
+pub(super) fn copy_brag_to_bgra_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+    let mask = i8x16(0, 3, 1, 2, 4, 7, 5, 6, 8, 11, 9, 10, 12, 15, 13, 14);
+    let n = src.len().min(dst.len());
+    let mut i = 0;
+    while i + 16 <= n {
+        let s: &[u8; 16] = src[i..i + 16].try_into().unwrap();
+        let d: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
+        v128_store(d, i8x16_swizzle(v128_load(s), mask));
+        i += 16;
+    }
+    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+        d[0] = s[0];
+        d[1] = s[3];
+        d[2] = s[1];
+        d[3] = s[2];
+    }
+}
+
+// BRAG WASM wrappers
+#[arcane]
+pub(super) fn rgba_to_brag_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    rgba_to_brag_row_wasm128(t, b);
+}
+#[arcane]
+pub(super) fn copy_rgba_to_brag_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    copy_rgba_to_brag_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn brag_to_rgba_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    brag_to_rgba_row_wasm128(t, b);
+}
+#[arcane]
+pub(super) fn copy_brag_to_rgba_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    copy_brag_to_rgba_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn bgra_to_brag_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    bgra_to_brag_row_wasm128(t, b);
+}
+#[arcane]
+pub(super) fn copy_bgra_to_brag_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    copy_bgra_to_brag_row_wasm128(t, s, d);
+}
+#[arcane]
+pub(super) fn brag_to_bgra_impl_wasm128(t: Wasm128Token, b: &mut [u8]) {
+    brag_to_bgra_row_wasm128(t, b);
+}
+#[arcane]
+pub(super) fn copy_brag_to_bgra_impl_wasm128(t: Wasm128Token, s: &[u8], d: &mut [u8]) {
+    copy_brag_to_bgra_row_wasm128(t, s, d);
+}
+
+// BRAG WASM strided wrappers
+#[arcane]
+pub(super) fn rgba_to_brag_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        rgba_to_brag_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_rgba_to_brag_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_rgba_to_brag_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn brag_to_rgba_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        brag_to_rgba_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_brag_to_rgba_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_brag_to_rgba_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn bgra_to_brag_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        bgra_to_brag_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_bgra_to_brag_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_bgra_to_brag_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn brag_to_bgra_strided_wasm128(
+    t: Wasm128Token,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        brag_to_bgra_row_wasm128(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+#[arcane]
+pub(super) fn copy_brag_to_bgra_strided_wasm128(
+    t: Wasm128Token,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_brag_to_bgra_row_wasm128(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}

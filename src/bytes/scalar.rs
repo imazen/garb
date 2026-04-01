@@ -612,6 +612,220 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_strided_scalar(
 }
 
 // ===========================================================================
+// BRAG row implementations
+// ===========================================================================
+
+/// RGBA→BRAG: [R,G,B,A]→[B,R,A,G].
+pub(super) fn rgba_to_brag_row_scalar(_token: ScalarToken, row: &mut [u8]) {
+    for px in row.chunks_exact_mut(4) {
+        let [r, g, b, a] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = r;
+        px[2] = a;
+        px[3] = g;
+    }
+}
+
+/// BRAG→RGBA: [B,R,A,G]→[R,G,B,A].
+pub(super) fn brag_to_rgba_row_scalar(_token: ScalarToken, row: &mut [u8]) {
+    for px in row.chunks_exact_mut(4) {
+        let [b, r, a, g] = [px[0], px[1], px[2], px[3]];
+        px[0] = r;
+        px[1] = g;
+        px[2] = b;
+        px[3] = a;
+    }
+}
+
+/// BGRA→BRAG: [B,G,R,A]→[B,R,A,G].
+pub(super) fn bgra_to_brag_row_scalar(_token: ScalarToken, row: &mut [u8]) {
+    for px in row.chunks_exact_mut(4) {
+        let [b, g, r, a] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = r;
+        px[2] = a;
+        px[3] = g;
+    }
+}
+
+/// BRAG→BGRA: [B,R,A,G]→[B,G,R,A].
+pub(super) fn brag_to_bgra_row_scalar(_token: ScalarToken, row: &mut [u8]) {
+    for px in row.chunks_exact_mut(4) {
+        let [b, r, a, g] = [px[0], px[1], px[2], px[3]];
+        px[0] = b;
+        px[1] = g;
+        px[2] = r;
+        px[3] = a;
+    }
+}
+
+pub(super) fn copy_rgba_to_brag_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+        d[0] = s[2];
+        d[1] = s[0];
+        d[2] = s[3];
+        d[3] = s[1];
+    }
+}
+
+pub(super) fn copy_brag_to_rgba_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+        d[0] = s[1];
+        d[1] = s[3];
+        d[2] = s[0];
+        d[3] = s[2];
+    }
+}
+
+pub(super) fn copy_bgra_to_brag_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+        d[0] = s[0];
+        d[1] = s[2];
+        d[2] = s[3];
+        d[3] = s[1];
+    }
+}
+
+pub(super) fn copy_brag_to_bgra_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
+    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+        d[0] = s[0];
+        d[1] = s[3];
+        d[2] = s[1];
+        d[3] = s[2];
+    }
+}
+
+// ===========================================================================
+// BRAG scalar contiguous wrappers
+// ===========================================================================
+
+pub(super) fn rgba_to_brag_impl_scalar(t: ScalarToken, b: &mut [u8]) {
+    rgba_to_brag_row_scalar(t, b);
+}
+pub(super) fn copy_rgba_to_brag_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    copy_rgba_to_brag_row_scalar(t, s, d);
+}
+pub(super) fn brag_to_rgba_impl_scalar(t: ScalarToken, b: &mut [u8]) {
+    brag_to_rgba_row_scalar(t, b);
+}
+pub(super) fn copy_brag_to_rgba_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    copy_brag_to_rgba_row_scalar(t, s, d);
+}
+pub(super) fn bgra_to_brag_impl_scalar(t: ScalarToken, b: &mut [u8]) {
+    bgra_to_brag_row_scalar(t, b);
+}
+pub(super) fn copy_bgra_to_brag_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    copy_bgra_to_brag_row_scalar(t, s, d);
+}
+pub(super) fn brag_to_bgra_impl_scalar(t: ScalarToken, b: &mut [u8]) {
+    brag_to_bgra_row_scalar(t, b);
+}
+pub(super) fn copy_brag_to_bgra_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
+    copy_brag_to_bgra_row_scalar(t, s, d);
+}
+
+// ===========================================================================
+// BRAG scalar strided wrappers
+// ===========================================================================
+
+pub(super) fn rgba_to_brag_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        rgba_to_brag_row_scalar(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+pub(super) fn copy_rgba_to_brag_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_rgba_to_brag_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+pub(super) fn brag_to_rgba_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        brag_to_rgba_row_scalar(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+pub(super) fn copy_brag_to_rgba_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_brag_to_rgba_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+pub(super) fn bgra_to_brag_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        bgra_to_brag_row_scalar(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+pub(super) fn copy_bgra_to_brag_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_bgra_to_brag_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+pub(super) fn brag_to_bgra_strided_scalar(
+    t: ScalarToken,
+    buf: &mut [u8],
+    w: usize,
+    h: usize,
+    stride: usize,
+) {
+    for y in 0..h {
+        brag_to_bgra_row_scalar(t, &mut buf[y * stride..][..w * 4]);
+    }
+}
+pub(super) fn copy_brag_to_bgra_strided_scalar(
+    t: ScalarToken,
+    src: &[u8],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        copy_brag_to_bgra_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 4]);
+    }
+}
+
+// ===========================================================================
 // Experimental: depth, gray layout, luma, premul (feature = "experimental")
 // ===========================================================================
 

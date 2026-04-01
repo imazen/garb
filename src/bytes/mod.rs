@@ -791,6 +791,212 @@ pub fn gray_alpha_to_argb_strided(
     Ok(())
 }
 
+// ===========================================================================
+// BRAG format conversions
+// ===========================================================================
+
+/// Shuffle RGBA pixels to BRAG in place: \[R,G,B,A\]→\[B,R,A,G\].
+pub fn rgba_to_brag_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 4)?;
+    incant!(rgba_to_brag_impl(buf), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Copy RGBA pixels to BRAG: \[R,G,B,A\]→\[B,R,A,G\].
+pub fn rgba_to_brag(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 4)?;
+    incant!(
+        copy_rgba_to_brag_impl(src, dst),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Shuffle BRAG pixels to RGBA in place: \[B,R,A,G\]→\[R,G,B,A\].
+pub fn brag_to_rgba_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 4)?;
+    incant!(brag_to_rgba_impl(buf), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Copy BRAG pixels to RGBA: \[B,R,A,G\]→\[R,G,B,A\].
+pub fn brag_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 4)?;
+    incant!(
+        copy_brag_to_rgba_impl(src, dst),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Shuffle BGRA pixels to BRAG in place: \[B,G,R,A\]→\[B,R,A,G\].
+pub fn bgra_to_brag_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 4)?;
+    incant!(bgra_to_brag_impl(buf), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Copy BGRA pixels to BRAG: \[B,G,R,A\]→\[B,R,A,G\].
+pub fn bgra_to_brag(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 4)?;
+    incant!(
+        copy_bgra_to_brag_impl(src, dst),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Shuffle BRAG pixels to BGRA in place: \[B,R,A,G\]→\[B,G,R,A\].
+pub fn brag_to_bgra_inplace(buf: &mut [u8]) -> Result<(), SizeError> {
+    check_inplace(buf.len(), 4)?;
+    incant!(brag_to_bgra_impl(buf), [v3, neon, wasm128, scalar]);
+    Ok(())
+}
+
+/// Copy BRAG pixels to BGRA: \[B,R,A,G\]→\[B,G,R,A\].
+pub fn brag_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
+    check_copy(src.len(), 4, dst.len(), 4)?;
+    incant!(
+        copy_brag_to_bgra_impl(src, dst),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+// BRAG strided variants
+
+/// Shuffle RGBA→BRAG in place with stride.
+pub fn rgba_to_brag_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        rgba_to_brag_strided(buf, width, height, stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Copy RGBA→BRAG with stride.
+pub fn rgba_to_brag_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        copy_rgba_to_brag_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Shuffle BRAG→RGBA in place with stride.
+pub fn brag_to_rgba_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        brag_to_rgba_strided(buf, width, height, stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Copy BRAG→RGBA with stride.
+pub fn brag_to_rgba_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        copy_brag_to_rgba_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Shuffle BGRA→BRAG in place with stride.
+pub fn bgra_to_brag_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        bgra_to_brag_strided(buf, width, height, stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Copy BGRA→BRAG with stride.
+pub fn bgra_to_brag_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        copy_bgra_to_brag_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Shuffle BRAG→BGRA in place with stride.
+pub fn brag_to_bgra_inplace_strided(
+    buf: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(buf.len(), width, height, stride, 4)?;
+    incant!(
+        brag_to_bgra_strided(buf, width, height, stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
+/// Copy BRAG→BGRA with stride.
+pub fn brag_to_bgra_strided(
+    src: &[u8],
+    dst: &mut [u8],
+    width: usize,
+    height: usize,
+    src_stride: usize,
+    dst_stride: usize,
+) -> Result<(), SizeError> {
+    check_strided(src.len(), width, height, src_stride, 4)?;
+    check_strided(dst.len(), width, height, dst_stride, 4)?;
+    incant!(
+        copy_brag_to_bgra_strided(src, dst, width, height, src_stride, dst_stride),
+        [v3, neon, wasm128, scalar]
+    );
+    Ok(())
+}
+
 #[cfg(feature = "experimental")]
 mod experimental_api {
     use super::*;
