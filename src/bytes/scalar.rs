@@ -616,6 +616,7 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_strided_scalar(
 // ===========================================================================
 
 #[cfg(feature = "experimental")]
+#[cfg_attr(target_arch = "x86", allow(unused_imports))]
 mod experimental {
     use archmage::prelude::*;
 

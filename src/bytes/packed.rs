@@ -1,5 +1,7 @@
 //! Packed pixel format conversions (RGB565, RGBA4444).
 
+#![cfg_attr(target_arch = "x86", allow(unused_imports))]
+
 use archmage::prelude::*;
 
 use super::{check_copy, check_strided};
