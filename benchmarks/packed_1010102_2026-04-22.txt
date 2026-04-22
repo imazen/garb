@@ -1,0 +1,36 @@
+# garb packed_1010102 scalar baseline — 2026-04-22
+# Hardware: AMD Ryzen 9 7950X (Zen 4, water-cooled, 128 GB DDR5)
+# Linux 6.6.87.2 WSL2
+# Toolchain: stable, default codegen (NO `RUSTFLAGS=-C target-cpu=native`)
+# Command: cargo bench --bench packed_1010102 --features experimental
+# Bench source: benches/packed_1010102.rs
+# Source commit: 5f2b4e1c (parent of bench-adding commit)
+# Code under test: src/bytes/packed_1010102.rs (PR #3, scalar only)
+#
+# Each iteration converts the entire buffer once. Throughput here is
+# (input_bytes + output_bytes) / iteration_time.
+#
+# Per-pixel and GB/s derived columns are computed from the raw timings
+# below. zenbench's terminal "iB/s" column appears to under-report on the
+# 1920x1080 cases — use the raw mean/min ns to derive throughput.
+#
+# size       function                       min_ns      mean_ns     median_ns   ns_per_px(min)  ns_per_px(mean)  GB_per_s(min)  GB_per_s(mean)
+1920x1080    rgba1010102_to_rgba16          1110000     1870000     1710000     0.535           0.902            22.4           13.3
+256x256      rgba1010102_to_rgba16          24420       29390       25150       0.373           0.448            32.2           26.7
+1920x1080    rgba16_to_rgba1010102          1450000     2080000     2040000     0.699           1.003            17.2           12.0
+256x256      rgba16_to_rgba1010102          40500       45220       41670       0.618           0.690            19.4           17.4
+#
+# Pixels: 1920x1080 = 2,073,600; 256x256 = 65,536
+# Bytes touched per call:
+#   1920x1080: 8,294,400 src + 16,588,800 dst (or vice versa) = 24,883,200 bytes
+#   256x256:                                                       786,432 bytes
+#
+# Interpretation: scalar is bandwidth-bound. The cache-resident
+# 256x256 case hits 26-32 GB/s (single core), at or near the L2/L3
+# ceiling for read+write. The 1080p case sits at 12-22 GB/s
+# (single-core DRAM limit on Zen 4). SIMD has limited headroom because
+# the bit math is already cheaper than the byte movement.
+#
+# Note: CV is 25-51% on these runs (24 MB working set fights with allocator
+# / page-fault noise on the larger size). Re-run with a higher round count
+# or warm pages if a tighter measurement is needed for SIMD A/B.
