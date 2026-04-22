@@ -5,12 +5,14 @@
 ### Added
 
 - **RGBA1010102 packed-format pack/unpack** under `experimental` feature
-  (`bytes::rgba1010102_to_rgba16`, `bytes::rgba16_to_rgba1010102`, BGRA
-  variants, plus strided forms). Layout matches DXGI `R10G10B10A2_UNORM` /
+  (`bytes::rgba1010102_to_rgba16`, `bytes::rgba16_to_rgba1010102`, plus
+  strided forms). Layout matches DXGI `R10G10B10A2_UNORM` /
   Vulkan `A2B10G10R10_UNORM_PACK32` (R in low bits, A in MSBs). Unpacks to
   interleaved `u16` channels with values in `[0, 1023]`; 2-bit alpha is
   expanded by bit replication. Scalar only — matches existing packed-format
-  surface in `packed.rs`. ([#3](https://github.com/imazen/garb/pull/3))
+  surface in `packed.rs`. Channel-order swizzles (BGRA, ARGB, ...) are
+  handled separately and should be chained on top.
+  ([#3](https://github.com/imazen/garb/pull/3))
 
 ## 0.2.5
 

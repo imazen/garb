@@ -25,7 +25,7 @@ fn main() {
 
 #[cfg(feature = "experimental")]
 mod experimental {
-    use garb::bytes::{rgba1010102_to_rgba16, rgba16_to_rgba1010102};
+    use garb::bytes::{rgba16_to_rgba1010102, rgba1010102_to_rgba16};
     use zenbench::prelude::*;
 
     const W_LARGE: usize = 1920;
@@ -59,9 +59,10 @@ mod experimental {
 
     pub fn bench_unpack(suite: &mut Suite) {
         suite.group("rgba1010102_to_rgba16", |g| {
-            for &(w, h, label) in
-                &[(W_LARGE, H_LARGE, "1920x1080"), (W_SMALL, H_SMALL, "256x256")]
-            {
+            for &(w, h, label) in &[
+                (W_LARGE, H_LARGE, "1920x1080"),
+                (W_SMALL, H_SMALL, "256x256"),
+            ] {
                 let pixels = w * h;
                 let src_bytes = pixels * 4; // 4 packed bytes/px
                 let dst_bytes = pixels * 8; // 4 u16/px = 8 bytes/px
@@ -86,9 +87,10 @@ mod experimental {
 
     pub fn bench_pack(suite: &mut Suite) {
         suite.group("rgba16_to_rgba1010102", |g| {
-            for &(w, h, label) in
-                &[(W_LARGE, H_LARGE, "1920x1080"), (W_SMALL, H_SMALL, "256x256")]
-            {
+            for &(w, h, label) in &[
+                (W_LARGE, H_LARGE, "1920x1080"),
+                (W_SMALL, H_SMALL, "256x256"),
+            ] {
                 let pixels = w * h;
                 let src_bytes = pixels * 8;
                 let dst_bytes = pixels * 4;

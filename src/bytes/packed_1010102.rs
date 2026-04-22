@@ -52,10 +52,16 @@
 //!
 //! ## Output layout (unpacked u16)
 //!
-//! The unpacked side is **interleaved RGBA u16** (or BGRA u16 for the `_bgra16`
-//! variants): four `u16` per pixel, contiguous in memory, with each channel's
-//! value in `[0, 1023]`. This is the natural input for downstream PQ/HLG
-//! transfer functions in `linear-srgb`.
+//! The unpacked side is **interleaved RGBA u16**: four `u16` per pixel,
+//! contiguous in memory, with each channel's value in `[0, 1023]`. This is the
+//! natural input for downstream PQ/HLG transfer functions in `linear-srgb`.
+//!
+//! ## Channel-order swizzles (BGRA, ARGB, ...) are not handled here
+//!
+//! BGRA / ARGB / etc. swizzling is orthogonal to the bit-packing concern and
+//! lives elsewhere in `garb` (see the byte-channel swizzle helpers). Callers
+//! that need a different channel order should chain unpack-to-RGBA + a
+//! separate swizzle pass.
 
 use crate::SizeError;
 
@@ -109,28 +115,11 @@ fn unpack_one_to_rgba16(src: &[u8; 4], dst: &mut [u16; 4]) {
     dst[3] = expand2_to_10(v >> 30);
 }
 
-#[inline(always)]
-fn unpack_one_to_bgra16(src: &[u8; 4], dst: &mut [u16; 4]) {
-    let v = u32::from_le_bytes(*src);
-    dst[0] = ((v >> 20) & 0x3FF) as u16; // B
-    dst[1] = ((v >> 10) & 0x3FF) as u16; // G
-    dst[2] = (v & 0x3FF) as u16; // R
-    dst[3] = expand2_to_10(v >> 30); // A
-}
-
 fn rgba1010102_to_rgba16_impl(src: &[u8], dst: &mut [u16]) {
     for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
         let s4: &[u8; 4] = s.try_into().unwrap();
         let d4: &mut [u16; 4] = d.try_into().unwrap();
         unpack_one_to_rgba16(s4, d4);
-    }
-}
-
-fn rgba1010102_to_bgra16_impl(src: &[u8], dst: &mut [u16]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
-        let s4: &[u8; 4] = s.try_into().unwrap();
-        let d4: &mut [u16; 4] = d.try_into().unwrap();
-        unpack_one_to_bgra16(s4, d4);
     }
 }
 
@@ -148,29 +137,11 @@ fn pack_one_from_rgba16(src: &[u16; 4], dst: &mut [u8; 4]) {
     *dst = v.to_le_bytes();
 }
 
-#[inline(always)]
-fn pack_one_from_bgra16(src: &[u16; 4], dst: &mut [u8; 4]) {
-    let b = (src[0] as u32) & 0x3FF;
-    let g = (src[1] as u32) & 0x3FF;
-    let r = (src[2] as u32) & 0x3FF;
-    let a = compress_10_to_2(src[3]);
-    let v = r | (g << 10) | (b << 20) | (a << 30);
-    *dst = v.to_le_bytes();
-}
-
 fn rgba16_to_rgba1010102_impl(src: &[u16], dst: &mut [u8]) {
     for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
         let s4: &[u16; 4] = s.try_into().unwrap();
         let d4: &mut [u8; 4] = d.try_into().unwrap();
         pack_one_from_rgba16(s4, d4);
-    }
-}
-
-fn bgra16_to_rgba1010102_impl(src: &[u16], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
-        let s4: &[u16; 4] = s.try_into().unwrap();
-        let d4: &mut [u8; 4] = d.try_into().unwrap();
-        pack_one_from_bgra16(s4, d4);
     }
 }
 
@@ -257,16 +228,6 @@ pub fn rgba1010102_to_rgba16(src: &[u8], dst: &mut [u16]) -> Result<(), SizeErro
     Ok(())
 }
 
-/// `RGBA1010102` (LE u32, 4 bytes/px) → interleaved `BGRA` u16 (4 channels/px).
-///
-/// Same source layout as [`rgba1010102_to_rgba16`]; channels are reordered to
-/// `[B, G, R, A]` per pixel. Alpha expansion is the same.
-pub fn rgba1010102_to_bgra16(src: &[u8], dst: &mut [u16]) -> Result<(), SizeError> {
-    check_unpack(src.len(), dst.len())?;
-    rgba1010102_to_bgra16_impl(src, dst);
-    Ok(())
-}
-
 // ===========================================================================
 // Public API — contiguous pack
 // ===========================================================================
@@ -291,16 +252,6 @@ pub fn rgba1010102_to_bgra16(src: &[u8], dst: &mut [u16]) -> Result<(), SizeErro
 pub fn rgba16_to_rgba1010102(src: &[u16], dst: &mut [u8]) -> Result<(), SizeError> {
     check_pack(src.len(), dst.len())?;
     rgba16_to_rgba1010102_impl(src, dst);
-    Ok(())
-}
-
-/// Interleaved `BGRA` u16 (4 channels/px) → `RGBA1010102` (LE u32, 4 bytes/px).
-///
-/// Same packing as [`rgba16_to_rgba1010102`] but the source channel order is
-/// `[B, G, R, A]`.
-pub fn bgra16_to_rgba1010102(src: &[u16], dst: &mut [u8]) -> Result<(), SizeError> {
-    check_pack(src.len(), dst.len())?;
-    bgra16_to_rgba1010102_impl(src, dst);
     Ok(())
 }
 
@@ -332,27 +283,6 @@ pub fn rgba1010102_to_rgba16_strided(
     Ok(())
 }
 
-/// `RGBA1010102` → interleaved `BGRA` u16 between strided buffers.
-///
-/// See [`rgba1010102_to_rgba16_strided`] for stride conventions.
-pub fn rgba1010102_to_bgra16_strided(
-    src: &[u8],
-    dst: &mut [u16],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided_bytes(src.len(), width, height, src_stride, 4)?;
-    check_strided_bytes(dst.len(), width, height, dst_stride, 4)?;
-    for y in 0..height {
-        let s_row = &src[y * src_stride..][..width * 4];
-        let d_row = &mut dst[y * dst_stride..][..width * 4];
-        rgba1010102_to_bgra16_impl(s_row, d_row);
-    }
-    Ok(())
-}
-
 // ===========================================================================
 // Public API — strided pack
 // ===========================================================================
@@ -375,27 +305,6 @@ pub fn rgba16_to_rgba1010102_strided(
         let s_row = &src[y * src_stride..][..width * 4];
         let d_row = &mut dst[y * dst_stride..][..width * 4];
         rgba16_to_rgba1010102_impl(s_row, d_row);
-    }
-    Ok(())
-}
-
-/// Interleaved `BGRA` u16 → `RGBA1010102` between strided buffers.
-///
-/// See [`rgba16_to_rgba1010102_strided`] for stride conventions.
-pub fn bgra16_to_rgba1010102_strided(
-    src: &[u16],
-    dst: &mut [u8],
-    width: usize,
-    height: usize,
-    src_stride: usize,
-    dst_stride: usize,
-) -> Result<(), SizeError> {
-    check_strided_bytes(src.len(), width, height, src_stride, 4)?;
-    check_strided_bytes(dst.len(), width, height, dst_stride, 4)?;
-    for y in 0..height {
-        let s_row = &src[y * src_stride..][..width * 4];
-        let d_row = &mut dst[y * dst_stride..][..width * 4];
-        bgra16_to_rgba1010102_impl(s_row, d_row);
     }
     Ok(())
 }
@@ -481,17 +390,6 @@ mod tests {
     }
 
     #[test]
-    fn unpack_known_values_bgra() {
-        let mut dst = [0u16; 4];
-        // Pure red max: packed = 0x000003FF -> dst BGRA = [0, 0, 1023, 0]
-        rgba1010102_to_bgra16(&[0xFF, 0x03, 0x00, 0x00], &mut dst).unwrap();
-        assert_eq!(dst, [0, 0, 1023, 0]);
-        // Pure blue max: packed = 0x3FF00000 -> dst BGRA = [1023, 0, 0, 0]
-        rgba1010102_to_bgra16(&[0x00, 0x00, 0xF0, 0x3F], &mut dst).unwrap();
-        assert_eq!(dst, [1023, 0, 0, 0]);
-    }
-
-    #[test]
     fn pack_known_values_rgba() {
         let mut dst = [0u8; 4];
         // Pure red max -> 0x000003FF
@@ -509,17 +407,6 @@ mod tests {
         // White opaque -> 0xFFFFFFFF
         rgba16_to_rgba1010102(&[1023, 1023, 1023, 1023], &mut dst).unwrap();
         assert_eq!(dst, [0xFF, 0xFF, 0xFF, 0xFF]);
-    }
-
-    #[test]
-    fn pack_known_values_bgra() {
-        let mut dst = [0u8; 4];
-        // BGRA = [0, 0, 1023, 0] -> packed pure red -> 0x000003FF
-        bgra16_to_rgba1010102(&[0, 0, 1023, 0], &mut dst).unwrap();
-        assert_eq!(dst, [0xFF, 0x03, 0x00, 0x00]);
-        // BGRA = [1023, 0, 0, 0] -> packed pure blue -> 0x3FF00000
-        bgra16_to_rgba1010102(&[1023, 0, 0, 0], &mut dst).unwrap();
-        assert_eq!(dst, [0x00, 0x00, 0xF0, 0x3F]);
     }
 
     // ---- round-trip ----
@@ -597,42 +484,6 @@ mod tests {
             let mut back = [0u8; 4];
             rgba16_to_rgba1010102(&chans, &mut back).unwrap();
             assert_eq!(back, bytes, "x = 0x{v:08X}");
-        }
-    }
-
-    #[test]
-    fn bgra_round_trip() {
-        let mut rng = Lcg::new(0x1234_5678_9ABC_DEF0);
-        let n_pixels = 2048;
-        let mut packed = vec![0u8; n_pixels * 4];
-        for chunk in packed.chunks_exact_mut(4) {
-            chunk.copy_from_slice(&rng.next_u32().to_le_bytes());
-        }
-
-        let mut bgra = vec![0u16; n_pixels * 4];
-        rgba1010102_to_bgra16(&packed, &mut bgra).unwrap();
-        let mut repacked = vec![0u8; n_pixels * 4];
-        bgra16_to_rgba1010102(&bgra, &mut repacked).unwrap();
-        assert_eq!(packed, repacked);
-    }
-
-    #[test]
-    fn bgra_swizzle_consistency() {
-        // unpack RGBA then swap channels manually == unpack BGRA directly.
-        let mut rng = Lcg::new(42);
-        let mut packed = [0u8; 4 * 32];
-        for chunk in packed.chunks_exact_mut(4) {
-            chunk.copy_from_slice(&rng.next_u32().to_le_bytes());
-        }
-        let mut rgba = [0u16; 4 * 32];
-        let mut bgra = [0u16; 4 * 32];
-        rgba1010102_to_rgba16(&packed, &mut rgba).unwrap();
-        rgba1010102_to_bgra16(&packed, &mut bgra).unwrap();
-        for (rgba_px, bgra_px) in rgba.chunks_exact(4).zip(bgra.chunks_exact(4)) {
-            assert_eq!(bgra_px[0], rgba_px[2]); // B ↔ R
-            assert_eq!(bgra_px[1], rgba_px[1]); // G
-            assert_eq!(bgra_px[2], rgba_px[0]); // R ↔ B
-            assert_eq!(bgra_px[3], rgba_px[3]); // A
         }
     }
 
