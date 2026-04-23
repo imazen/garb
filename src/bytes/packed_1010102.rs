@@ -63,6 +63,10 @@
 //! that need a different channel order should chain unpack-to-RGBA + a
 //! separate swizzle pass.
 
+#![cfg_attr(target_arch = "x86", allow(unused_imports))]
+
+use archmage::prelude::*;
+
 use crate::SizeError;
 
 // ===========================================================================
@@ -115,11 +119,33 @@ fn unpack_one_to_rgba16(src: &[u8; 4], dst: &mut [u16; 4]) {
     dst[3] = expand2_to_10(v >> 30);
 }
 
+#[autoversion(v3, neon, wasm128)]
 fn rgba1010102_to_rgba16_impl(src: &[u8], dst: &mut [u16]) {
     for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
         let s4: &[u8; 4] = s.try_into().unwrap();
         let d4: &mut [u16; 4] = d.try_into().unwrap();
         unpack_one_to_rgba16(s4, d4);
+    }
+}
+
+#[autoversion(v3, neon, wasm128)]
+fn rgba1010102_to_rgba16_strided_impl(
+    src: &[u8],
+    dst: &mut [u16],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        for (s, d) in src[y * ss..][..w * 4]
+            .chunks_exact(4)
+            .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+        {
+            let s4: &[u8; 4] = s.try_into().unwrap();
+            let d4: &mut [u16; 4] = d.try_into().unwrap();
+            unpack_one_to_rgba16(s4, d4);
+        }
     }
 }
 
@@ -137,11 +163,33 @@ fn pack_one_from_rgba16(src: &[u16; 4], dst: &mut [u8; 4]) {
     *dst = v.to_le_bytes();
 }
 
+#[autoversion(v3, neon, wasm128)]
 fn rgba16_to_rgba1010102_impl(src: &[u16], dst: &mut [u8]) {
     for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
         let s4: &[u16; 4] = s.try_into().unwrap();
         let d4: &mut [u8; 4] = d.try_into().unwrap();
         pack_one_from_rgba16(s4, d4);
+    }
+}
+
+#[autoversion(v3, neon, wasm128)]
+fn rgba16_to_rgba1010102_strided_impl(
+    src: &[u16],
+    dst: &mut [u8],
+    w: usize,
+    h: usize,
+    ss: usize,
+    ds: usize,
+) {
+    for y in 0..h {
+        for (s, d) in src[y * ss..][..w * 4]
+            .chunks_exact(4)
+            .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+        {
+            let s4: &[u16; 4] = s.try_into().unwrap();
+            let d4: &mut [u8; 4] = d.try_into().unwrap();
+            pack_one_from_rgba16(s4, d4);
+        }
     }
 }
 
@@ -275,11 +323,7 @@ pub fn rgba1010102_to_rgba16_strided(
 ) -> Result<(), SizeError> {
     check_strided_bytes(src.len(), width, height, src_stride, 4)?;
     check_strided_bytes(dst.len(), width, height, dst_stride, 4)?;
-    for y in 0..height {
-        let s_row = &src[y * src_stride..][..width * 4];
-        let d_row = &mut dst[y * dst_stride..][..width * 4];
-        rgba1010102_to_rgba16_impl(s_row, d_row);
-    }
+    rgba1010102_to_rgba16_strided_impl(src, dst, width, height, src_stride, dst_stride);
     Ok(())
 }
 
@@ -301,11 +345,7 @@ pub fn rgba16_to_rgba1010102_strided(
 ) -> Result<(), SizeError> {
     check_strided_bytes(src.len(), width, height, src_stride, 4)?;
     check_strided_bytes(dst.len(), width, height, dst_stride, 4)?;
-    for y in 0..height {
-        let s_row = &src[y * src_stride..][..width * 4];
-        let d_row = &mut dst[y * dst_stride..][..width * 4];
-        rgba16_to_rgba1010102_impl(s_row, d_row);
-    }
+    rgba16_to_rgba1010102_strided_impl(src, dst, width, height, src_stride, dst_stride);
     Ok(())
 }
 
