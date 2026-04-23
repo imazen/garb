@@ -27,6 +27,18 @@
   the graphics-API layout match, and the alpha bit-replication convention.
   (`18b9f18`)
 
+### Changed
+
+- **archmage** 0.9.14 → 0.9.21. Pulls in upstream dispatch/codegen fixes.
+- All dependency versions written in full per workspace policy
+  (no truncated `"1"` / `"0.8"` strings): `bytemuck = "1.25.0"`,
+  `rgb = "0.8.53"`, `paste = "1.0.15"`, `imgref = "1.12.0"`,
+  `criterion = "0.8.2"`.
+- README badges switched to `?style=flat-square` and inline with the
+  `# garb` header per the imazen badge convention; added the `lib.rs`
+  badge so the required-five (CI / crates.io / lib.rs / docs.rs /
+  license) is complete.
+
 ## [0.2.5]
 
 ### Fixed
