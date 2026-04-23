@@ -2,19 +2,32 @@
 
 ## [Unreleased]
 
+### QUEUED BREAKING CHANGES
+
+<!-- Breaking changes that will ship together in the next major (or minor for 0.x) release.
+     Add items here as you discover them. Do NOT ship these piecemeal — batch them. -->
+
+## [0.2.6] - 2026-04-22
+
 ### Added
 
 - **RGBA1010102 packed-format pack/unpack** under `experimental` feature
   (`bytes::rgba1010102_to_rgba16`, `bytes::rgba16_to_rgba1010102`, plus
-  strided forms). Layout matches DXGI `R10G10B10A2_UNORM` /
-  Vulkan `A2B10G10R10_UNORM_PACK32` (R in low bits, A in MSBs). Unpacks to
-  interleaved `u16` channels with values in `[0, 1023]`; 2-bit alpha is
-  expanded by bit replication. Scalar only — matches existing packed-format
-  surface in `packed.rs`. Channel-order swizzles (BGRA, ARGB, ...) are
-  handled separately and should be chained on top.
-  ([#3](https://github.com/imazen/garb/pull/3))
+  `_strided` variants). Layout matches DXGI `R10G10B10A2_UNORM` /
+  Vulkan `A2B10G10R10_UNORM_PACK32` / WGPU `Rgb10a2Unorm` (R in low bits,
+  A in MSBs). Unpacks to interleaved `u16` channels with values in
+  `[0, 1023]`; 2-bit alpha is expanded by bit replication per the
+  graphics-API convention. Transfer functions are not applied — chain with
+  `linear-srgb` for PQ/HLG. (PR [#3](https://github.com/imazen/garb/pull/3),
+  squashed as `18b9f18`)
+- `#[autoversion]` wrappers on the new RGBA1010102 pack/unpack hot loops so
+  they participate in archmage's runtime SIMD dispatch alongside the rest of
+  the experimental surface. (`18b9f18`)
+- README and `bytes::packed_1010102` module docs document the new functions,
+  the graphics-API layout match, and the alpha bit-replication convention.
+  (`18b9f18`)
 
-## 0.2.5
+## [0.2.5]
 
 ### Fixed
 
