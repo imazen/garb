@@ -44,6 +44,10 @@ stripping channels — so you can get back to the interesting work.
 - RGBA / BGRA → RGB565 (lossy compress, round-to-nearest, auto-vectorized)
 - RGBA4444 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
 - RGBA / BGRA → RGBA4444 (lossy compress, round-to-nearest, auto-vectorized)
+- RGBA1010102 ↔ interleaved RGBA u16 (LE packed `r | g<<10 | b<<20 | a<<30`,
+  matches DXGI `R10G10B10A2_UNORM` / Vulkan `A2B10G10R10_UNORM_PACK32` /
+  WGPU `Rgb10a2Unorm`; 2-bit alpha bit-replicated to 10 bits per the graphics-API
+  convention; transfer functions are NOT applied — chain with `linear-srgb` for PQ/HLG)
 - u8 alpha premultiply for RGBA / BGRA (exact integer, auto-vectorized)
 - Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha
 - RGB / RGBA / BGR / BGRA → Gray (weighted luma: BT.709, BT.601, BT.2020; or identity)
@@ -283,6 +287,8 @@ Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 | `rgba4444_to_bgra` | RGBA4444 (LE u16, 2bpp) → BGRA (4bpp) |
 | `rgba_to_rgba4444` | RGBA (4bpp) → RGBA4444 (LE u16, 2bpp), lossy |
 | `bgra_to_rgba4444` | BGRA (4bpp) → RGBA4444 (LE u16, 2bpp), lossy |
+| `rgba1010102_to_rgba16` | RGBA1010102 (LE u32, 4bpp) → interleaved RGBA u16 (4 channels in `[0, 1023]`); 2-bit alpha bit-replicated to 10 bits |
+| `rgba16_to_rgba1010102` | Interleaved RGBA u16 → RGBA1010102 (LE u32, 4bpp); alpha rounded to 2 bits via `(a*3+511)/1023` |
 | `premultiply_alpha_rgba_u8` | Premultiply alpha in `[R,G,B,A]` u8 buffer (in-place) |
 | `premultiply_alpha_rgba_u8_copy` | Premultiply alpha u8, copy variant |
 | `gray_to_rgb` | 1bpp → 3bpp (R=G=B=gray) |

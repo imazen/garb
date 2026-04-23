@@ -32,6 +32,11 @@ mod packed;
 #[cfg(feature = "experimental")]
 pub use packed::*;
 
+#[cfg(feature = "experimental")]
+mod packed_1010102;
+#[cfg(feature = "experimental")]
+pub use packed_1010102::*;
+
 #[cfg(test)]
 mod tests;
 
