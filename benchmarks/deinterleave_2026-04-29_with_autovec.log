@@ -1,0 +1,151 @@
+    Finished `bench` profile [optimized] target(s) in 0.04s
+     Running benches/deinterleave.rs (target/release/deps/deinterleave-bb16f185c6269649)
+=== SIMD Tier Detection ===
+  AVX2+FMA (x86-64-v3):    available (will dispatch)
+[zenbench] calibration: int=0.25ns/iter mem_bw=117.2GiB/s mem_lat=9.4ns
+[zenbench] timer resolution: 10ns, loop overhead: 0.18ns/iter, TSC: 4.491 ticks/ns (invariant)
+[zenbench] results → /tmp/zenbench/zenbench-1777497900-1d5569.txt
+
+═══════════════════════════════════════════════════════════════
+  zenbench  1777497900-1d5569
+  git: 4ef264611866d4b4c97fd433114ce96e74ddbea1
+═══════════════════════════════════════════════════════════════
+
+  rgb24_to_planes_f32 (u8)  5 rounds × 30 calls ⚠ only 5 rounds
+                                             mean ±mad ns  95% CI vs base                    iB/s
+  ├─ 256px (L1)
+  │  ├─ 256px (L1) :: scalar                     284 ±5ns  [280–288]ns                    164876G
+  │  ├─ 256px (L1) :: scalar+auto…               158 ±8ns  [-49.7%–-44.0%]                295775G
+  │  ╰─ 256px (L1) :: simd-dispat…                92 ±7ns  [-70.3%–-64.6%]                507824G
+  ├─ 4096px (L1)
+  │  ├─ 4096px (L1) :: scalar                  4334 ±82ns  [+1347.4%–+1372.9%]             10815G [1]
+  │  ├─ 4096px (L1) :: scalar+aut…             1648 ±15ns  [+474.5%–+484.4%]               28452G
+  │  ╰─ 4096px (L1) :: simd-dispa…              856 ±19ns  [+194.3%–+208.0%]               54750G [2]
+  ├─ 65536px (L2)
+  │  ├─ 65536px (L2) :: scalar              84149 ±5725ns  [+23438.3%–+25082.2%]             557G [3]
+  │  ├─ 65536px (L2) :: scalar+au…          27497 ±1026ns  [+9080.9%–+9498.6%]              1705G
+  │  ╰─ 65536px (L2) :: simd-disp…           14172 ±760ns  [+4551.7%–+4855.9%]              3308G
+  ├─ 262144px (L3)
+  │  ├─ 262144px (L3) :: scalar           299712 ±24499ns  [+98617.2%–+111477.2%]            156G
+  │  ├─ 262144px (L3) :: scalar+a…        136644 ±19895ns  [+37685.5%–+60470.1%]             343G [4]
+  │  ╰─ 262144px (L3) :: simd-dis…         76465 ±15881ns  [+18775.5%–+35246.4%]             613G [5]
+  ├─ 1MP (L3)
+  │  ├─ 1MP (L3) :: scalar               1189705 ±97945ns  [+393707.8%–+443014.0%]          39.4G
+  │  ├─ 1MP (L3) :: scalar+autove…       834441 ±129015ns  [+191404.8%–+265469.1%]          56.2G [6] [7]
+  │  ╰─ 1MP (L3) :: simd-dispatch        524185 ±109779ns  [+159967.6%–+208032.7%]          89.4G
+  ├─ 4MP (DRAM)
+  │  ├─ 4MP (DRAM) :: scalar           30855879 ±721611ns  [+10662717.9%–+11073065.8%]      1.52G
+  │  ├─ 4MP (DRAM) :: scalar+auto…    28422078 ±1053756ns  [+9494586.0%–+9824908.8%]        1.65G [8]
+  │  ╰─ 4MP (DRAM) :: simd-dispat…     28734984 ±231656ns  [+9543026.6%–+10049997.3%]       1.63G [9]
+  ╰─ 16MP (DRAM)
+     ├─ 16MP (DRAM) :: scalar        122181283 ±2278300ns  [+42109781.4%–+42917287.0%]       393M
+     ├─ 16MP (DRAM) :: scalar+aut…   115104920 ±3897780ns  [+39727163.0%–+41245509.8%]       417M
+     ╰─ 16MP (DRAM) :: simd-dispa…   113219753 ±6268801ns  [+38560739.5%–+41103513.9%]       424M
+
+  256px (L1) :: simd-dispat…  █████████████████████████████████████ 507824 GiB/s
+  256px (L1) :: scalar+auto…  ██████████████████████ 295775 GiB/s
+  256px (L1) :: scalar        ████████████ 164876 GiB/s
+  4096px (L1) :: simd-dispa…  ████ 54750 GiB/s
+  4096px (L1) :: scalar+aut…  ██ 28452 GiB/s
+  4096px (L1) :: scalar       █ 10815 GiB/s
+  65536px (L2) :: simd-disp…  █ 3308 GiB/s
+  65536px (L2) :: scalar+au…  █ 1705 GiB/s
+  262144px (L3) :: simd-dis…  █ 613 GiB/s
+  65536px (L2) :: scalar      █ 557 GiB/s
+  262144px (L3) :: scalar+a…  █ 343 GiB/s
+  262144px (L3) :: scalar     █ 156 GiB/s
+  1MP (L3) :: simd-dispatch   █ 89.4 GiB/s
+  1MP (L3) :: scalar+autove…  █ 56.2 GiB/s
+  1MP (L3) :: scalar          █ 39.4 GiB/s
+  4MP (DRAM) :: scalar+auto…  █ 1.65 GiB/s
+  4MP (DRAM) :: simd-dispat…  █ 1.63 GiB/s
+  4MP (DRAM) :: scalar        █ 1.52 GiB/s
+  16MP (DRAM) :: simd-dispa…  █ 424 MiB/s
+  16MP (DRAM) :: scalar+aut…  █ 417 MiB/s
+  16MP (DRAM) :: scalar       █ 393 MiB/s
+  [1] drift r=-0.80 — later rounds faster
+  [2] drift r=-0.70 — later rounds faster
+  [3] CV=40%
+  [4] CV=30%
+  [5] CV=39%
+  [6] drift r=-0.60 — later rounds faster
+  [7] CV=49%
+  [8] drift r=0.80 — later rounds slower
+  [9] drift r=0.80 — later rounds slower
+
+  rgb48_to_planes_f32 (u16)  5 rounds × 25 calls ⚠ only 5 rounds
+                                             mean ±mad ns  95% CI vs base                    iB/s
+  ├─ 256px (L1)
+  │  ├─ 256px (L1) :: scalar                    163 ±10ns  [155–173]ns                    575360G
+  │  ├─ 256px (L1) :: scalar+auto…              144 ±18ns  [-17.2%–-13.1%]                653190G [1]
+  │  ╰─ 256px (L1) :: simd-dispat…               98 ±27ns  [-47.9%–-31.1%]                953355G [2] [3]
+  ├─ 4096px (L1)
+  │  ├─ 4096px (L1) :: scalar                  2238 ±43ns  [+1213.1%–+1334.9%]             41888G [4]
+  │  ├─ 4096px (L1) :: scalar+aut…             1430 ±12ns  [+767.2%–+771.3%]               65564G [5]
+  │  ╰─ 4096px (L1) :: simd-dispa…              911 ±48ns  [+349.6%–+581.6%]              102882G [6] [7]
+  ├─ 65536px (L2)
+  │  ├─ 65536px (L2) :: scalar               39616 ±142ns  [+21148.2%–+28336.6%]            2366G [8]
+  │  ├─ 65536px (L2) :: scalar+au…          26022 ±3845ns  [+14097.2%–+17531.1%]            3603G
+  │  ╰─ 65536px (L2) :: simd-disp…          15348 ±1817ns  [+7222.6%–+11863.7%]             6108G [9] [10]
+  ├─ 262144px (L3)
+  │  ├─ 262144px (L3) :: scalar           183541 ±42980ns  [+96716.2%–+128369.0%]            511G
+  │  ├─ 262144px (L3) :: scalar+a…         106121 ±7420ns  [+55861.9%–+61369.3%]             883G [11] [12]
+  │  ╰─ 262144px (L3) :: simd-dis…         76620 ±25409ns  [+36790.6%–+57055.9%]            1224G [13]
+  ├─ 1MP (L3)
+  │  ├─ 1MP (L3) :: scalar               723182 ±114978ns  [+385193.8%–+512149.9%]           130G
+  │  ├─ 1MP (L3) :: scalar+autove…        676028 ±29278ns  [+403279.6%–+422955.8%]           139G [14] [15]
+  │  ╰─ 1MP (L3) :: simd-dispatch        533161 ±191119ns  [+250469.0%–+403751.0%]           176G [16]
+  ├─ 4MP (DRAM)
+  │  ├─ 4MP (DRAM) :: scalar           26644964 ±414757ns  [+15934747.2%–+16280353.5%]      3.52G
+  │  ├─ 4MP (DRAM) :: scalar+auto…     29608143 ±681155ns  [+15081722.3%–+21637584.3%]      3.17G [17] [18]
+  │  ╰─ 4MP (DRAM) :: simd-dispat…     26516267 ±903145ns  [+15105751.6%–+17533154.6%]      3.54G [19]
+  ╰─ 16MP (DRAM)
+     ├─ 16MP (DRAM) :: scalar        107193378 ±1301564ns  [+62935014.3%–+68915917.0%]       896M [20]
+     ├─ 16MP (DRAM) :: scalar+aut…   107874829 ±2831600ns  [+64059820.2%–+68867214.4%]       890M
+     ╰─ 16MP (DRAM) :: simd-dispa…    113805310 ±993230ns  [+65455823.6%–+69096478.4%]       844M
+
+  256px (L1) :: simd-dispat…  █████████████████████████████████████ 953355 GiB/s
+  256px (L1) :: scalar+auto…  █████████████████████████ 653190 GiB/s
+  256px (L1) :: scalar        ██████████████████████ 575360 GiB/s
+  4096px (L1) :: simd-dispa…  ████ 102882 GiB/s
+  4096px (L1) :: scalar+aut…  ███ 65564 GiB/s
+  4096px (L1) :: scalar       ██ 41888 GiB/s
+  65536px (L2) :: simd-disp…  █ 6108 GiB/s
+  65536px (L2) :: scalar+au…  █ 3603 GiB/s
+  65536px (L2) :: scalar      █ 2366 GiB/s
+  262144px (L3) :: simd-dis…  █ 1224 GiB/s
+  262144px (L3) :: scalar+a…  █ 883 GiB/s
+  262144px (L3) :: scalar     █ 511 GiB/s
+  1MP (L3) :: simd-dispatch   █ 176 GiB/s
+  1MP (L3) :: scalar+autove…  █ 139 GiB/s
+  1MP (L3) :: scalar          █ 130 GiB/s
+  4MP (DRAM) :: simd-dispat…  █ 3.54 GiB/s
+  4MP (DRAM) :: scalar        █ 3.52 GiB/s
+  4MP (DRAM) :: scalar+auto…  █ 3.17 GiB/s
+  16MP (DRAM) :: scalar       █ 896 MiB/s
+  16MP (DRAM) :: scalar+aut…  █ 890 MiB/s
+  16MP (DRAM) :: simd-dispa…  █ 844 MiB/s
+  [1] drift r=-1.00 — later rounds faster
+  [2] drift r=-0.60 — later rounds faster
+  [3] CV=24%
+  [4] drift r=-0.90 — later rounds faster
+  [5] drift r=-1.00 — later rounds faster
+  [6] drift r=-0.70 — later rounds faster
+  [7] CV=28%
+  [8] drift r=-0.60 — later rounds faster
+  [9] drift r=-0.60 — later rounds faster
+  [10] CV=31%
+  [11] drift r=-1.00 — later rounds faster
+  [12] CV=22%
+  [13] CV=28%
+  [14] drift r=-1.00 — later rounds faster
+  [15] CV=23%
+  [16] CV=29%
+  [17] drift r=-0.80 — later rounds faster
+  [18] CV=23%
+  [19] drift r=-0.90 — later rounds faster
+  [20] drift r=-0.60 — later rounds faster
+
+  total: 424.6s  (10 noisy rounds)
+═══════════════════════════════════════════════════════════════
+  filter: cargo bench -- --group=NAME  format: --format=llm|csv|md|json

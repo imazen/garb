@@ -1,0 +1,22 @@
+commit: ac45dce4 (added f32 RGB(A) interleave/deinterleave primitives)
+host:   AMD Ryzen 9 7950X (Zen 4)
+cmd:    cargo bench --bench deinterleave --features experimental -- --group=rgb_f32
+        cargo bench --bench deinterleave --features experimental -- --group=rgba_f32
+zenbench: 0.1.7
+date:   2026-04-29 UTC
+notes:
+  - "scatter dispatch(avx2)" routes through #[arcane] AVX2 wrapper that
+    calls the scalar source — i.e. LLVM-autovectorized under AVX2 target
+    feature. There is no hand-written SIMD for the f32 paths yet; the
+    bench shows whether autovec alone is enough to ship.
+  - 1:1 memory ratio (12 B in, 12 B out RGB; 16/16 RGBA), so DRAM
+    bandwidth dominates from ~262K pixels onward. The compute lift is
+    only visible at L1/L2-resident sizes.
+  - Gather (planes → interleaved) is consistently faster than scatter at
+    all sizes — contiguous-write store, only the interleave shuffle on
+    the store side. autovec adds little because the scalar already
+    compiles cleanly.
+  - Scatter sees a real autovec lift at L1/L2: ~1.4× to 2.1× for RGB,
+    ~1.5× for RGBA. Hand-tuned SIMD (permutevar8x32 + blends) could
+    likely add another 1.3-1.5× at L1/L2, but at L3+ both paths are
+    memory-bound so the bench wouldn't show it.

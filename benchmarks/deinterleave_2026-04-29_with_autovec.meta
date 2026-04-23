@@ -1,0 +1,16 @@
+commit: a4fd62d7 + autovec additions (uncommitted at run time)
+host:   AMD Ryzen 9 7950X (Zen 4)
+cmd:    cargo bench --bench deinterleave --features experimental
+zenbench: 0.1.7
+date:   2026-04-29 UTC
+notes:
+  - Added third bench column "scalar+autovec(avx2)": same scalar source as
+    `scalar`, but compiled inside an #[arcane] AVX2 target_feature region so
+    LLVM is free to autovectorize. Lets us separate "what does LLVM do for
+    free under AVX2" from "what does the hand-written shuffle pattern add
+    on top".
+  - Naive `scalar` numbers came out slower in this run vs the prior log
+    (e.g. 256px L1: 182ns → 284ns); zenbench interleaves all three columns
+    per round so cache pressure is higher with 3 variants. Within-run
+    ratios are what matter.
+  - As before, "iB/s" column appears miscalibrated; trust the ns timings.

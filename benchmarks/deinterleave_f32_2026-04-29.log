@@ -1,0 +1,85 @@
+    Finished `bench` profile [optimized] target(s) in 0.06s
+     Running benches/deinterleave.rs (target/release/deps/deinterleave-bb16f185c6269649)
+=== SIMD Tier Detection ===
+  AVX2+FMA (x86-64-v3):    available (will dispatch)
+[zenbench] calibration: int=0.37ns/iter mem_bw=97.8GiB/s mem_lat=10.5ns
+[zenbench] timer resolution: 10ns, loop overhead: 0.65ns/iter, TSC: 4.492 ticks/ns (invariant)
+[zenbench] results → /tmp/zenbench/zenbench-1777499222-1e0393.txt
+
+═══════════════════════════════════════════════════════════════
+  zenbench  1777499222-1e0393
+  git: 4ef264611866d4b4c97fd433114ce96e74ddbea1
+═══════════════════════════════════════════════════════════════
+
+  rgb_f32 ⇄ planes_f32 (identity)  2 rounds × 63 calls ⚠ only 2 rounds
+                                                 mean ±mad ns  95% CI vs base                       iB/s
+  ├─ 256px (L1)
+  │  ├─ 256px (L1) :: scatter sca…                92.1 ±2.6ns  [90.4–93.9]ns                    2035112G
+  │  ├─ 256px (L1) :: scatter dis…                64.8 ±0.7ns  [-31.1%–-28.3%]                  2895580G
+  │  ├─ 256px (L1) :: gather scal…                61.5 ±0.2ns  [-35.0%–-31.6%]                  3051213G
+  │  ╰─ 256px (L1) :: gather disp…               60.7 ±11.5ns  [-40.7%–-27.5%]                  3087937G
+  ├─ 4096px (L1)
+  │  ├─ 4096px (L1) :: scatter sc…            1281.4 ±122.5ns  [+1199.3%–+1382.4%]               146324G
+  │  ├─ 4096px (L1) :: scatter di…              599.7 ±31.3ns  [+526.2%–+575.7%]                 312637G
+  │  ├─ 4096px (L1) :: gather sca…               721.4 ±2.0ns  [+682.6%–+683.4%]                 259902G
+  │  ╰─ 4096px (L1) :: gather dis…             665.3 ±113.1ns  [+537.4%–+706.8%]                 281832G
+  ├─ 65536px (L2)
+  │  ├─ 65536px (L2) :: scatter s…           20597.0 ±494.7ns  [+21891.8%–+22619.8%]               9103G
+  │  ├─ 65536px (L2) :: scatter d…           13276.3 ±171.2ns  [+14182.8%–+14437.2%]              14123G
+  │  ├─ 65536px (L2) :: gather sc…           12725.9 ±269.1ns  [+13513.7%–+13911.5%]              14734G
+  │  ╰─ 65536px (L2) :: gather di…           12552.0 ±327.8ns  [+13285.8%–+13762.0%]              14938G
+  ├─ 262144px (L3)
+  │  ├─ 262144px (L3) :: scatter …          83138.5 ±6227.6ns  [+85576.9%–+94699.0%]               2255G
+  │  ├─ 262144px (L3) :: scatter …         60384.8 ±15951.9ns  [+53761.1%–+77121.3%]               3105G [1]
+  │  ├─ 262144px (L3) :: gather s…          51574.7 ±5950.4ns  [+51520.8%–+60236.9%]               3636G
+  │  ╰─ 262144px (L3) :: gather d…         64879.6 ±16089.3ns  [+58543.0%–+82096.8%]               2890G [2]
+  ├─ 1MP (L3)
+  │  ├─ 1MP (L3) :: scatter scalar        811548.9 ±56082.8ns  [+839693.9%–+921805.2%]              231G
+  │  ├─ 1MP (L3) :: scatter dispa…        805469.4 ±12265.0ns  [+865173.6%–+883128.0%]              233G
+  │  ├─ 1MP (L3) :: gather scalar        901309.5 ±129875.4ns  [+883096.7%–+1073253.3%]             208G
+  │  ╰─ 1MP (L3) :: gather dispat…        840346.0 ±51693.3ns  [+874163.6%–+949847.8%]              223G
+  ├─ 4MP (DRAM)
+  │  ├─ 4MP (DRAM) :: scatter sca…     28814466.9 ±296125.3ns  [+31058129.3%–+31491712.3%]         6.51G
+  │  ├─ 4MP (DRAM) :: scatter dis…      27716555.2 ±63672.6ns  [+30036643.0%–+30129867.1%]         6.76G
+  │  ├─ 4MP (DRAM) :: gather scal…     25589705.4 ±473099.2ns  [+27428439.0%–+28121135.3%]         7.33G
+  │  ╰─ 4MP (DRAM) :: gather disp…     25920163.0 ±278965.3ns  [+27929238.3%–+28337688.7%]         7.23G
+  ╰─ 16MP (DRAM)
+     ├─ 16MP (DRAM) :: scatter sc…   115925796.0 ±2411456.0ns  [+124059548.8%–+127590346.5%]       1.62G
+     ├─ 16MP (DRAM) :: scatter di…    108313125.0 ±996719.0ns  [+116832524.1%–+118291891.5%]       1.73G
+     ├─ 16MP (DRAM) :: gather sca…    103382422.5 ±138569.5ns  [+112109010.9%–+112311904.7%]       1.81G
+     ╰─ 16MP (DRAM) :: gather dis…     103255149.4 ±71036.1ns  [+112020310.0%–+112124323.0%]       1.82G
+
+  256px (L1) :: gather disp…  ████████████████████████████████████ 3087937 GiB/s
+  256px (L1) :: gather scal…  ████████████████████████████████████ 3051213 GiB/s
+  256px (L1) :: scatter dis…  ██████████████████████████████████ 2895580 GiB/s
+  256px (L1) :: scatter sca…  ████████████████████████ 2035112 GiB/s
+  4096px (L1) :: scatter di…  ████ 312637 GiB/s
+  4096px (L1) :: gather dis…  ███ 281832 GiB/s
+  4096px (L1) :: gather sca…  ███ 259902 GiB/s
+  4096px (L1) :: scatter sc…  ██ 146324 GiB/s
+  65536px (L2) :: gather di…  █ 14938 GiB/s
+  65536px (L2) :: gather sc…  █ 14734 GiB/s
+  65536px (L2) :: scatter d…  █ 14123 GiB/s
+  65536px (L2) :: scatter s…  █ 9103 GiB/s
+  262144px (L3) :: gather s…  █ 3636 GiB/s
+  262144px (L3) :: scatter …  █ 3105 GiB/s
+  262144px (L3) :: gather d…  █ 2890 GiB/s
+  262144px (L3) :: scatter …  █ 2255 GiB/s
+  1MP (L3) :: scatter dispa…  █ 233 GiB/s
+  1MP (L3) :: scatter scalar  █ 231 GiB/s
+  1MP (L3) :: gather dispat…  █ 223 GiB/s
+  1MP (L3) :: gather scalar   █ 208 GiB/s
+  4MP (DRAM) :: gather scal…  █ 7.33 GiB/s
+  4MP (DRAM) :: gather disp…  █ 7.23 GiB/s
+  4MP (DRAM) :: scatter dis…  █ 6.76 GiB/s
+  4MP (DRAM) :: scatter sca…  █ 6.51 GiB/s
+  16MP (DRAM) :: gather dis…  █ 1.82 GiB/s
+  16MP (DRAM) :: gather sca…  █ 1.81 GiB/s
+  16MP (DRAM) :: scatter di…  █ 1.73 GiB/s
+  16MP (DRAM) :: scatter sc…  █ 1.62 GiB/s
+  [1] CV=25%
+  [2] CV=24%
+
+  total: 304.2s  (2 noisy rounds)
+═══════════════════════════════════════════════════════════════
+  filter: cargo bench -- --group=NAME  format: --format=llm|csv|md|json

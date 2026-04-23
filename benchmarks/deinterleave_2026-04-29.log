@@ -1,0 +1,112 @@
+   Compiling garb v0.2.6 (/home/lilith/work/garb)
+    Finished `bench` profile [optimized] target(s) in 0.30s
+     Running benches/deinterleave.rs (target/release/deps/deinterleave-bb16f185c6269649)
+=== SIMD Tier Detection ===
+  AVX2+FMA (x86-64-v3):    available (will dispatch)
+[zenbench] calibration: int=0.26ns/iter mem_bw=116.7GiB/s mem_lat=9.8ns
+[zenbench] timer resolution: 10ns, loop overhead: 0.18ns/iter, TSC: 4.491 ticks/ns (invariant)
+[zenbench] results → /tmp/zenbench/zenbench-1777497383-1d1ba2.txt
+
+═══════════════════════════════════════════════════════════════
+  zenbench  1777497383-1d1ba2
+  git: 4ef264611866d4b4c97fd433114ce96e74ddbea1
+═══════════════════════════════════════════════════════════════
+
+  rgb24_to_planes_f32 (u8)  5 rounds × 23 calls ⚠ only 5 rounds
+                                            mean ±mad ns  95% CI vs base                    iB/s
+  ├─ 256px (L1)
+  │  ├─ 256px (L1) :: scalar                    182 ±6ns  [175–188]ns                    258262G
+  │  ╰─ 256px (L1) :: simd-dispat…               76 ±4ns  [-65.7%–-60.9%]                618354G [1] [2]
+  ├─ 4096px (L1)
+  │  ├─ 4096px (L1) :: scalar                 2632 ±39ns  [+1293.9%–+1315.1%]             17806G
+  │  ╰─ 4096px (L1) :: simd-dispa…              608 ±9ns  [+233.0%–+237.4%]               77052G
+  ├─ 65536px (L2)
+  │  ├─ 65536px (L2) :: scalar             43102 ±2900ns  [+22690.0%–+24605.4%]            1088G [3]
+  │  ╰─ 65536px (L2) :: simd-disp…         10828 ±1221ns  [+5095.6%–+5725.9%]              4329G [4] [5]
+  ├─ 262144px (L3)
+  │  ├─ 262144px (L3) :: scalar           199321 ±7068ns  [+98492.3%–+120815.8%]            235G
+  │  ╰─ 262144px (L3) :: simd-dis…         41057 ±1789ns  [+21313.4%–+23847.2%]            1142G
+  ├─ 1MP (L3)
+  │  ├─ 1MP (L3) :: scalar               882502 ±24458ns  [+496500.3%–+506869.8%]          53.1G
+  │  ╰─ 1MP (L3) :: simd-dispatch        485103 ±74829ns  [+203034.9%–+334111.5%]          96.6G [6] [7]
+  ├─ 4MP (DRAM)
+  │  ├─ 4MP (DRAM) :: scalar          24055879 ±300650ns  [+13037326.4%–+13186469.0%]      1.95G
+  │  ╰─ 4MP (DRAM) :: simd-dispat…    22939795 ±314116ns  [+12458350.8%–+12652568.9%]      2.04G
+  ╰─ 16MP (DRAM)
+     ├─ 16MP (DRAM) :: scalar        90986382 ±1420052ns  [+49563946.7%–+50662754.9%]       528M
+     ╰─ 16MP (DRAM) :: simd-dispa…    86703232 ±633878ns  [+47520228.4%–+48033957.7%]       554M
+
+  256px (L1) :: simd-dispat…  █████████████████████████████████████ 618354 GiB/s
+  256px (L1) :: scalar        ███████████████ 258262 GiB/s
+  4096px (L1) :: simd-dispa…  █████ 77052 GiB/s
+  4096px (L1) :: scalar       █ 17806 GiB/s
+  65536px (L2) :: simd-disp…  █ 4329 GiB/s
+  262144px (L3) :: simd-dis…  █ 1142 GiB/s
+  65536px (L2) :: scalar      █ 1088 GiB/s
+  262144px (L3) :: scalar     █ 235 GiB/s
+  1MP (L3) :: simd-dispatch   █ 96.6 GiB/s
+  1MP (L3) :: scalar          █ 53.1 GiB/s
+  4MP (DRAM) :: simd-dispat…  █ 2.04 GiB/s
+  4MP (DRAM) :: scalar        █ 1.95 GiB/s
+  16MP (DRAM) :: simd-dispa…  █ 554 MiB/s
+  16MP (DRAM) :: scalar       █ 528 MiB/s
+  [1] drift r=-0.80 — later rounds faster
+  [2] CV=29%
+  [3] drift r=0.80 — later rounds slower
+  [4] drift r=-0.60 — later rounds faster
+  [5] CV=21%
+  [6] drift r=-0.60 — later rounds faster
+  [7] CV=32%
+
+  rgb48_to_planes_f32 (u16)  5 rounds × 20 calls ⚠ only 5 rounds
+                                              mean ±mad ns  95% CI vs base                    iB/s
+  ├─ 256px (L1)
+  │  ├─ 256px (L1) :: scalar                     163 ±31ns  [147–179]ns                    574695G
+  │  ╰─ 256px (L1) :: simd-dispat…               100 ±20ns  [-47.5%–-30.5%]                941533G
+  ├─ 4096px (L1)
+  │  ├─ 4096px (L1) :: scalar                   2279 ±17ns  [+1231.9%–+1369.5%]             41144G
+  │  ╰─ 4096px (L1) :: simd-dispa…                732 ±9ns  [+341.8%–+355.2%]              128136G
+  ├─ 65536px (L2)
+  │  ├─ 65536px (L2) :: scalar               38987 ±1178ns  [+21432.4%–+23867.9%]            2405G [1]
+  │  ╰─ 65536px (L2) :: simd-disp…            13055 ±284ns  [+7382.5%–+7563.3%]              7181G [2]
+  ├─ 262144px (L3)
+  │  ├─ 262144px (L3) :: scalar            198013 ±81681ns  [+95090.8%–+149979.0%]            473G [3]
+  │  ╰─ 262144px (L3) :: simd-dis…           50138 ±3086ns  [+29565.7%–+31872.6%]            1870G [4]
+  ├─ 1MP (L3)
+  │  ├─ 1MP (L3) :: scalar                 864007 ±14630ns  [+576874.4%–+584719.6%]           109G [5]
+  │  ╰─ 1MP (L3) :: simd-dispatch         574951 ±127880ns  [+285370.2%–+435794.8%]           163G [6] [7]
+  ├─ 4MP (DRAM)
+  │  ├─ 4MP (DRAM) :: scalar           26771566 ±1940697ns  [+15602051.2%–+17408595.1%]      3.50G [8]
+  │  ╰─ 4MP (DRAM) :: simd-dispat…      24359362 ±925352ns  [+14410279.4%–+15004974.0%]      3.85G [9]
+  ╰─ 16MP (DRAM)
+     ├─ 16MP (DRAM) :: scalar        105296516 ±13992508ns  [+58095328.4%–+71567232.9%]       912M
+     ╰─ 16MP (DRAM) :: simd-dispa…   101897682 ±14474897ns  [+55105512.5%–+61598361.5%]       942M [10]
+
+  256px (L1) :: simd-dispat…  █████████████████████████████████████ 941533 GiB/s
+  256px (L1) :: scalar        ███████████████████████ 574695 GiB/s
+  4096px (L1) :: simd-dispa…  █████ 128136 GiB/s
+  4096px (L1) :: scalar       ██ 41144 GiB/s
+  65536px (L2) :: simd-disp…  █ 7181 GiB/s
+  65536px (L2) :: scalar      █ 2405 GiB/s
+  262144px (L3) :: simd-dis…  █ 1870 GiB/s
+  262144px (L3) :: scalar     █ 473 GiB/s
+  1MP (L3) :: simd-dispatch   █ 163 GiB/s
+  1MP (L3) :: scalar          █ 109 GiB/s
+  4MP (DRAM) :: simd-dispat…  █ 3.85 GiB/s
+  4MP (DRAM) :: scalar        █ 3.50 GiB/s
+  16MP (DRAM) :: simd-dispa…  █ 942 MiB/s
+  16MP (DRAM) :: scalar       █ 912 MiB/s
+  [1] drift r=1.00 — later rounds slower
+  [2] CV=22%
+  [3] CV=30%
+  [4] drift r=1.00 — later rounds slower
+  [5] drift r=1.00 — later rounds slower
+  [6] drift r=-0.60 — later rounds faster
+  [7] CV=27%
+  [8] drift r=0.90 — later rounds slower
+  [9] drift r=1.00 — later rounds slower
+  [10] drift r=0.60 — later rounds slower
+
+  total: 106.8s  (10 noisy rounds)
+═══════════════════════════════════════════════════════════════
+  filter: cargo bench -- --group=NAME  format: --format=llm|csv|md|json

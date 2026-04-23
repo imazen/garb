@@ -1,0 +1,51 @@
+    Finished `bench` profile [optimized] target(s) in 0.04s
+     Running benches/deinterleave.rs (target/release/deps/deinterleave-bb16f185c6269649)
+=== SIMD Tier Detection ===
+  AVX2+FMA (x86-64-v3):    available (will dispatch)
+[zenbench] calibration: int=0.21ns/iter mem_bw=117.2GiB/s mem_lat=9.6ns
+[zenbench] timer resolution: 10ns, loop overhead: 0.18ns/iter, TSC: 4.491 ticks/ns (invariant)
+[zenbench] results → /tmp/zenbench/zenbench-1777500520-1ee19e.txt
+
+═══════════════════════════════════════════════════════════════
+  zenbench  1777500520-1ee19e
+  git: 4ef264611866d4b4c97fd433114ce96e74ddbea1
+═══════════════════════════════════════════════════════════════
+
+  rgb_f32 dispatch cadence (64K total)  30 rounds × 77 calls
+                                     mean ±mad µs  95% CI vs base      iB/s
+  ├─ chunk=8
+  │  ├─ chunk=8 :: dispatch-per-c…   89.2 ±1.7µs  [88.3–90.2]µs      8.21G
+  │  ╰─ chunk=8 :: autovec-whole-…   13.9 ±0.5µs  [-85.2%–-83.6%]    52.8G
+  ├─ chunk=32
+  │  ├─ chunk=32 :: dispatch-per-…   28.6 ±0.3µs  [-68.6%–-66.9%]    25.6G
+  │  ╰─ chunk=32 :: autovec-whole…   12.8 ±0.3µs  [-86.5%–-84.9%]    57.2G
+  ├─ chunk=128
+  │  ├─ chunk=128 :: dispatch-per…   14.3 ±0.3µs  [-84.8%–-83.0%]    51.2G
+  │  ╰─ chunk=128 :: autovec-whol…   12.6 ±0.2µs  [-86.7%–-85.0%]    58.1G
+  ├─ chunk=512
+  │  ├─ chunk=512 :: dispatch-per…   13.0 ±0.3µs  [-86.3%–-84.5%]    56.3G
+  │  ╰─ chunk=512 :: autovec-whol…   12.8 ±0.3µs  [-86.0%–-84.9%]    57.3G
+  ├─ chunk=2048
+  │  ├─ chunk=2048 :: dispatch-pe…   12.8 ±0.4µs  [-86.4%–-84.8%]    57.1G
+  │  ╰─ chunk=2048 :: autovec-who…   12.6 ±0.3µs  [-86.5%–-85.0%]    58.0G
+  ╰─ chunk=8192
+     ├─ chunk=8192 :: dispatch-pe…   12.7 ±0.3µs  [-86.4%–-84.9%]    57.5G
+     ╰─ chunk=8192 :: autovec-who…   12.7 ±0.3µs  [-86.6%–-84.8%]    57.5G [1]
+
+  chunk=128 :: autovec-whol…  ███████████████████████████████████████ 58.1 GiB/s
+  chunk=2048 :: autovec-who…  ███████████████████████████████████████ 58.0 GiB/s
+  chunk=8192 :: autovec-who…  ███████████████████████████████████████ 57.5 GiB/s
+  chunk=8192 :: dispatch-pe…  ███████████████████████████████████████ 57.5 GiB/s
+  chunk=512 :: autovec-whol…  ██████████████████████████████████████ 57.3 GiB/s
+  chunk=32 :: autovec-whole…  ██████████████████████████████████████ 57.2 GiB/s
+  chunk=2048 :: dispatch-pe…  ██████████████████████████████████████ 57.1 GiB/s
+  chunk=512 :: dispatch-per…  ██████████████████████████████████████ 56.3 GiB/s
+  chunk=8 :: autovec-whole-…  ███████████████████████████████████ 52.8 GiB/s
+  chunk=128 :: dispatch-per…  ██████████████████████████████████ 51.2 GiB/s
+  chunk=32 :: dispatch-per-…  █████████████████ 25.6 GiB/s
+  chunk=8 :: dispatch-per-c…  ██████ 8.21 GiB/s
+  [1] drift r=-0.51 — later rounds faster
+
+  total: 10.8s  (9 noisy rounds)
+═══════════════════════════════════════════════════════════════
+  filter: cargo bench -- --group=NAME  format: --format=llm|csv|md|json

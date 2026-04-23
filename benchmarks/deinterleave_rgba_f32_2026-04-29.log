@@ -1,0 +1,103 @@
+    Finished `bench` profile [optimized] target(s) in 0.06s
+     Running benches/deinterleave.rs (target/release/deps/deinterleave-bb16f185c6269649)
+=== SIMD Tier Detection ===
+  AVX2+FMA (x86-64-v3):    available (will dispatch)
+[zenbench] calibration: int=0.26ns/iter mem_bw=121.4GiB/s mem_lat=9.5ns
+[zenbench] timer resolution: 10ns, loop overhead: 0.36ns/iter, TSC: 4.491 ticks/ns (invariant)
+[zenbench] results → /tmp/zenbench/zenbench-1777499565-1e9722.txt
+
+═══════════════════════════════════════════════════════════════
+  zenbench  1777499565-1e9722
+  git: 4ef264611866d4b4c97fd433114ce96e74ddbea1
+═══════════════════════════════════════════════════════════════
+
+  rgba_f32 ⇄ planes_f32 (identity)  3 rounds × 26 calls ⚠ only 3 rounds
+                                            mean ±mad ns  95% CI vs base                       iB/s
+  ├─ 256px (L1)
+  │  ├─ 256px (L1) :: scatter sca…              128 ±7ns  [123–133]ns                      1948239G
+  │  ├─ 256px (L1) :: scatter dis…               89 ±7ns  [-38.7%–-15.0%]                  2814357G [1]
+  │  ├─ 256px (L1) :: gather scal…               86 ±1ns  [-38.0%–-28.9%]                  2894201G
+  │  ╰─ 256px (L1) :: gather disp…               74 ±5ns  [-42.4%–-41.6%]                  3363508G [2]
+  ├─ 4096px (L1)
+  │  ├─ 4096px (L1) :: scatter sc…             1613 ±7ns  [+1155.4%–+1159.0%]               155018G
+  │  ├─ 4096px (L1) :: scatter di…             967 ±12ns  [+643.2%–+670.2%]                 258647G [3]
+  │  ├─ 4096px (L1) :: gather sca…              984 ±5ns  [+655.6%–+674.5%]                 254138G [4]
+  │  ╰─ 4096px (L1) :: gather dis…              956 ±4ns  [+637.5%–+659.1%]                 261378G
+  ├─ 65536px (L2)
+  │  ├─ 65536px (L2) :: scatter s…         29871 ±1122ns  [+20068.5%–+28801.2%]               8369G [5]
+  │  ├─ 65536px (L2) :: scatter d…         20785 ±2534ns  [+12865.5%–+21233.6%]              12028G [6]
+  │  ├─ 65536px (L2) :: gather sc…         28762 ±1974ns  [+13464.8%–+27259.2%]               8692G [7]
+  │  ╰─ 65536px (L2) :: gather di…          34575 ±640ns  [+25749.1%–+28692.9%]               7231G
+  ├─ 262144px (L3)
+  │  ├─ 262144px (L3) :: scatter …       157142 ±23656ns  [+81168.3%–+149175.2%]              1591G [8]
+  │  ├─ 262144px (L3) :: scatter …       121281 ±23243ns  [+51633.8%–+121909.9%]              2061G [9]
+  │  ├─ 262144px (L3) :: gather s…       219616 ±23495ns  [+139200.1%–+222396.0%]             1138G [10] [11]
+  │  ╰─ 262144px (L3) :: gather d…       244751 ±17812ns  [+150426.5%–+215415.9%]             1021G
+  ├─ 1MP (L3)
+  │  ├─ 1MP (L3) :: scatter scalar     8831205 ±304587ns  [+6717878.7%–+7044145.2%]           28.3G [12]
+  │  ├─ 1MP (L3) :: scatter dispa…     8749265 ±228694ns  [+6640153.2%–+6967278.7%]           28.6G [13]
+  │  ├─ 1MP (L3) :: gather scalar       8134804 ±45968ns  [+6293176.1%–+6407442.9%]           30.7G [14]
+  │  ╰─ 1MP (L3) :: gather dispat…      8256835 ±25807ns  [+6370579.7%–+6473120.8%]           30.3G [15]
+  ├─ 4MP (DRAM)
+  │  ├─ 4MP (DRAM) :: scatter sca…    37303977 ±204468ns  [+28952137.6%–+29200445.5%]         6.70G [16]
+  │  ├─ 4MP (DRAM) :: scatter dis…    35819898 ±379988ns  [+27665618.9%–+28211615.9%]         6.98G [17]
+  │  ├─ 4MP (DRAM) :: gather scal…    33489086 ±255871ns  [+25910277.2%–+26258807.7%]         7.47G
+  │  ╰─ 4MP (DRAM) :: gather disp…    33411056 ±215006ns  [+25831963.8%–+26196019.5%]         7.48G [18]
+  ╰─ 16MP (DRAM)
+     ├─ 16MP (DRAM) :: scatter sc…   149428516 ±440291ns  [+116150843.9%–+116813607.5%]       1.67G
+     ├─ 16MP (DRAM) :: scatter di…   143744980 ±274289ns  [+111659103.9%–+112272165.6%]       1.74G [19]
+     ├─ 16MP (DRAM) :: gather sca…   130451138 ±368521ns  [+101402076.8%–+101981889.9%]       1.92G
+     ╰─ 16MP (DRAM) :: gather dis…    131994984 ±64813ns  [+102494919.8%–+103064120.4%]       1.89G [20]
+
+  256px (L1) :: gather disp…  ████████████████████████████████████ 3363508 GiB/s
+  256px (L1) :: gather scal…  ███████████████████████████████ 2894201 GiB/s
+  256px (L1) :: scatter dis…  ██████████████████████████████ 2814357 GiB/s
+  256px (L1) :: scatter sca…  █████████████████████ 1948239 GiB/s
+  4096px (L1) :: gather dis…  ███ 261378 GiB/s
+  4096px (L1) :: scatter di…  ███ 258647 GiB/s
+  4096px (L1) :: gather sca…  ███ 254138 GiB/s
+  4096px (L1) :: scatter sc…  ██ 155018 GiB/s
+  65536px (L2) :: scatter d…  █ 12028 GiB/s
+  65536px (L2) :: gather sc…  █ 8692 GiB/s
+  65536px (L2) :: scatter s…  █ 8369 GiB/s
+  65536px (L2) :: gather di…  █ 7231 GiB/s
+  262144px (L3) :: scatter …  █ 2061 GiB/s
+  262144px (L3) :: scatter …  █ 1591 GiB/s
+  262144px (L3) :: gather s…  █ 1138 GiB/s
+  262144px (L3) :: gather d…  █ 1021 GiB/s
+  1MP (L3) :: gather scalar   █ 30.7 GiB/s
+  1MP (L3) :: gather dispat…  █ 30.3 GiB/s
+  1MP (L3) :: scatter dispa…  █ 28.6 GiB/s
+  1MP (L3) :: scatter scalar  █ 28.3 GiB/s
+  4MP (DRAM) :: gather disp…  █ 7.48 GiB/s
+  4MP (DRAM) :: gather scal…  █ 7.47 GiB/s
+  4MP (DRAM) :: scatter dis…  █ 6.98 GiB/s
+  4MP (DRAM) :: scatter sca…  █ 6.70 GiB/s
+  16MP (DRAM) :: gather sca…  █ 1.92 GiB/s
+  16MP (DRAM) :: gather dis…  █ 1.89 GiB/s
+  16MP (DRAM) :: scatter di…  █ 1.74 GiB/s
+  16MP (DRAM) :: scatter sc…  █ 1.67 GiB/s
+  [1] drift r=-1.00 — later rounds faster
+  [2] drift r=1.00 — later rounds slower
+  [3] drift r=-1.00 — later rounds faster
+  [4] drift r=-1.00 — later rounds faster
+  [5] CV=21%
+  [6] CV=28%
+  [7] CV=34%
+  [8] CV=30%
+  [9] CV=40%
+  [10] drift r=1.00 — later rounds slower
+  [11] CV=26%
+  [12] drift r=-1.00 — later rounds faster
+  [13] drift r=-1.00 — later rounds faster
+  [14] drift r=-1.00 — later rounds faster
+  [15] drift r=-1.00 — later rounds faster
+  [16] drift r=-1.00 — later rounds faster
+  [17] drift r=-1.00 — later rounds faster
+  [18] drift r=-1.00 — later rounds faster
+  [19] drift r=-1.00 — later rounds faster
+  [20] drift r=1.00 — later rounds slower
+
+  total: 162.5s  (3 noisy rounds)
+═══════════════════════════════════════════════════════════════
+  filter: cargo bench -- --group=NAME  format: --format=llm|csv|md|json

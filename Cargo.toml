@@ -23,10 +23,16 @@ archmage = { version = "0.9.21", features = ["testable_dispatch"] }
 rgb = { version = "0.8.53", features = ["bytemuck"] }
 imgref = "1.12.0"
 criterion = { version = "0.8.2", default-features = false, features = ["plotters", "html_reports"] }
+zenbench = "0.1.7"
 
 [[bench]]
 name = "swizzle"
 harness = false
+
+[[bench]]
+name = "deinterleave"
+harness = false
+required-features = ["experimental"]
 
 [features]
 default = ["std"]

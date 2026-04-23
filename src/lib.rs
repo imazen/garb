@@ -61,6 +61,9 @@ extern crate alloc;
 
 pub mod bytes;
 
+#[cfg(feature = "experimental")]
+pub mod deinterleave;
+
 #[cfg(feature = "rgb")]
 pub mod typed_rgb;
 

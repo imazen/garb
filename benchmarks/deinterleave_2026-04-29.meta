@@ -1,0 +1,11 @@
+commit: c515db1e (parent: 4ef26461 — release v0.2.6)
+host:   AMD Ryzen 9 7950X (Zen 4, water-cooled, 128 GB DDR5)
+cmd:    cargo bench --bench deinterleave --features experimental
+zenbench: 0.1.7
+date:   2026-04-29 UTC
+notes:
+  - 5 rounds × ~22 calls each (zenbench auto-converged at "noisy" stop, 27-32% CV)
+  - Throughput "iB/s" column in zenbench output appears miscalibrated (orders of
+    magnitude too large); trust the ns timings and compute B/s manually.
+  - At 16 MP (RGB24 → 192 MB output) both paths are DRAM-write-bandwidth-bound.
+    SIMD compute speedup only visible while the working set fits in L3 (≤ ~1 MP).

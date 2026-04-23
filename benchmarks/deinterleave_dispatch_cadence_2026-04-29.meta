@@ -1,0 +1,22 @@
+commit: 21557bbb + dispatch-cadence bench
+host:   AMD Ryzen 9 7950X (Zen 4, AVX2)
+cmd:    cargo bench --bench deinterleave --features experimental -- --group="dispatch cadence"
+date:   2026-04-29 UTC
+
+Bench shape:
+  Total work fixed at 64K f32 RGB pixels (~1.5 MB working set, L2-resident).
+  Sweep chunk size from 8 → 8192 pixels per call.
+  A: dispatch-per-chunk — outer scalar loop calls rgb_f32_to_planes_f32()
+     per chunk, each call going through #[arcane] AVX2 dispatch.
+  B: autovec-whole-loop — outer loop wrapped in a single #[arcane] AVX2
+     region, inner = scalar_only_* (which inlines into the AVX2 region
+     and gets autovectorized).
+
+Per-call dispatch overhead (delta_time / num_calls):
+  chunk=8     8K calls, 75.3 µs delta → ~9 ns/call
+  chunk=32    2K calls, 15.8 µs delta → ~7.7 ns/call
+  chunk=128   512 calls, 1.7 µs delta → ~3.3 ns/call (within noise)
+  chunk≥512   negligible (within bench noise)
+
+Practical breakeven: ~128 pixels per call. Below that, hoist the dispatch
+outside the loop. Above that, per-call dispatch is invisible.
