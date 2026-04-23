@@ -23,14 +23,9 @@ archmage = { version = "0.9.14", features = ["testable_dispatch"] }
 rgb = { version = "0.8", features = ["bytemuck"] }
 imgref = "1"
 criterion = { version = "0.8", default-features = false, features = ["plotters", "html_reports"] }
-zenbench = "0.1.7"
 
 [[bench]]
 name = "swizzle"
-harness = false
-
-[[bench]]
-name = "packed_1010102"
 harness = false
 
 [features]
