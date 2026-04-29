@@ -482,48 +482,46 @@ mod arm {
         g: &mut [f32],
         b: &mut [f32],
     ) {
+        // 16-pixel chunks (vld3q_u8 reads 48 bytes / 16 RGB pixels)
         let pixels = src.len() / 3;
-        let n_chunks = pixels / 8;
+        let n_chunks = pixels / 16;
         for ci in 0..n_chunks {
-            let bs = ci * 24;
-            let ps = ci * 8;
-            let c: &[u8; 24] = src[bs..bs + 24].try_into().unwrap();
+            let bs = ci * 48;
+            let ps = ci * 16;
+            let c: &[u8; 48] = src[bs..bs + 48].try_into().unwrap();
 
-            // vld3_u8: structure-load 8 RGB pixels → 3×u8x8 (planar)
-            let rgb = vld3_u8(c);
-            // Widen each plane to u16x8 → split to u16x4 halves → u32x4 → f32x4
-            let r_u16 = vmovl_u8(rgb.0);
-            let g_u16 = vmovl_u8(rgb.1);
-            let b_u16 = vmovl_u8(rgb.2);
+            // vld3q_u8: hardware structure-load → 3×u8x16 (planar)
+            let uint8x16x3_t(r_u8x16, g_u8x16, b_u8x16) = vld3q_u8(c);
 
-            let r_lo_u32 = vmovl_u16(vget_low_u16(r_u16));
-            let r_hi_u32 = vmovl_high_u16(r_u16);
-            let g_lo_u32 = vmovl_u16(vget_low_u16(g_u16));
-            let g_hi_u32 = vmovl_high_u16(g_u16);
-            let b_lo_u32 = vmovl_u16(vget_low_u16(b_u16));
-            let b_hi_u32 = vmovl_high_u16(b_u16);
+            // Widen each 16-byte plane to 16 f32 via u16x8 → u32x4 → f32x4 (×4)
+            let r_u16_lo = vmovl_u8(vget_low_u8(r_u8x16));
+            let r_u16_hi = vmovl_high_u8(r_u8x16);
+            let g_u16_lo = vmovl_u8(vget_low_u8(g_u8x16));
+            let g_u16_hi = vmovl_high_u8(g_u8x16);
+            let b_u16_lo = vmovl_u8(vget_low_u8(b_u8x16));
+            let b_u16_hi = vmovl_high_u8(b_u8x16);
 
-            let r_lo_f = vcvtq_f32_u32(r_lo_u32);
-            let r_hi_f = vcvtq_f32_u32(r_hi_u32);
-            let g_lo_f = vcvtq_f32_u32(g_lo_u32);
-            let g_hi_f = vcvtq_f32_u32(g_hi_u32);
-            let b_lo_f = vcvtq_f32_u32(b_lo_u32);
-            let b_hi_f = vcvtq_f32_u32(b_hi_u32);
+            let r0 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(r_u16_lo)));
+            let r1 = vcvtq_f32_u32(vmovl_high_u16(r_u16_lo));
+            let r2 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(r_u16_hi)));
+            let r3 = vcvtq_f32_u32(vmovl_high_u16(r_u16_hi));
+            let g0 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(g_u16_lo)));
+            let g1 = vcvtq_f32_u32(vmovl_high_u16(g_u16_lo));
+            let g2 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(g_u16_hi)));
+            let g3 = vcvtq_f32_u32(vmovl_high_u16(g_u16_hi));
+            let b0 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(b_u16_lo)));
+            let b1 = vcvtq_f32_u32(vmovl_high_u16(b_u16_lo));
+            let b2 = vcvtq_f32_u32(vmovl_u16(vget_low_u16(b_u16_hi)));
+            let b3 = vcvtq_f32_u32(vmovl_high_u16(b_u16_hi));
 
-            let r_lo_arr: &mut [f32; 4] = (&mut r[ps..ps + 4]).try_into().unwrap();
-            let r_hi_arr: &mut [f32; 4] = (&mut r[ps + 4..ps + 8]).try_into().unwrap();
-            let g_lo_arr: &mut [f32; 4] = (&mut g[ps..ps + 4]).try_into().unwrap();
-            let g_hi_arr: &mut [f32; 4] = (&mut g[ps + 4..ps + 8]).try_into().unwrap();
-            let b_lo_arr: &mut [f32; 4] = (&mut b[ps..ps + 4]).try_into().unwrap();
-            let b_hi_arr: &mut [f32; 4] = (&mut b[ps + 4..ps + 8]).try_into().unwrap();
-            vst1q_f32(r_lo_arr, r_lo_f);
-            vst1q_f32(r_hi_arr, r_hi_f);
-            vst1q_f32(g_lo_arr, g_lo_f);
-            vst1q_f32(g_hi_arr, g_hi_f);
-            vst1q_f32(b_lo_arr, b_lo_f);
-            vst1q_f32(b_hi_arr, b_hi_f);
+            let r_chunk: &mut [f32; 16] = (&mut r[ps..ps + 16]).try_into().unwrap();
+            let g_chunk: &mut [f32; 16] = (&mut g[ps..ps + 16]).try_into().unwrap();
+            let b_chunk: &mut [f32; 16] = (&mut b[ps..ps + 16]).try_into().unwrap();
+            vst1q_f32_x4(bytemuck::cast_mut(r_chunk), float32x4x4_t(r0, r1, r2, r3));
+            vst1q_f32_x4(bytemuck::cast_mut(g_chunk), float32x4x4_t(g0, g1, g2, g3));
+            vst1q_f32_x4(bytemuck::cast_mut(b_chunk), float32x4x4_t(b0, b1, b2, b3));
         }
-        for p in (n_chunks * 8)..pixels {
+        for p in (n_chunks * 16)..pixels {
             r[p] = src[p * 3] as f32;
             g[p] = src[p * 3 + 1] as f32;
             b[p] = src[p * 3 + 2] as f32;
@@ -546,34 +544,21 @@ mod arm {
             let c: &[u16; 24] = src[us..us + 24].try_into().unwrap();
 
             // vld3q_u16: structure-load 8 RGB pixels (24 u16s) → 3×u16x8
-            let rgb = vld3q_u16(c);
+            let uint16x8x3_t(r_u16, g_u16, b_u16) = vld3q_u16(c);
 
-            let r_lo_u32 = vmovl_u16(vget_low_u16(rgb.0));
-            let r_hi_u32 = vmovl_high_u16(rgb.0);
-            let g_lo_u32 = vmovl_u16(vget_low_u16(rgb.1));
-            let g_hi_u32 = vmovl_high_u16(rgb.1);
-            let b_lo_u32 = vmovl_u16(vget_low_u16(rgb.2));
-            let b_hi_u32 = vmovl_high_u16(rgb.2);
+            let r_lo_f = vcvtq_f32_u32(vmovl_u16(vget_low_u16(r_u16)));
+            let r_hi_f = vcvtq_f32_u32(vmovl_high_u16(r_u16));
+            let g_lo_f = vcvtq_f32_u32(vmovl_u16(vget_low_u16(g_u16)));
+            let g_hi_f = vcvtq_f32_u32(vmovl_high_u16(g_u16));
+            let b_lo_f = vcvtq_f32_u32(vmovl_u16(vget_low_u16(b_u16)));
+            let b_hi_f = vcvtq_f32_u32(vmovl_high_u16(b_u16));
 
-            let r_lo_f = vcvtq_f32_u32(r_lo_u32);
-            let r_hi_f = vcvtq_f32_u32(r_hi_u32);
-            let g_lo_f = vcvtq_f32_u32(g_lo_u32);
-            let g_hi_f = vcvtq_f32_u32(g_hi_u32);
-            let b_lo_f = vcvtq_f32_u32(b_lo_u32);
-            let b_hi_f = vcvtq_f32_u32(b_hi_u32);
-
-            let r_lo_arr: &mut [f32; 4] = (&mut r[ps..ps + 4]).try_into().unwrap();
-            let r_hi_arr: &mut [f32; 4] = (&mut r[ps + 4..ps + 8]).try_into().unwrap();
-            let g_lo_arr: &mut [f32; 4] = (&mut g[ps..ps + 4]).try_into().unwrap();
-            let g_hi_arr: &mut [f32; 4] = (&mut g[ps + 4..ps + 8]).try_into().unwrap();
-            let b_lo_arr: &mut [f32; 4] = (&mut b[ps..ps + 4]).try_into().unwrap();
-            let b_hi_arr: &mut [f32; 4] = (&mut b[ps + 4..ps + 8]).try_into().unwrap();
-            vst1q_f32(r_lo_arr, r_lo_f);
-            vst1q_f32(r_hi_arr, r_hi_f);
-            vst1q_f32(g_lo_arr, g_lo_f);
-            vst1q_f32(g_hi_arr, g_hi_f);
-            vst1q_f32(b_lo_arr, b_lo_f);
-            vst1q_f32(b_hi_arr, b_hi_f);
+            let r_chunk: &mut [f32; 8] = (&mut r[ps..ps + 8]).try_into().unwrap();
+            let g_chunk: &mut [f32; 8] = (&mut g[ps..ps + 8]).try_into().unwrap();
+            let b_chunk: &mut [f32; 8] = (&mut b[ps..ps + 8]).try_into().unwrap();
+            vst1q_f32_x2(bytemuck::cast_mut(r_chunk), float32x4x2_t(r_lo_f, r_hi_f));
+            vst1q_f32_x2(bytemuck::cast_mut(g_chunk), float32x4x2_t(g_lo_f, g_hi_f));
+            vst1q_f32_x2(bytemuck::cast_mut(b_chunk), float32x4x2_t(b_lo_f, b_hi_f));
         }
         for p in (n_chunks * 8)..pixels {
             r[p] = src[p * 3] as f32;
