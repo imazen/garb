@@ -19,10 +19,10 @@
 //!   the unaccelerated path.
 
 use crate::SizeError;
-use archmage::incant;
-use archmage::prelude::*;
 #[cfg(target_arch = "x86_64")]
 use archmage::X64V3Token;
+use archmage::incant;
+use archmage::prelude::*;
 
 // ===========================================================================
 // Public slice-level API
@@ -622,13 +622,7 @@ fn planes_to_rgb_f32_loop_scalar(r: &[f32], g: &[f32], b: &[f32], dst: &mut [f32
 }
 
 #[inline(always)]
-fn planes_to_rgba_f32_loop_scalar(
-    r: &[f32],
-    g: &[f32],
-    b: &[f32],
-    a: &[f32],
-    dst: &mut [f32],
-) {
+fn planes_to_rgba_f32_loop_scalar(r: &[f32], g: &[f32], b: &[f32], a: &[f32], dst: &mut [f32]) {
     let pixels = r.len();
     for i in 0..pixels {
         dst[i * 4] = r[i];
@@ -962,13 +956,7 @@ pub fn scalar_only_planes_f32_to_rgb(r: &[f32], g: &[f32], b: &[f32], dst: &mut 
 /// Scalar-only handle for benchmarking the f32 planes→RGBA interleave path.
 #[doc(hidden)]
 #[inline(always)]
-pub fn scalar_only_planes_f32_to_rgba(
-    r: &[f32],
-    g: &[f32],
-    b: &[f32],
-    a: &[f32],
-    dst: &mut [f32],
-) {
+pub fn scalar_only_planes_f32_to_rgba(r: &[f32], g: &[f32], b: &[f32], a: &[f32], dst: &mut [f32]) {
     planes_to_rgba_f32_loop_scalar(r, g, b, a, &mut dst[..r.len() * 4]);
 }
 
@@ -982,7 +970,13 @@ mod tests {
     use super::*;
     use alloc::vec;
 
-    fn ref_planes_u8(src: &[u8]) -> (alloc::vec::Vec<f32>, alloc::vec::Vec<f32>, alloc::vec::Vec<f32>) {
+    fn ref_planes_u8(
+        src: &[u8],
+    ) -> (
+        alloc::vec::Vec<f32>,
+        alloc::vec::Vec<f32>,
+        alloc::vec::Vec<f32>,
+    ) {
         let pixels = src.len() / 3;
         let mut r = vec![0.0f32; pixels];
         let mut g = vec![0.0f32; pixels];
@@ -997,7 +991,11 @@ mod tests {
 
     fn ref_planes_u16(
         src: &[u16],
-    ) -> (alloc::vec::Vec<f32>, alloc::vec::Vec<f32>, alloc::vec::Vec<f32>) {
+    ) -> (
+        alloc::vec::Vec<f32>,
+        alloc::vec::Vec<f32>,
+        alloc::vec::Vec<f32>,
+    ) {
         let pixels = src.len() / 3;
         let mut r = vec![0.0f32; pixels];
         let mut g = vec![0.0f32; pixels];
@@ -1028,7 +1026,9 @@ mod tests {
     fn rgb24_round_trip_with_tail() {
         // 67 pixels = 8 chunks × 8 + 3 tail pixels
         let pixels = 67;
-        let src: alloc::vec::Vec<u8> = (0..pixels * 3).map(|i: usize| (i.wrapping_mul(31) & 0xFF) as u8).collect();
+        let src: alloc::vec::Vec<u8> = (0..pixels * 3)
+            .map(|i: usize| (i.wrapping_mul(31) & 0xFF) as u8)
+            .collect();
         let (r_ref, g_ref, b_ref) = ref_planes_u8(&src);
         let mut r = vec![0.0f32; pixels];
         let mut g = vec![0.0f32; pixels];
@@ -1042,7 +1042,9 @@ mod tests {
     #[test]
     fn rgb48_round_trip_aligned() {
         let pixels = 8 * 32;
-        let src: alloc::vec::Vec<u16> = (0..pixels * 3).map(|i: usize| (i.wrapping_mul(257) & 0xFFFF) as u16).collect();
+        let src: alloc::vec::Vec<u16> = (0..pixels * 3)
+            .map(|i: usize| (i.wrapping_mul(257) & 0xFFFF) as u16)
+            .collect();
         let (r_ref, g_ref, b_ref) = ref_planes_u16(&src);
         let mut r = vec![0.0f32; pixels];
         let mut g = vec![0.0f32; pixels];
@@ -1056,7 +1058,9 @@ mod tests {
     #[test]
     fn rgb48_round_trip_with_tail() {
         let pixels = 51;
-        let src: alloc::vec::Vec<u16> = (0..pixels * 3).map(|i: usize| (i.wrapping_mul(8191) & 0xFFFF) as u16).collect();
+        let src: alloc::vec::Vec<u16> = (0..pixels * 3)
+            .map(|i: usize| (i.wrapping_mul(8191) & 0xFFFF) as u16)
+            .collect();
         let (r_ref, g_ref, b_ref) = ref_planes_u16(&src);
         let mut r = vec![0.0f32; pixels];
         let mut g = vec![0.0f32; pixels];
@@ -1105,7 +1109,13 @@ mod tests {
             let mut g_s = vec![0.0f32; pixels];
             let mut b_s = vec![0.0f32; pixels];
             x86::rgb24_to_planes_impl_v3(t, &src, &mut r_v, &mut g_v, &mut b_v);
-            rgb24_to_planes_impl_scalar(ScalarToken::summon().unwrap(), &src, &mut r_s, &mut g_s, &mut b_s);
+            rgb24_to_planes_impl_scalar(
+                ScalarToken::summon().unwrap(),
+                &src,
+                &mut r_s,
+                &mut g_s,
+                &mut b_s,
+            );
             assert_eq!(r_v, r_s);
             assert_eq!(g_v, g_s);
             assert_eq!(b_v, b_s);
@@ -1117,8 +1127,9 @@ mod tests {
     fn rgb48_v3_matches_scalar() {
         if let Some(t) = X64V3Token::summon() {
             let pixels = 8 * 17;
-            let src: alloc::vec::Vec<u16> =
-                (0..pixels * 3).map(|i: usize| (i.wrapping_mul(257) & 0xFFFF) as u16).collect();
+            let src: alloc::vec::Vec<u16> = (0..pixels * 3)
+                .map(|i: usize| (i.wrapping_mul(257) & 0xFFFF) as u16)
+                .collect();
             let mut r_v = vec![0.0f32; pixels];
             let mut g_v = vec![0.0f32; pixels];
             let mut b_v = vec![0.0f32; pixels];
@@ -1126,7 +1137,13 @@ mod tests {
             let mut g_s = vec![0.0f32; pixels];
             let mut b_s = vec![0.0f32; pixels];
             x86::rgb48_to_planes_impl_v3(t, &src, &mut r_v, &mut g_v, &mut b_v);
-            rgb48_to_planes_impl_scalar(ScalarToken::summon().unwrap(), &src, &mut r_s, &mut g_s, &mut b_s);
+            rgb48_to_planes_impl_scalar(
+                ScalarToken::summon().unwrap(),
+                &src,
+                &mut r_s,
+                &mut g_s,
+                &mut b_s,
+            );
             assert_eq!(r_v, r_s);
             assert_eq!(g_v, g_s);
             assert_eq!(b_v, b_s);
@@ -1138,7 +1155,9 @@ mod tests {
     #[test]
     fn rgb_f32_round_trip() {
         let pixels = 67;
-        let src: alloc::vec::Vec<f32> = (0..pixels * 3).map(|i: usize| i as f32 * 0.5 - 100.0).collect();
+        let src: alloc::vec::Vec<f32> = (0..pixels * 3)
+            .map(|i: usize| i as f32 * 0.5 - 100.0)
+            .collect();
         let mut r = vec![0.0f32; pixels];
         let mut g = vec![0.0f32; pixels];
         let mut b = vec![0.0f32; pixels];
@@ -1157,8 +1176,9 @@ mod tests {
     #[test]
     fn rgba_f32_round_trip() {
         let pixels = 51;
-        let src: alloc::vec::Vec<f32> =
-            (0..pixels * 4).map(|i: usize| i as f32 * 0.25 + 1.0).collect();
+        let src: alloc::vec::Vec<f32> = (0..pixels * 4)
+            .map(|i: usize| i as f32 * 0.25 + 1.0)
+            .collect();
         let mut r = vec![0.0f32; pixels];
         let mut g = vec![0.0f32; pixels];
         let mut b = vec![0.0f32; pixels];

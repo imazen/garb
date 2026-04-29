@@ -8,8 +8,8 @@
 
 use archmage::SimdToken;
 use garb::deinterleave::{
-    planes_f32_to_rgb_f32, planes_f32_to_rgba_f32, rgb24_to_planes_f32, rgb48_to_planes_f32,
-    rgb_f32_to_planes_f32, rgba_f32_to_planes_f32,
+    planes_f32_to_rgb_f32, planes_f32_to_rgba_f32, rgb_f32_to_planes_f32, rgb24_to_planes_f32,
+    rgb48_to_planes_f32, rgba_f32_to_planes_f32,
 };
 use zenbench::prelude::*;
 
@@ -17,7 +17,9 @@ use zenbench::prelude::*;
 use archmage::X64V3Token;
 
 fn make_u8(pixels: usize) -> Vec<u8> {
-    (0..pixels * 3).map(|i| (i.wrapping_mul(31) & 0xFF) as u8).collect()
+    (0..pixels * 3)
+        .map(|i| (i.wrapping_mul(31) & 0xFF) as u8)
+        .collect()
 }
 
 fn make_u16(pixels: usize) -> Vec<u16> {
@@ -302,9 +304,7 @@ fn bench_rgba_f32(suite: &mut Suite) {
                     (r, gp, bp, ap, dst)
                 })
                 .run(|(r, gp, bp, ap, mut dst)| {
-                    garb::deinterleave::scalar_only_planes_f32_to_rgba(
-                        &r, &gp, &bp, &ap, &mut dst,
-                    );
+                    garb::deinterleave::scalar_only_planes_f32_to_rgba(&r, &gp, &bp, &ap, &mut dst);
                     (r, gp, bp, ap, dst)
                 })
             });
