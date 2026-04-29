@@ -50,6 +50,20 @@ jobs:
       - run: cargo test --all-features --target i686-pc-windows-msvc -- --test-threads=1
       - run: cargo test --no-default-features --target i686-pc-windows-msvc -- --test-threads=1
 
+  # Linux 32-bit cross test (catches glibc-specific 32-bit bugs the
+  # Windows i686 job misses; required by repo policy).
+  test-linux-i686:
+    name: test (Linux i686)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cross
+        run: cargo install cross --locked
+      - run: cross test --target i686-unknown-linux-gnu --all-features -- --test-threads=1
+      - run: cross test --target i686-unknown-linux-gnu --no-default-features -- --test-threads=1
+
   # WASM tests via wasmtime
   wasm:
     name: test (wasm32-wasip1)
