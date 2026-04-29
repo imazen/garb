@@ -309,6 +309,37 @@ Aliases: `premultiply_alpha_bgra_u8`, `premultiply_alpha_bgra_u8_copy`,
 `bgr_to_gray`, `bgra_to_gray`, plus `_identity` and BGR variants for all
 gray conversions. All functions have `_strided` variants.
 
+### Deinterleave — `garb::deinterleave` (`feature = "experimental"`)
+
+Pure identity (no transfer-function, no color matrix, no normalization)
+interleave/deinterleave between packed-RGB(A) buffers and `f32` planes.
+Hand-tuned AVX2 + NEON kernels where the speedup is meaningful; scalar
+elsewhere with autovec under the caller's `#[target_feature]` region.
+
+| Function | Operation |
+|----------|-----------|
+| `rgb24_to_planes_f32` | RGB24 (`u8`, 3bpp) → 3 × `f32` planes (R, G, B). AVX2: vpshufb deinterleave + vpmovzxbd widen + vcvtdq2ps. NEON: vld3q_u8. |
+| `rgb48_to_planes_f32` | RGB48 (`u16`, 6bpp) → 3 × `f32` planes. AVX2: 3-way vpshufb + vpmovzxwd. NEON: vld3q_u16. |
+| `rgb_f32_to_planes_f32` | f32 RGB interleaved → 3 × `f32` planes (identity, no widen). |
+| `rgba_f32_to_planes_f32` | f32 RGBA interleaved → 4 × `f32` planes. |
+| `planes_f32_to_rgb_f32` | 3 × `f32` planes → f32 RGB interleaved (gather). |
+| `planes_f32_to_rgba_f32` | 4 × `f32` planes → f32 RGBA interleaved. |
+
+For callers already inside a `#[target_feature(enable = "avx2,...")]` region
+(set up by `#[arcane]`, `#[rite]`, or `#[magetypes]`), chunk-level primitives
+take an `X64V3Token` and avoid per-call dispatch:
+
+| Function | Operation |
+|----------|-----------|
+| `rgb24_chunk8_to_planes_v3` | 8 packed RGB24 pixels → 3 × `[f32; 8]` (inline AVX2) |
+| `rgb48_chunk8_to_planes_v3` | 8 packed RGB48 pixels → 3 × `[f32; 8]` (inline AVX2) |
+| `rgb24_chunk8_to_planes_scalar` | Scalar fallback (autovec'd inline by the caller's target_feature region) |
+| `rgb48_chunk8_to_planes_scalar` | Scalar fallback for `u16` |
+
+These chunk hooks are `#[doc(hidden)]` — use them when you're inside a
+`#[magetypes]` kernel and want the scatter replaced without paying any
+dispatch overhead. (See `zenanalyze::tier1` for a complete example.)
+
 ### Generic API — `convert` / `convert_inplace` (feature `rgb`)
 
 Type-inferred conversions on `rgb` crate pixel slices. The compiler selects

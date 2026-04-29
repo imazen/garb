@@ -7,6 +7,71 @@
 <!-- Breaking changes that will ship together in the next major (or minor for 0.x) release.
      Add items here as you discover them. Do NOT ship these piecemeal — batch them. -->
 
+## [0.2.7] - 2026-04-29
+
+### Added (experimental)
+
+- **`deinterleave` module** under `experimental` — pure identity (no
+  transfer-function, no color matrix) interleave/deinterleave between
+  packed and planar pixel layouts.
+  - `rgb24_to_planes_f32(&[u8], &mut [f32]; 3)` — packed RGB24 → 3×f32
+    planes. AVX2 path uses 6×vpshufb + 3×vpor + 3×vpmovzxbd + 3×vcvtdq2ps
+    per 8-pixel chunk in place of the 21-vpinsrb scatter LLVM produces
+    for the naïve loop. NEON path uses `vld3q_u8` hardware structure-load
+    (16-pixel chunks). (`a4fd62d` — feat, `f12c51c` — aarch64 fix)
+  - `rgb48_to_planes_f32(&[u16], &mut [f32]; 3)` — same shape for u16
+    sources. `vld3q_u16` on NEON.
+  - `rgb_f32_to_planes_f32` / `rgba_f32_to_planes_f32` — f32 RGB(A)
+    interleaved → planes. AVX2 routing via `#[arcane]` autovec wrapper;
+    explicit `permutevar8x32` not landed yet (autovec captures most of
+    the available win at 1:1 memory ratio).
+  - `planes_f32_to_rgb_f32` / `planes_f32_to_rgba_f32` — inverse
+    (planes → interleaved). Same autovec routing.
+  - `#[doc(hidden)]` benchmark handles: `scalar_only_*`,
+    `autovec_avx2_rgb24/48`. The `scalar_only_*` set is `#[inline(always)]`
+    so callers can hoist dispatch outside hot loops by wrapping their
+    own `#[arcane]` boundary and calling these as inline scalar inner
+    kernels.
+- **Chunk-level primitives** (8 pixels per call) for callers already
+  inside a `#[target_feature]` region:
+  - `rgb24_chunk8_to_planes_v3(X64V3Token, &[u8; 24]) -> ([f32; 8]; 3)`
+  - `rgb48_chunk8_to_planes_v3(X64V3Token, &[u16; 24]) -> ([f32; 8]; 3)`
+  - `rgb24_chunk8_to_planes_scalar(&[u8; 24]) -> ([f32; 8]; 3)`
+  - `rgb48_chunk8_to_planes_scalar(&[u16; 24]) -> ([f32; 8]; 3)`
+  These are the hooks zenanalyze's `#[magetypes]`-decorated tier1 kernels
+  use to replace the inline scatter without adding raw intrinsics in
+  zenanalyze (which forbids `unsafe_code`). (`58c1cd7`)
+- `benches/deinterleave.rs` (zenbench harness) sweeping 256 px → 16 MP
+  across cache tiers, plus a dispatch-cadence group that quantifies
+  per-call `#[arcane]` overhead at ~9 ns/call (breakeven at ~128 px).
+
+### Bench results (7950X with AVX2)
+
+  RGB24 → planes (hand-SIMD vs naive scalar): peak 4.9× at L3-resident
+  sizes (~262K-1MP); 1.05× at 4 MP+ where DRAM write bandwidth dominates.
+
+  RGB48 → planes: peak 4.0×; same DRAM cliff.
+
+  f32 RGB(A) ⇄ planes: 1.4-2.1× scatter at L1/L2; gather already tight
+  (autovec captures the win); flat at L3+.
+
+  Caller benefit (zenanalyze `tier1_bench`): Variance feature 5-7%
+  faster at 1-16 MP; mixed feature sets 2-4% faster (deinterleave is
+  proportionally less of total tier1 work).
+
+### Changed
+
+- `archmage` 0.9.21 → 0.9.21 (pin unchanged; CI now hits 0.9.23 via
+  range resolution). Pulls in upstream dispatch fixes.
+- `Cargo.lock` refreshed for the `deinterleave` additions.
+- `cargo fmt` ran on the whole tree.
+
+### Internal
+
+- The `deinterleave` module is gated behind `experimental` so the API
+  shape can iterate without 0.2.x→0.3.0 churn while concrete callers
+  (zenanalyze, zenfilters) settle on what they want centralised here.
+
 ## [0.2.6] - 2026-04-22
 
 ### Added
