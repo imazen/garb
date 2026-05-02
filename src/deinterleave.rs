@@ -1012,6 +1012,218 @@ pub fn scalar_only_planes_f32_to_rgba(r: &[f32], g: &[f32], b: &[f32], a: &[f32]
 }
 
 // ===========================================================================
+// Chunk-level f32 RGB / RGBA deinterleave + interleave primitives
+// ---------------------------------------------------------------------------
+// Mirrors `rgb24_chunk8_to_planes_scalar` at f32 input, across {4, 8, 16}
+// pixel chunk widths × {RGB, RGBA} × {deinterleave, interleave}. Each body
+// is a single fixed-array literal expression — LLVM auto-vectorizes the
+// contiguous loads/stores into vinsertps/vshufps (x86) or tbl/zip (AArch64)
+// shuffles per the "Fixed-array scalar loads/stores can auto-vectorize into
+// shuffles" pattern. No SIMD intrinsics, no unsafe code.
+//
+// Use case: enables fused per-chunk TRC + 3×3 matrix kernels in
+// zenpixels-convert and similar crates without manual deinterleave loops.
+// ===========================================================================
+
+// --- Chunk-of-4 deinterleave / interleave --------------------------------
+
+/// RGB f32 deinterleave, chunk-of-4-pixels variant. Loads 12 f32 values
+/// from interleaved RGBRGB... layout and returns three planar `[f32; 4]`
+/// arrays. Mirrors [`rgb24_chunk8_to_planes_scalar`] at f32 input and
+/// 4-pixel width — the chunk-4 size matches the natural NEON / WASM128
+/// vector lane count.
+#[inline]
+pub fn rgb_f32_chunk4_to_planes(chunk: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
+    (
+        [chunk[0], chunk[3], chunk[6], chunk[9]],
+        [chunk[1], chunk[4], chunk[7], chunk[10]],
+        [chunk[2], chunk[5], chunk[8], chunk[11]],
+    )
+}
+
+/// RGBA f32 deinterleave, chunk-of-4-pixels variant. Loads 16 f32 values
+/// from interleaved RGBARGBA... layout and returns four planar `[f32; 4]`
+/// arrays.
+#[inline]
+pub fn rgba_f32_chunk4_to_planes(chunk: &[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
+    (
+        [chunk[0], chunk[4], chunk[8], chunk[12]],
+        [chunk[1], chunk[5], chunk[9], chunk[13]],
+        [chunk[2], chunk[6], chunk[10], chunk[14]],
+        [chunk[3], chunk[7], chunk[11], chunk[15]],
+    )
+}
+
+/// RGB f32 interleave, chunk-of-4-pixels variant. Stores three planar
+/// `[f32; 4]` arrays into 12 f32 in interleaved RGBRGB... layout.
+#[inline]
+pub fn planes_to_rgb_f32_chunk4(r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
+    [
+        r[0], g[0], b[0], r[1], g[1], b[1], r[2], g[2], b[2], r[3], g[3], b[3],
+    ]
+}
+
+/// RGBA f32 interleave, chunk-of-4-pixels variant. Stores four planar
+/// `[f32; 4]` arrays into 16 f32 in interleaved RGBARGBA... layout.
+#[inline]
+pub fn planes_to_rgba_f32_chunk4(
+    r: &[f32; 4],
+    g: &[f32; 4],
+    b: &[f32; 4],
+    a: &[f32; 4],
+) -> [f32; 16] {
+    [
+        r[0], g[0], b[0], a[0], r[1], g[1], b[1], a[1], r[2], g[2], b[2], a[2], r[3], g[3], b[3],
+        a[3],
+    ]
+}
+
+// --- Chunk-of-8 deinterleave / interleave --------------------------------
+
+/// RGB f32 deinterleave, chunk-of-8-pixels variant. Loads 24 f32 values
+/// from interleaved RGBRGB... layout and returns three planar `[f32; 8]`
+/// arrays. Mirrors [`rgb24_chunk8_to_planes_scalar`] at f32 input.
+#[inline]
+pub fn rgb_f32_chunk8_to_planes(chunk: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+    (
+        [
+            chunk[0], chunk[3], chunk[6], chunk[9], chunk[12], chunk[15], chunk[18], chunk[21],
+        ],
+        [
+            chunk[1], chunk[4], chunk[7], chunk[10], chunk[13], chunk[16], chunk[19], chunk[22],
+        ],
+        [
+            chunk[2], chunk[5], chunk[8], chunk[11], chunk[14], chunk[17], chunk[20], chunk[23],
+        ],
+    )
+}
+
+/// RGBA f32 deinterleave, chunk-of-8-pixels variant. Loads 32 f32 values
+/// from interleaved RGBARGBA... layout and returns four planar `[f32; 8]`
+/// arrays.
+#[inline]
+pub fn rgba_f32_chunk8_to_planes(chunk: &[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
+    (
+        [
+            chunk[0], chunk[4], chunk[8], chunk[12], chunk[16], chunk[20], chunk[24], chunk[28],
+        ],
+        [
+            chunk[1], chunk[5], chunk[9], chunk[13], chunk[17], chunk[21], chunk[25], chunk[29],
+        ],
+        [
+            chunk[2], chunk[6], chunk[10], chunk[14], chunk[18], chunk[22], chunk[26], chunk[30],
+        ],
+        [
+            chunk[3], chunk[7], chunk[11], chunk[15], chunk[19], chunk[23], chunk[27], chunk[31],
+        ],
+    )
+}
+
+/// RGB f32 interleave, chunk-of-8-pixels variant. Stores three planar
+/// `[f32; 8]` arrays into 24 f32 in interleaved RGBRGB... layout.
+#[inline]
+pub fn planes_to_rgb_f32_chunk8(r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
+    [
+        r[0], g[0], b[0], r[1], g[1], b[1], r[2], g[2], b[2], r[3], g[3], b[3], r[4], g[4], b[4],
+        r[5], g[5], b[5], r[6], g[6], b[6], r[7], g[7], b[7],
+    ]
+}
+
+/// RGBA f32 interleave, chunk-of-8-pixels variant. Stores four planar
+/// `[f32; 8]` arrays into 32 f32 in interleaved RGBARGBA... layout.
+#[inline]
+pub fn planes_to_rgba_f32_chunk8(
+    r: &[f32; 8],
+    g: &[f32; 8],
+    b: &[f32; 8],
+    a: &[f32; 8],
+) -> [f32; 32] {
+    [
+        r[0], g[0], b[0], a[0], r[1], g[1], b[1], a[1], r[2], g[2], b[2], a[2], r[3], g[3], b[3],
+        a[3], r[4], g[4], b[4], a[4], r[5], g[5], b[5], a[5], r[6], g[6], b[6], a[6], r[7], g[7],
+        b[7], a[7],
+    ]
+}
+
+// --- Chunk-of-16 deinterleave / interleave -------------------------------
+
+/// RGB f32 deinterleave, chunk-of-16-pixels variant. Loads 48 f32 values
+/// from interleaved RGBRGB... layout and returns three planar `[f32; 16]`
+/// arrays.
+#[inline]
+pub fn rgb_f32_chunk16_to_planes(chunk: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
+    let mut r = [0.0f32; 16];
+    let mut g = [0.0f32; 16];
+    let mut b = [0.0f32; 16];
+    let mut i = 0;
+    while i < 16 {
+        r[i] = chunk[i * 3];
+        g[i] = chunk[i * 3 + 1];
+        b[i] = chunk[i * 3 + 2];
+        i += 1;
+    }
+    (r, g, b)
+}
+
+/// RGBA f32 deinterleave, chunk-of-16-pixels variant. Loads 64 f32 values
+/// from interleaved RGBARGBA... layout and returns four planar `[f32; 16]`
+/// arrays.
+#[inline]
+pub fn rgba_f32_chunk16_to_planes(
+    chunk: &[f32; 64],
+) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
+    let mut r = [0.0f32; 16];
+    let mut g = [0.0f32; 16];
+    let mut b = [0.0f32; 16];
+    let mut a = [0.0f32; 16];
+    let mut i = 0;
+    while i < 16 {
+        r[i] = chunk[i * 4];
+        g[i] = chunk[i * 4 + 1];
+        b[i] = chunk[i * 4 + 2];
+        a[i] = chunk[i * 4 + 3];
+        i += 1;
+    }
+    (r, g, b, a)
+}
+
+/// RGB f32 interleave, chunk-of-16-pixels variant. Stores three planar
+/// `[f32; 16]` arrays into 48 f32 in interleaved RGBRGB... layout.
+#[inline]
+pub fn planes_to_rgb_f32_chunk16(r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
+    let mut out = [0.0f32; 48];
+    let mut i = 0;
+    while i < 16 {
+        out[i * 3] = r[i];
+        out[i * 3 + 1] = g[i];
+        out[i * 3 + 2] = b[i];
+        i += 1;
+    }
+    out
+}
+
+/// RGBA f32 interleave, chunk-of-16-pixels variant. Stores four planar
+/// `[f32; 16]` arrays into 64 f32 in interleaved RGBARGBA... layout.
+#[inline]
+pub fn planes_to_rgba_f32_chunk16(
+    r: &[f32; 16],
+    g: &[f32; 16],
+    b: &[f32; 16],
+    a: &[f32; 16],
+) -> [f32; 64] {
+    let mut out = [0.0f32; 64];
+    let mut i = 0;
+    while i < 16 {
+        out[i * 4] = r[i];
+        out[i * 4 + 1] = g[i];
+        out[i * 4 + 2] = b[i];
+        out[i * 4 + 3] = a[i];
+        i += 1;
+    }
+    out
+}
+
+// ===========================================================================
 // Tests
 // ===========================================================================
 
@@ -1291,5 +1503,232 @@ mod tests {
             Err(SizeError::NotPixelAligned)
         );
         let _ = &a;
+    }
+
+    // ----- Chunk-level f32 deinterleave / interleave round-trips --------
+
+    fn make_rgb_chunk<const N: usize, const M: usize>() -> [f32; M] {
+        // M = N * 3
+        let mut out = [0.0f32; M];
+        let mut i = 0;
+        while i < M {
+            out[i] = i as f32;
+            i += 1;
+        }
+        out
+    }
+
+    fn make_rgba_chunk<const N: usize, const M: usize>() -> [f32; M] {
+        // M = N * 4
+        let mut out = [0.0f32; M];
+        let mut i = 0;
+        while i < M {
+            out[i] = i as f32 * 0.25 - 7.0;
+            i += 1;
+        }
+        out
+    }
+
+    // --- chunk-4 -----------------------------------------------------------
+
+    #[test]
+    fn rgb_f32_chunk4_order_preserving() {
+        let src: [f32; 12] = make_rgb_chunk::<4, 12>();
+        let (r, g, b) = rgb_f32_chunk4_to_planes(&src);
+        assert_eq!(r, [0.0, 3.0, 6.0, 9.0]);
+        assert_eq!(g, [1.0, 4.0, 7.0, 10.0]);
+        assert_eq!(b, [2.0, 5.0, 8.0, 11.0]);
+    }
+
+    #[test]
+    fn rgb_f32_chunk4_round_trip() {
+        let src: [f32; 12] = make_rgb_chunk::<4, 12>();
+        let (r, g, b) = rgb_f32_chunk4_to_planes(&src);
+        let back = planes_to_rgb_f32_chunk4(&r, &g, &b);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgb_f32_chunk4_matches_slice_api() {
+        let src: [f32; 12] = make_rgb_chunk::<4, 12>();
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk4_to_planes(&src);
+        let mut r = [0.0f32; 4];
+        let mut g = [0.0f32; 4];
+        let mut b = [0.0f32; 4];
+        rgb_f32_to_planes_f32(&src, &mut r, &mut g, &mut b).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+    }
+
+    #[test]
+    fn rgba_f32_chunk4_order_preserving() {
+        let src: [f32; 16] = make_rgba_chunk::<4, 16>();
+        let (r, g, b, a) = rgba_f32_chunk4_to_planes(&src);
+        for i in 0..4 {
+            assert_eq!(r[i], src[i * 4]);
+            assert_eq!(g[i], src[i * 4 + 1]);
+            assert_eq!(b[i], src[i * 4 + 2]);
+            assert_eq!(a[i], src[i * 4 + 3]);
+        }
+    }
+
+    #[test]
+    fn rgba_f32_chunk4_round_trip() {
+        let src: [f32; 16] = make_rgba_chunk::<4, 16>();
+        let (r, g, b, a) = rgba_f32_chunk4_to_planes(&src);
+        let back = planes_to_rgba_f32_chunk4(&r, &g, &b, &a);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgba_f32_chunk4_matches_slice_api() {
+        let src: [f32; 16] = make_rgba_chunk::<4, 16>();
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk4_to_planes(&src);
+        let mut r = [0.0f32; 4];
+        let mut g = [0.0f32; 4];
+        let mut b = [0.0f32; 4];
+        let mut a = [0.0f32; 4];
+        rgba_f32_to_planes_f32(&src, &mut r, &mut g, &mut b, &mut a).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+        assert_eq!(a_chunk, a);
+    }
+
+    // --- chunk-8 -----------------------------------------------------------
+
+    #[test]
+    fn rgb_f32_chunk8_order_preserving() {
+        let src: [f32; 24] = make_rgb_chunk::<8, 24>();
+        let (r, g, b) = rgb_f32_chunk8_to_planes(&src);
+        assert_eq!(r, [0.0, 3.0, 6.0, 9.0, 12.0, 15.0, 18.0, 21.0]);
+        assert_eq!(g, [1.0, 4.0, 7.0, 10.0, 13.0, 16.0, 19.0, 22.0]);
+        assert_eq!(b, [2.0, 5.0, 8.0, 11.0, 14.0, 17.0, 20.0, 23.0]);
+    }
+
+    #[test]
+    fn rgb_f32_chunk8_round_trip() {
+        let src: [f32; 24] = make_rgb_chunk::<8, 24>();
+        let (r, g, b) = rgb_f32_chunk8_to_planes(&src);
+        let back = planes_to_rgb_f32_chunk8(&r, &g, &b);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgb_f32_chunk8_matches_slice_api() {
+        let src: [f32; 24] = make_rgb_chunk::<8, 24>();
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk8_to_planes(&src);
+        let mut r = [0.0f32; 8];
+        let mut g = [0.0f32; 8];
+        let mut b = [0.0f32; 8];
+        rgb_f32_to_planes_f32(&src, &mut r, &mut g, &mut b).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+    }
+
+    #[test]
+    fn rgba_f32_chunk8_order_preserving() {
+        let src: [f32; 32] = make_rgba_chunk::<8, 32>();
+        let (r, g, b, a) = rgba_f32_chunk8_to_planes(&src);
+        for i in 0..8 {
+            assert_eq!(r[i], src[i * 4]);
+            assert_eq!(g[i], src[i * 4 + 1]);
+            assert_eq!(b[i], src[i * 4 + 2]);
+            assert_eq!(a[i], src[i * 4 + 3]);
+        }
+    }
+
+    #[test]
+    fn rgba_f32_chunk8_round_trip() {
+        let src: [f32; 32] = make_rgba_chunk::<8, 32>();
+        let (r, g, b, a) = rgba_f32_chunk8_to_planes(&src);
+        let back = planes_to_rgba_f32_chunk8(&r, &g, &b, &a);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgba_f32_chunk8_matches_slice_api() {
+        let src: [f32; 32] = make_rgba_chunk::<8, 32>();
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk8_to_planes(&src);
+        let mut r = [0.0f32; 8];
+        let mut g = [0.0f32; 8];
+        let mut b = [0.0f32; 8];
+        let mut a = [0.0f32; 8];
+        rgba_f32_to_planes_f32(&src, &mut r, &mut g, &mut b, &mut a).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+        assert_eq!(a_chunk, a);
+    }
+
+    // --- chunk-16 ----------------------------------------------------------
+
+    #[test]
+    fn rgb_f32_chunk16_order_preserving() {
+        let src: [f32; 48] = make_rgb_chunk::<16, 48>();
+        let (r, g, b) = rgb_f32_chunk16_to_planes(&src);
+        for i in 0..16 {
+            assert_eq!(r[i], (i * 3) as f32);
+            assert_eq!(g[i], (i * 3 + 1) as f32);
+            assert_eq!(b[i], (i * 3 + 2) as f32);
+        }
+    }
+
+    #[test]
+    fn rgb_f32_chunk16_round_trip() {
+        let src: [f32; 48] = make_rgb_chunk::<16, 48>();
+        let (r, g, b) = rgb_f32_chunk16_to_planes(&src);
+        let back = planes_to_rgb_f32_chunk16(&r, &g, &b);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgb_f32_chunk16_matches_slice_api() {
+        let src: [f32; 48] = make_rgb_chunk::<16, 48>();
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk16_to_planes(&src);
+        let mut r = [0.0f32; 16];
+        let mut g = [0.0f32; 16];
+        let mut b = [0.0f32; 16];
+        rgb_f32_to_planes_f32(&src, &mut r, &mut g, &mut b).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+    }
+
+    #[test]
+    fn rgba_f32_chunk16_order_preserving() {
+        let src: [f32; 64] = make_rgba_chunk::<16, 64>();
+        let (r, g, b, a) = rgba_f32_chunk16_to_planes(&src);
+        for i in 0..16 {
+            assert_eq!(r[i], src[i * 4]);
+            assert_eq!(g[i], src[i * 4 + 1]);
+            assert_eq!(b[i], src[i * 4 + 2]);
+            assert_eq!(a[i], src[i * 4 + 3]);
+        }
+    }
+
+    #[test]
+    fn rgba_f32_chunk16_round_trip() {
+        let src: [f32; 64] = make_rgba_chunk::<16, 64>();
+        let (r, g, b, a) = rgba_f32_chunk16_to_planes(&src);
+        let back = planes_to_rgba_f32_chunk16(&r, &g, &b, &a);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgba_f32_chunk16_matches_slice_api() {
+        let src: [f32; 64] = make_rgba_chunk::<16, 64>();
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk16_to_planes(&src);
+        let mut r = [0.0f32; 16];
+        let mut g = [0.0f32; 16];
+        let mut b = [0.0f32; 16];
+        let mut a = [0.0f32; 16];
+        rgba_f32_to_planes_f32(&src, &mut r, &mut g, &mut b, &mut a).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+        assert_eq!(a_chunk, a);
     }
 }
