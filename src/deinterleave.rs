@@ -91,19 +91,45 @@ pub fn rgb48_to_planes_f32(
 /// Scalar-only RGB24 → planar f32 (no validation, no SIMD dispatch). Exists
 /// solely to give benchmarks a stable handle on the unaccelerated path.
 ///
-/// Caller must ensure `src.len() % 3 == 0` and each plane has at least
-/// `src.len() / 3` elements; the function panics on shorter slices because
-/// it falls through to slice indexing.
+/// # Panics
+///
+/// Caller must ensure each plane has at least `src.len() / 3` elements.
+/// In debug builds a `debug_assert!` flags the misuse loudly; in release
+/// builds the function panics via slice indexing if a plane is too short.
+/// `src.len()` is not required to be a multiple of 3 — the trailing
+/// fractional pixel is silently dropped, matching the production scalar
+/// kernel's behavior.
 #[doc(hidden)]
 pub fn scalar_only_rgb24(src: &[u8], r: &mut [f32], g: &mut [f32], b: &mut [f32]) {
     let pixels = src.len() / 3;
+    debug_assert!(
+        r.len() >= pixels && g.len() >= pixels && b.len() >= pixels,
+        "scalar_only_rgb24: each plane must have at least src.len()/3 elements (got src.len()={}, r.len()={}, g.len()={}, b.len()={})",
+        src.len(),
+        r.len(),
+        g.len(),
+        b.len(),
+    );
     rgb24_to_planes_loop_scalar(src, &mut r[..pixels], &mut g[..pixels], &mut b[..pixels]);
 }
 
 /// Scalar-only RGB48 → planar f32. See [`scalar_only_rgb24`].
+///
+/// # Panics
+///
+/// Same contract as [`scalar_only_rgb24`]: each plane must have at least
+/// `src.len() / 3` elements.
 #[doc(hidden)]
 pub fn scalar_only_rgb48(src: &[u16], r: &mut [f32], g: &mut [f32], b: &mut [f32]) {
     let pixels = src.len() / 3;
+    debug_assert!(
+        r.len() >= pixels && g.len() >= pixels && b.len() >= pixels,
+        "scalar_only_rgb48: each plane must have at least src.len()/3 elements (got src.len()={}, r.len()={}, g.len()={}, b.len()={})",
+        src.len(),
+        r.len(),
+        g.len(),
+        b.len(),
+    );
     rgb48_to_planes_loop_scalar(src, &mut r[..pixels], &mut g[..pixels], &mut b[..pixels]);
 }
 
@@ -970,14 +996,34 @@ pub fn planes_f32_to_rgba_f32(
 /// `#[inline(always)]` so it inlines into a `#[target_feature]` region when
 /// callers want to pull the whole-loop autovectorize comparison out to a
 /// single dispatch boundary.
+///
+/// # Panics
+///
+/// Each output plane must have at least `src.len() / 3` elements. In
+/// debug builds a `debug_assert!` flags the misuse loudly; in release
+/// builds the function panics via slice indexing if a plane is too short.
 #[doc(hidden)]
 #[inline(always)]
 pub fn scalar_only_rgb_f32_to_planes(src: &[f32], r: &mut [f32], g: &mut [f32], b: &mut [f32]) {
     let pixels = src.len() / 3;
+    debug_assert!(
+        r.len() >= pixels && g.len() >= pixels && b.len() >= pixels,
+        "scalar_only_rgb_f32_to_planes: each plane must have at least src.len()/3 elements (got src.len()={}, r.len()={}, g.len()={}, b.len()={})",
+        src.len(),
+        r.len(),
+        g.len(),
+        b.len(),
+    );
     rgb_f32_to_planes_loop_scalar(src, &mut r[..pixels], &mut g[..pixels], &mut b[..pixels]);
 }
 
 /// Scalar-only handle for benchmarking f32 RGBA deinterleave.
+///
+/// # Panics
+///
+/// Each output plane must have at least `src.len() / 4` elements. In
+/// debug builds a `debug_assert!` flags the misuse loudly; in release
+/// builds the function panics via slice indexing if a plane is too short.
 #[doc(hidden)]
 #[inline(always)]
 pub fn scalar_only_rgba_f32_to_planes(
@@ -988,6 +1034,15 @@ pub fn scalar_only_rgba_f32_to_planes(
     a: &mut [f32],
 ) {
     let pixels = src.len() / 4;
+    debug_assert!(
+        r.len() >= pixels && g.len() >= pixels && b.len() >= pixels && a.len() >= pixels,
+        "scalar_only_rgba_f32_to_planes: each plane must have at least src.len()/4 elements (got src.len()={}, r.len()={}, g.len()={}, b.len()={}, a.len()={})",
+        src.len(),
+        r.len(),
+        g.len(),
+        b.len(),
+        a.len(),
+    );
     rgba_f32_to_planes_loop_scalar(
         src,
         &mut r[..pixels],
@@ -998,17 +1053,53 @@ pub fn scalar_only_rgba_f32_to_planes(
 }
 
 /// Scalar-only handle for benchmarking the f32 planes→RGB interleave path.
+///
+/// # Panics
+///
+/// `g` and `b` must have at least `r.len()` elements, and `dst` must have
+/// at least `r.len() * 3` elements. In debug builds a `debug_assert!`
+/// flags the misuse loudly; in release builds the function panics via
+/// slice indexing if any input is too short.
 #[doc(hidden)]
 #[inline(always)]
 pub fn scalar_only_planes_f32_to_rgb(r: &[f32], g: &[f32], b: &[f32], dst: &mut [f32]) {
-    planes_to_rgb_f32_loop_scalar(r, g, b, &mut dst[..r.len() * 3]);
+    let pixels = r.len();
+    debug_assert!(
+        g.len() >= pixels && b.len() >= pixels && dst.len() >= pixels.saturating_mul(3),
+        "scalar_only_planes_f32_to_rgb: g/b must be >= r.len() and dst must be >= r.len()*3 (got r.len()={}, g.len()={}, b.len()={}, dst.len()={})",
+        pixels,
+        g.len(),
+        b.len(),
+        dst.len(),
+    );
+    planes_to_rgb_f32_loop_scalar(r, g, b, &mut dst[..pixels * 3]);
 }
 
 /// Scalar-only handle for benchmarking the f32 planes→RGBA interleave path.
+///
+/// # Panics
+///
+/// `g`, `b`, `a` must have at least `r.len()` elements, and `dst` must
+/// have at least `r.len() * 4` elements. In debug builds a `debug_assert!`
+/// flags the misuse loudly; in release builds the function panics via
+/// slice indexing if any input is too short.
 #[doc(hidden)]
 #[inline(always)]
 pub fn scalar_only_planes_f32_to_rgba(r: &[f32], g: &[f32], b: &[f32], a: &[f32], dst: &mut [f32]) {
-    planes_to_rgba_f32_loop_scalar(r, g, b, a, &mut dst[..r.len() * 4]);
+    let pixels = r.len();
+    debug_assert!(
+        g.len() >= pixels
+            && b.len() >= pixels
+            && a.len() >= pixels
+            && dst.len() >= pixels.saturating_mul(4),
+        "scalar_only_planes_f32_to_rgba: g/b/a must be >= r.len() and dst must be >= r.len()*4 (got r.len()={}, g.len()={}, b.len()={}, a.len()={}, dst.len()={})",
+        pixels,
+        g.len(),
+        b.len(),
+        a.len(),
+        dst.len(),
+    );
+    planes_to_rgba_f32_loop_scalar(r, g, b, a, &mut dst[..pixels * 4]);
 }
 
 // ===========================================================================
