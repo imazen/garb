@@ -49,7 +49,11 @@ macro_rules! impl_convert_inplace {
             #[inline]
             fn convert_inplace(buf: &mut [Self]) -> &mut [$dst] {
                 let bytes: &mut [u8] = bytemuck::cast_slice_mut(buf);
-                $bytes_fn(bytes).expect("typed slice is always valid");
+                // Empty input is a valid degenerate case — early-return so
+                // we don't trip the underlying validator's "len > 0" check.
+                if !bytes.is_empty() {
+                    $bytes_fn(bytes).expect("typed slice is always valid");
+                }
                 bytemuck::cast_slice_mut(bytes)
             }
         }
@@ -104,13 +108,25 @@ impl_convert_to!(Rgba<u8>, Bgr<u8>, crate::bytes::rgba_to_bgr);
 // ===========================================================================
 
 /// Set alpha to 255 for all pixels in a `&mut [Rgba<u8>]`.
+///
+/// Empty input is a no-op (no panic). Consistent with the `bytes::*` API's
+/// "no panics" contract documented in the crate README.
 pub fn fill_alpha_rgba(pixels: &mut [Rgba<u8>]) {
+    if pixels.is_empty() {
+        return;
+    }
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
     crate::bytes::fill_alpha_rgba(bytes).expect("typed slice is always valid");
 }
 
 /// Set alpha to 255 for all pixels in a `&mut [Bgra<u8>]`.
+///
+/// Empty input is a no-op (no panic). Consistent with the `bytes::*` API's
+/// "no panics" contract documented in the crate README.
 pub fn fill_alpha_bgra(pixels: &mut [Bgra<u8>]) {
+    if pixels.is_empty() {
+        return;
+    }
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
     crate::bytes::fill_alpha_rgba(bytes).expect("typed slice is always valid");
 }
@@ -408,7 +424,12 @@ mod experimental_typed {
     // -----------------------------------------------------------------------
 
     /// Premultiply alpha for `&mut [Rgba<f32>]` in-place.
+    ///
+    /// Empty input is a no-op (no panic).
     pub fn premultiply_rgba_f32(pixels: &mut [Rgba<f32>]) {
+        if pixels.is_empty() {
+            return;
+        }
         let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
         crate::bytes::premultiply_alpha_f32(bytes).expect("typed slice is always valid");
     }
@@ -425,7 +446,12 @@ mod experimental_typed {
     }
 
     /// Unpremultiply alpha for `&mut [Rgba<f32>]` in-place.
+    ///
+    /// Empty input is a no-op (no panic).
     pub fn unpremultiply_rgba_f32(pixels: &mut [Rgba<f32>]) {
+        if pixels.is_empty() {
+            return;
+        }
         let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
         crate::bytes::unpremultiply_alpha_f32(bytes).expect("typed slice is always valid");
     }
@@ -572,6 +598,34 @@ mod tests {
         );
         let rgb_again: &mut [Rgb<u8>] = crate::convert_inplace(bgr);
         assert_eq!(rgb_again, original.as_slice());
+    }
+
+    #[test]
+    fn test_convert_inplace_empty_no_panic() {
+        // Regression: empty input must not panic — the README's `bytes::*`
+        // contract ("no panics") extends here through the typed API.
+        let mut pixels: alloc::vec::Vec<Rgba<u8>> = vec![];
+        let bgra: &mut [Bgra<u8>] = crate::convert_inplace(&mut pixels);
+        assert!(bgra.is_empty());
+    }
+
+    #[test]
+    fn test_fill_alpha_empty_no_panic() {
+        let mut pixels: alloc::vec::Vec<Rgba<u8>> = vec![];
+        super::fill_alpha_rgba(&mut pixels);
+        assert!(pixels.is_empty());
+
+        let mut pixels: alloc::vec::Vec<Bgra<u8>> = vec![];
+        super::fill_alpha_bgra(&mut pixels);
+        assert!(pixels.is_empty());
+    }
+
+    #[test]
+    fn test_rgb_inplace_empty_no_panic() {
+        use rgb::{Bgr, Rgb};
+        let mut pixels: alloc::vec::Vec<Rgb<u8>> = vec![];
+        let bgr: &mut [Bgr<u8>] = crate::convert_inplace(&mut pixels);
+        assert!(bgr.is_empty());
     }
 
     #[allow(deprecated)]

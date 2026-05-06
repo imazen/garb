@@ -74,7 +74,12 @@ macro_rules! impl_convert_image_inplace {
                 let stride = img.stride();
                 for row in img.rows_mut() {
                     let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
-                    $bytes_fn(bytes).expect("row is always valid");
+                    // Empty rows (width == 0) are a valid degenerate case;
+                    // skip them so the underlying validator's "len > 0" check
+                    // doesn't surface as a panic.
+                    if !bytes.is_empty() {
+                        $bytes_fn(bytes).expect("row is always valid");
+                    }
                 }
                 let buf: Vec<$dst> = bytemuck::allocation::cast_vec(img.into_buf());
                 ImgVec::new_stride(buf, w, h, stride)
@@ -429,17 +434,27 @@ mod experimental_imgref {
     // -----------------------------------------------------------------------
 
     /// Premultiply alpha for an `Rgba<f32>` image in-place.
+    ///
+    /// Empty rows (width == 0) are skipped without panicking.
     pub fn premultiply_rgba_f32(mut img: ImgRefMut<'_, Rgba<f32>>) {
         for row in img.rows_mut() {
             let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
+            if bytes.is_empty() {
+                continue;
+            }
             crate::bytes::premultiply_alpha_f32(bytes).expect("row is always valid");
         }
     }
 
     /// Unpremultiply alpha for an `Rgba<f32>` image in-place.
+    ///
+    /// Empty rows (width == 0) are skipped without panicking.
     pub fn unpremultiply_rgba_f32(mut img: ImgRefMut<'_, Rgba<f32>>) {
         for row in img.rows_mut() {
             let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
+            if bytes.is_empty() {
+                continue;
+            }
             crate::bytes::unpremultiply_alpha_f32(bytes).expect("row is always valid");
         }
     }
@@ -547,6 +562,28 @@ mod tests {
             crate::convert_imgref(src.as_ref(), dst),
             Err(crate::SizeError::PixelCountMismatch)
         );
+    }
+
+    #[test]
+    fn test_convert_imgref_inplace_zero_height_no_panic() {
+        // Regression: zero-height image has no rows to iterate. The in-place
+        // macro must not panic on the validator's "len > 0" check.
+        // (ImgVec rejects width == 0 upstream via assert!(stride > 0), so the
+        // smallest constructible empty image uses width >= 1, height == 0.)
+        let img: ImgVec<Rgba<u8>> = ImgVec::new(vec![], 1, 0);
+        let bgra: ImgVec<Bgra<u8>> = crate::convert_imgref_inplace(img);
+        assert_eq!(bgra.width(), 1);
+        assert_eq!(bgra.height(), 0);
+        assert!(bgra.buf().is_empty());
+    }
+
+    #[test]
+    fn test_premultiply_rgba_f32_zero_height_no_panic() {
+        // Same regression check on the experimental f32 premultiply path.
+        let mut img: ImgVec<Rgba<f32>> = ImgVec::new(vec![], 1, 0);
+        super::experimental_imgref::premultiply_rgba_f32(img.as_mut());
+        super::experimental_imgref::unpremultiply_rgba_f32(img.as_mut());
+        assert_eq!(img.height(), 0);
     }
 
     #[allow(deprecated)]
