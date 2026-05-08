@@ -1542,21 +1542,23 @@ pub fn scalar_only_planes_f32_to_rgba(r: &[f32], g: &[f32], b: &[f32], a: &[f32]
 // Mirrors `rgb24_chunk8_to_planes_scalar` at f32 input, across {4, 8, 16}
 // pixel chunk widths × {RGB, RGBA} × {deinterleave, interleave}.
 //
-// Three flavors per shape:
-//   `*_scalar`  — fixed-array literal; LLVM is free to autovectorize but
-//                 isn't required to. Always available.
-//   `*_v3`      — x86_64 AVX2 hand-rolled shuffles. Caller passes an
-//                 `X64V3Token` (proves AVX2 available).
-//   `*_neon`    — aarch64 NEON `vld3q_f32` / `vld4q_f32` (deinterleave) and
-//                 `vst3q_f32` / `vst4q_f32` (interleave). One hardware
-//                 structure-load per 4-pixel chunk.
-//   `*_wasm128` — wasm32 SIMD128 shuffles via `i32x4_shuffle`-style ops.
+// Two flavors per shape:
+//   `*_scalar`           — fixed-array literal; LLVM is free to autovectorize
+//                          but isn't required to. Always available, always
+//                          safe, no token / no archmage type in signature.
+//   `*_tokenless_<tier>` — `#[rite(<tier>)]` per-arch SIMD specialization.
+//                          Tier-based rite adds `#[target_feature]` +
+//                          `#[inline]` directly; safe to call from any
+//                          matching `#[arcane]` / `#[rite]` / `#[target_feature]`
+//                          region. No token / no archmage type in signature.
+//                          Tiers exposed: `v3` (AVX2), `neon` (aarch64),
+//                          `wasm128` (wasm32 SIMD128).
 //
-// `#[rite]` on the per-arch variants — they inline into the caller's
-// target_feature region so chunked loops fuse with no per-call overhead.
-//
-// The bare-name aliases (e.g. `rgb_f32_chunk4_to_planes`) point at
-// `*_scalar` for backward compatibility with PR #5's published API.
+// The `_tokenless_` infix distinguishes these from the older convention
+// (still used inside the slice-level `*_impl_*` dispatchers) where a bare
+// `_v3` / `_neon` / `_wasm128` suffix means "takes an `X64V3Token` /
+// `NeonToken` / `Wasm128Token` parameter". Garb's *public* surface is
+// archmage-token-free; tokens stay an internal implementation detail.
 // ===========================================================================
 
 // --- Chunk-of-4 deinterleave / interleave (scalar) -----------------------
@@ -1758,102 +1760,6 @@ pub fn planes_to_rgba_f32_chunk16_scalar(
         i += 1;
     }
     out
-}
-
-// --- Bare-name aliases (point at `*_scalar` for backward compat) ---------
-//
-// PR #5 published these without a suffix. We keep the no-suffix names as
-// thin wrappers around the scalar variant so existing callers compile
-// untouched while the per-arch SIMD specializations live behind `_v3`,
-// `_neon`, `_wasm128` suffixes.
-
-/// Backward-compat alias for [`rgb_f32_chunk4_to_planes_scalar`].
-#[inline]
-pub fn rgb_f32_chunk4_to_planes(chunk: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
-    rgb_f32_chunk4_to_planes_scalar(chunk)
-}
-
-/// Backward-compat alias for [`rgba_f32_chunk4_to_planes_scalar`].
-#[inline]
-pub fn rgba_f32_chunk4_to_planes(chunk: &[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
-    rgba_f32_chunk4_to_planes_scalar(chunk)
-}
-
-/// Backward-compat alias for [`planes_to_rgb_f32_chunk4_scalar`].
-#[inline]
-pub fn planes_to_rgb_f32_chunk4(r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
-    planes_to_rgb_f32_chunk4_scalar(r, g, b)
-}
-
-/// Backward-compat alias for [`planes_to_rgba_f32_chunk4_scalar`].
-#[inline]
-pub fn planes_to_rgba_f32_chunk4(
-    r: &[f32; 4],
-    g: &[f32; 4],
-    b: &[f32; 4],
-    a: &[f32; 4],
-) -> [f32; 16] {
-    planes_to_rgba_f32_chunk4_scalar(r, g, b, a)
-}
-
-/// Backward-compat alias for [`rgb_f32_chunk8_to_planes_scalar`].
-#[inline]
-pub fn rgb_f32_chunk8_to_planes(chunk: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
-    rgb_f32_chunk8_to_planes_scalar(chunk)
-}
-
-/// Backward-compat alias for [`rgba_f32_chunk8_to_planes_scalar`].
-#[inline]
-pub fn rgba_f32_chunk8_to_planes(chunk: &[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
-    rgba_f32_chunk8_to_planes_scalar(chunk)
-}
-
-/// Backward-compat alias for [`planes_to_rgb_f32_chunk8_scalar`].
-#[inline]
-pub fn planes_to_rgb_f32_chunk8(r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
-    planes_to_rgb_f32_chunk8_scalar(r, g, b)
-}
-
-/// Backward-compat alias for [`planes_to_rgba_f32_chunk8_scalar`].
-#[inline]
-pub fn planes_to_rgba_f32_chunk8(
-    r: &[f32; 8],
-    g: &[f32; 8],
-    b: &[f32; 8],
-    a: &[f32; 8],
-) -> [f32; 32] {
-    planes_to_rgba_f32_chunk8_scalar(r, g, b, a)
-}
-
-/// Backward-compat alias for [`rgb_f32_chunk16_to_planes_scalar`].
-#[inline]
-pub fn rgb_f32_chunk16_to_planes(chunk: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
-    rgb_f32_chunk16_to_planes_scalar(chunk)
-}
-
-/// Backward-compat alias for [`rgba_f32_chunk16_to_planes_scalar`].
-#[inline]
-pub fn rgba_f32_chunk16_to_planes(
-    chunk: &[f32; 64],
-) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
-    rgba_f32_chunk16_to_planes_scalar(chunk)
-}
-
-/// Backward-compat alias for [`planes_to_rgb_f32_chunk16_scalar`].
-#[inline]
-pub fn planes_to_rgb_f32_chunk16(r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
-    planes_to_rgb_f32_chunk16_scalar(r, g, b)
-}
-
-/// Backward-compat alias for [`planes_to_rgba_f32_chunk16_scalar`].
-#[inline]
-pub fn planes_to_rgba_f32_chunk16(
-    r: &[f32; 16],
-    g: &[f32; 16],
-    b: &[f32; 16],
-    a: &[f32; 16],
-) -> [f32; 64] {
-    planes_to_rgba_f32_chunk16_scalar(r, g, b, a)
 }
 
 // ===========================================================================
@@ -3373,7 +3279,7 @@ mod tests {
     #[test]
     fn rgb_f32_chunk4_order_preserving() {
         let src: [f32; 12] = make_rgb_chunk::<4, 12>();
-        let (r, g, b) = rgb_f32_chunk4_to_planes(&src);
+        let (r, g, b) = rgb_f32_chunk4_to_planes_scalar(&src);
         assert_eq!(r, [0.0, 3.0, 6.0, 9.0]);
         assert_eq!(g, [1.0, 4.0, 7.0, 10.0]);
         assert_eq!(b, [2.0, 5.0, 8.0, 11.0]);
@@ -3382,15 +3288,15 @@ mod tests {
     #[test]
     fn rgb_f32_chunk4_round_trip() {
         let src: [f32; 12] = make_rgb_chunk::<4, 12>();
-        let (r, g, b) = rgb_f32_chunk4_to_planes(&src);
-        let back = planes_to_rgb_f32_chunk4(&r, &g, &b);
+        let (r, g, b) = rgb_f32_chunk4_to_planes_scalar(&src);
+        let back = planes_to_rgb_f32_chunk4_scalar(&r, &g, &b);
         assert_eq!(back, src);
     }
 
     #[test]
     fn rgb_f32_chunk4_matches_slice_api() {
         let src: [f32; 12] = make_rgb_chunk::<4, 12>();
-        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk4_to_planes(&src);
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk4_to_planes_scalar(&src);
         let mut r = [0.0f32; 4];
         let mut g = [0.0f32; 4];
         let mut b = [0.0f32; 4];
@@ -3403,7 +3309,7 @@ mod tests {
     #[test]
     fn rgba_f32_chunk4_order_preserving() {
         let src: [f32; 16] = make_rgba_chunk::<4, 16>();
-        let (r, g, b, a) = rgba_f32_chunk4_to_planes(&src);
+        let (r, g, b, a) = rgba_f32_chunk4_to_planes_scalar(&src);
         for i in 0..4 {
             assert_eq!(r[i], src[i * 4]);
             assert_eq!(g[i], src[i * 4 + 1]);
@@ -3415,15 +3321,15 @@ mod tests {
     #[test]
     fn rgba_f32_chunk4_round_trip() {
         let src: [f32; 16] = make_rgba_chunk::<4, 16>();
-        let (r, g, b, a) = rgba_f32_chunk4_to_planes(&src);
-        let back = planes_to_rgba_f32_chunk4(&r, &g, &b, &a);
+        let (r, g, b, a) = rgba_f32_chunk4_to_planes_scalar(&src);
+        let back = planes_to_rgba_f32_chunk4_scalar(&r, &g, &b, &a);
         assert_eq!(back, src);
     }
 
     #[test]
     fn rgba_f32_chunk4_matches_slice_api() {
         let src: [f32; 16] = make_rgba_chunk::<4, 16>();
-        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk4_to_planes(&src);
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk4_to_planes_scalar(&src);
         let mut r = [0.0f32; 4];
         let mut g = [0.0f32; 4];
         let mut b = [0.0f32; 4];
@@ -3440,7 +3346,7 @@ mod tests {
     #[test]
     fn rgb_f32_chunk8_order_preserving() {
         let src: [f32; 24] = make_rgb_chunk::<8, 24>();
-        let (r, g, b) = rgb_f32_chunk8_to_planes(&src);
+        let (r, g, b) = rgb_f32_chunk8_to_planes_scalar(&src);
         assert_eq!(r, [0.0, 3.0, 6.0, 9.0, 12.0, 15.0, 18.0, 21.0]);
         assert_eq!(g, [1.0, 4.0, 7.0, 10.0, 13.0, 16.0, 19.0, 22.0]);
         assert_eq!(b, [2.0, 5.0, 8.0, 11.0, 14.0, 17.0, 20.0, 23.0]);
@@ -3449,15 +3355,15 @@ mod tests {
     #[test]
     fn rgb_f32_chunk8_round_trip() {
         let src: [f32; 24] = make_rgb_chunk::<8, 24>();
-        let (r, g, b) = rgb_f32_chunk8_to_planes(&src);
-        let back = planes_to_rgb_f32_chunk8(&r, &g, &b);
+        let (r, g, b) = rgb_f32_chunk8_to_planes_scalar(&src);
+        let back = planes_to_rgb_f32_chunk8_scalar(&r, &g, &b);
         assert_eq!(back, src);
     }
 
     #[test]
     fn rgb_f32_chunk8_matches_slice_api() {
         let src: [f32; 24] = make_rgb_chunk::<8, 24>();
-        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk8_to_planes(&src);
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk8_to_planes_scalar(&src);
         let mut r = [0.0f32; 8];
         let mut g = [0.0f32; 8];
         let mut b = [0.0f32; 8];
@@ -3470,7 +3376,7 @@ mod tests {
     #[test]
     fn rgba_f32_chunk8_order_preserving() {
         let src: [f32; 32] = make_rgba_chunk::<8, 32>();
-        let (r, g, b, a) = rgba_f32_chunk8_to_planes(&src);
+        let (r, g, b, a) = rgba_f32_chunk8_to_planes_scalar(&src);
         for i in 0..8 {
             assert_eq!(r[i], src[i * 4]);
             assert_eq!(g[i], src[i * 4 + 1]);
@@ -3482,15 +3388,15 @@ mod tests {
     #[test]
     fn rgba_f32_chunk8_round_trip() {
         let src: [f32; 32] = make_rgba_chunk::<8, 32>();
-        let (r, g, b, a) = rgba_f32_chunk8_to_planes(&src);
-        let back = planes_to_rgba_f32_chunk8(&r, &g, &b, &a);
+        let (r, g, b, a) = rgba_f32_chunk8_to_planes_scalar(&src);
+        let back = planes_to_rgba_f32_chunk8_scalar(&r, &g, &b, &a);
         assert_eq!(back, src);
     }
 
     #[test]
     fn rgba_f32_chunk8_matches_slice_api() {
         let src: [f32; 32] = make_rgba_chunk::<8, 32>();
-        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk8_to_planes(&src);
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk8_to_planes_scalar(&src);
         let mut r = [0.0f32; 8];
         let mut g = [0.0f32; 8];
         let mut b = [0.0f32; 8];
@@ -3507,7 +3413,7 @@ mod tests {
     #[test]
     fn rgb_f32_chunk16_order_preserving() {
         let src: [f32; 48] = make_rgb_chunk::<16, 48>();
-        let (r, g, b) = rgb_f32_chunk16_to_planes(&src);
+        let (r, g, b) = rgb_f32_chunk16_to_planes_scalar(&src);
         for i in 0..16 {
             assert_eq!(r[i], (i * 3) as f32);
             assert_eq!(g[i], (i * 3 + 1) as f32);
@@ -3518,15 +3424,15 @@ mod tests {
     #[test]
     fn rgb_f32_chunk16_round_trip() {
         let src: [f32; 48] = make_rgb_chunk::<16, 48>();
-        let (r, g, b) = rgb_f32_chunk16_to_planes(&src);
-        let back = planes_to_rgb_f32_chunk16(&r, &g, &b);
+        let (r, g, b) = rgb_f32_chunk16_to_planes_scalar(&src);
+        let back = planes_to_rgb_f32_chunk16_scalar(&r, &g, &b);
         assert_eq!(back, src);
     }
 
     #[test]
     fn rgb_f32_chunk16_matches_slice_api() {
         let src: [f32; 48] = make_rgb_chunk::<16, 48>();
-        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk16_to_planes(&src);
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk16_to_planes_scalar(&src);
         let mut r = [0.0f32; 16];
         let mut g = [0.0f32; 16];
         let mut b = [0.0f32; 16];
@@ -3539,7 +3445,7 @@ mod tests {
     #[test]
     fn rgba_f32_chunk16_order_preserving() {
         let src: [f32; 64] = make_rgba_chunk::<16, 64>();
-        let (r, g, b, a) = rgba_f32_chunk16_to_planes(&src);
+        let (r, g, b, a) = rgba_f32_chunk16_to_planes_scalar(&src);
         for i in 0..16 {
             assert_eq!(r[i], src[i * 4]);
             assert_eq!(g[i], src[i * 4 + 1]);
@@ -3551,15 +3457,15 @@ mod tests {
     #[test]
     fn rgba_f32_chunk16_round_trip() {
         let src: [f32; 64] = make_rgba_chunk::<16, 64>();
-        let (r, g, b, a) = rgba_f32_chunk16_to_planes(&src);
-        let back = planes_to_rgba_f32_chunk16(&r, &g, &b, &a);
+        let (r, g, b, a) = rgba_f32_chunk16_to_planes_scalar(&src);
+        let back = planes_to_rgba_f32_chunk16_scalar(&r, &g, &b, &a);
         assert_eq!(back, src);
     }
 
     #[test]
     fn rgba_f32_chunk16_matches_slice_api() {
         let src: [f32; 64] = make_rgba_chunk::<16, 64>();
-        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk16_to_planes(&src);
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk16_to_planes_scalar(&src);
         let mut r = [0.0f32; 16];
         let mut g = [0.0f32; 16];
         let mut b = [0.0f32; 16];
