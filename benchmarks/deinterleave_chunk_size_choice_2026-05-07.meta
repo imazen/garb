@@ -1,0 +1,25 @@
+commit:    84aea6f (feat/tokenless-rite-deinterleave) — answers PR #8 review
+host:      AMD Ryzen 9 7950X (Zen 4, water-cooled, 128 GB DDR5)
+cmd:       cargo bench --bench deinterleave --features experimental -- --group="rgb_f32 chunk size choice"
+zenbench:  0.1.7
+date:      2026-05-07 UTC
+
+Question: in the slice dispatcher pipeline, does the chunk16 → chunk8 →
+  chunk4 → scalar cascade earn its keep over a simpler chunk16 + flat scalar
+  tail?
+
+Conclusion: NO — chunk16+tail ties or wins at every size ≥ 1024 px (the
+  realistic image-row range). Cascade only wins at sub-32px awkward-tail
+  sizes (~5ns saved at 31px), which don't matter in production. chunk4-only
+  loses consistently at 1024+ px (per-call SIMD setup amortization).
+
+Action: simplify slice dispatcher to chunk16+scalar across all 12 impl
+  bodies (4 shapes × 3 tiers). Drops ~140 LOC, no perf regression at sizes
+  that matter.
+
+Caveats:
+  - 5 rounds × ~5K calls — several small-size CIs cross zero.
+  - Drift annotations [5..9] flag inter-round drift; would benefit from a
+    longer run, but the broad pattern is robust to that noise.
+  - "iB/s" column appears miscalibrated as in prior runs; trust the ns
+    timings.

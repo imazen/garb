@@ -461,10 +461,242 @@ fn bench_dispatch_cadence(suite: &mut Suite) {
     });
 }
 
+// ===========================================================================
+// Chunk-size choice for the slice dispatcher pipeline
+// ===========================================================================
+//
+// The current `rgb_f32_to_planes_impl_v3` cascades chunk16 → chunk8 → chunk4 →
+// scalar. Question: how much does each tier earn its keep, and is the
+// chunk16 path alone (with a flat scalar tail of up to 15 pixels) good
+// enough? We A/B four dispatcher variants over realistic sizes (a mix of
+// clean multiples and ones with awkward tails) so the cost of the tail
+// path is part of what we measure.
+
+#[cfg(target_arch = "x86_64")]
+#[archmage::arcane]
+fn rgb_f32_dispatch_chunk16_only(
+    _t: X64V3Token,
+    src: &[f32],
+    r: &mut [f32],
+    g: &mut [f32],
+    b: &mut [f32],
+) {
+    let pixels = src.len() / 3;
+    let n_chunks = pixels / 16;
+    for ci in 0..n_chunks {
+        let bs = ci * 48;
+        let ps = ci * 16;
+        let chunk: &[f32; 48] = src[bs..bs + 48].try_into().unwrap();
+        let (rc, gc, bc) = garb::deinterleave::rgb_f32_chunk16_to_planes_tokenless_v3(chunk);
+        r[ps..ps + 16].copy_from_slice(&rc);
+        g[ps..ps + 16].copy_from_slice(&gc);
+        b[ps..ps + 16].copy_from_slice(&bc);
+    }
+    for p in (n_chunks * 16)..pixels {
+        r[p] = src[p * 3];
+        g[p] = src[p * 3 + 1];
+        b[p] = src[p * 3 + 2];
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[archmage::arcane]
+fn rgb_f32_dispatch_chunk8_only(
+    _t: X64V3Token,
+    src: &[f32],
+    r: &mut [f32],
+    g: &mut [f32],
+    b: &mut [f32],
+) {
+    let pixels = src.len() / 3;
+    let n_chunks = pixels / 8;
+    for ci in 0..n_chunks {
+        let bs = ci * 24;
+        let ps = ci * 8;
+        let chunk: &[f32; 24] = src[bs..bs + 24].try_into().unwrap();
+        let (rc, gc, bc) = garb::deinterleave::rgb_f32_chunk8_to_planes_tokenless_v3(chunk);
+        r[ps..ps + 8].copy_from_slice(&rc);
+        g[ps..ps + 8].copy_from_slice(&gc);
+        b[ps..ps + 8].copy_from_slice(&bc);
+    }
+    for p in (n_chunks * 8)..pixels {
+        r[p] = src[p * 3];
+        g[p] = src[p * 3 + 1];
+        b[p] = src[p * 3 + 2];
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[archmage::arcane]
+fn rgb_f32_dispatch_chunk4_only(
+    _t: X64V3Token,
+    src: &[f32],
+    r: &mut [f32],
+    g: &mut [f32],
+    b: &mut [f32],
+) {
+    let pixels = src.len() / 3;
+    let n_chunks = pixels / 4;
+    for ci in 0..n_chunks {
+        let bs = ci * 12;
+        let ps = ci * 4;
+        let chunk: &[f32; 12] = src[bs..bs + 12].try_into().unwrap();
+        let (rc, gc, bc) = garb::deinterleave::rgb_f32_chunk4_to_planes_tokenless_v3(chunk);
+        r[ps..ps + 4].copy_from_slice(&rc);
+        g[ps..ps + 4].copy_from_slice(&gc);
+        b[ps..ps + 4].copy_from_slice(&bc);
+    }
+    for p in (n_chunks * 4)..pixels {
+        r[p] = src[p * 3];
+        g[p] = src[p * 3 + 1];
+        b[p] = src[p * 3 + 2];
+    }
+}
+
+// Cascade replicates the current `rgb_f32_to_planes_impl_v3` body shape
+// (chunk16 → chunk8 → chunk4 → scalar) inline so we're comparing the same
+// per-tier kernels, not the public dispatcher with its `incant!` overhead.
+#[cfg(target_arch = "x86_64")]
+#[archmage::arcane]
+fn rgb_f32_dispatch_cascade(
+    _t: X64V3Token,
+    src: &[f32],
+    r: &mut [f32],
+    g: &mut [f32],
+    b: &mut [f32],
+) {
+    let pixels = src.len() / 3;
+    let mut p = 0;
+    while p + 16 <= pixels {
+        let chunk: &[f32; 48] = src[p * 3..p * 3 + 48].try_into().unwrap();
+        let (rc, gc, bc) = garb::deinterleave::rgb_f32_chunk16_to_planes_tokenless_v3(chunk);
+        r[p..p + 16].copy_from_slice(&rc);
+        g[p..p + 16].copy_from_slice(&gc);
+        b[p..p + 16].copy_from_slice(&bc);
+        p += 16;
+    }
+    while p + 8 <= pixels {
+        let chunk: &[f32; 24] = src[p * 3..p * 3 + 24].try_into().unwrap();
+        let (rc, gc, bc) = garb::deinterleave::rgb_f32_chunk8_to_planes_tokenless_v3(chunk);
+        r[p..p + 8].copy_from_slice(&rc);
+        g[p..p + 8].copy_from_slice(&gc);
+        b[p..p + 8].copy_from_slice(&bc);
+        p += 8;
+    }
+    while p + 4 <= pixels {
+        let chunk: &[f32; 12] = src[p * 3..p * 3 + 12].try_into().unwrap();
+        let (rc, gc, bc) = garb::deinterleave::rgb_f32_chunk4_to_planes_tokenless_v3(chunk);
+        r[p..p + 4].copy_from_slice(&rc);
+        g[p..p + 4].copy_from_slice(&gc);
+        b[p..p + 4].copy_from_slice(&bc);
+        p += 4;
+    }
+    while p < pixels {
+        r[p] = src[p * 3];
+        g[p] = src[p * 3 + 1];
+        b[p] = src[p * 3 + 2];
+        p += 1;
+    }
+}
+
+// Sizes chosen to exercise the trade-off:
+//
+//   16    → 1 chunk16 / 2 chunk8 / 4 chunk4 / 0 tail (clean for all)
+//   17    → 1 chunk16 + 1 tail / 2 chunk8 + 1 tail / 4 chunk4 + 1 tail (chunk16 has the longest tail)
+//   31    → 1 chunk16 + 15 tail / 3 chunk8 + 7 tail / 7 chunk4 + 3 tail (chunk16 worst-case tail)
+//   1024  → mid-L1, dense — pure per-pixel rate test
+//   4099  → 256 chunk16 + 3 tail / 512 chunk8 + 3 tail / 1024 chunk4 + 3 tail (3-pixel tail across all)
+//   65536 → L2-resident, big enough that fixed-overhead is negligible
+const CHUNK_CHOICE_SIZES: &[(&str, usize)] = &[
+    ("16px (clean)", 16),
+    ("17px (chunk16 +1 tail)", 17),
+    ("31px (chunk16 +15 tail)", 31),
+    ("1024px (L1, clean)", 1024),
+    ("4099px (L1, +3 tail)", 4099),
+    ("65536px (L2)", 65_536),
+];
+
+#[cfg(target_arch = "x86_64")]
+fn bench_chunk_size_choice(suite: &mut Suite) {
+    let token = X64V3Token::summon();
+    if token.is_none() {
+        eprintln!("[chunk_size_choice] AVX2 unavailable — skipping group");
+        return;
+    }
+    let token = token.unwrap();
+
+    suite.group("rgb_f32 chunk size choice", |g| {
+        for &(label, pixels) in CHUNK_CHOICE_SIZES {
+            g.subgroup(label);
+            g.throughput(Throughput::Bytes((pixels * 3 * 4) as u64));
+
+            g.bench(&format!("{label} :: chunk16+tail"), move |b| {
+                b.with_input(move || {
+                    let src = make_f32(pixels, 3);
+                    let r = vec![0.0f32; pixels];
+                    let gp = vec![0.0f32; pixels];
+                    let bp = vec![0.0f32; pixels];
+                    (src, r, gp, bp)
+                })
+                .run(move |(src, mut r, mut gp, mut bp)| {
+                    rgb_f32_dispatch_chunk16_only(token, &src, &mut r, &mut gp, &mut bp);
+                    (src, r, gp, bp)
+                })
+            });
+
+            g.bench(&format!("{label} :: chunk8+tail"), move |b| {
+                b.with_input(move || {
+                    let src = make_f32(pixels, 3);
+                    let r = vec![0.0f32; pixels];
+                    let gp = vec![0.0f32; pixels];
+                    let bp = vec![0.0f32; pixels];
+                    (src, r, gp, bp)
+                })
+                .run(move |(src, mut r, mut gp, mut bp)| {
+                    rgb_f32_dispatch_chunk8_only(token, &src, &mut r, &mut gp, &mut bp);
+                    (src, r, gp, bp)
+                })
+            });
+
+            g.bench(&format!("{label} :: chunk4+tail"), move |b| {
+                b.with_input(move || {
+                    let src = make_f32(pixels, 3);
+                    let r = vec![0.0f32; pixels];
+                    let gp = vec![0.0f32; pixels];
+                    let bp = vec![0.0f32; pixels];
+                    (src, r, gp, bp)
+                })
+                .run(move |(src, mut r, mut gp, mut bp)| {
+                    rgb_f32_dispatch_chunk4_only(token, &src, &mut r, &mut gp, &mut bp);
+                    (src, r, gp, bp)
+                })
+            });
+
+            g.bench(&format!("{label} :: cascade 16-8-4-tail"), move |b| {
+                b.with_input(move || {
+                    let src = make_f32(pixels, 3);
+                    let r = vec![0.0f32; pixels];
+                    let gp = vec![0.0f32; pixels];
+                    let bp = vec![0.0f32; pixels];
+                    (src, r, gp, bp)
+                })
+                .run(move |(src, mut r, mut gp, mut bp)| {
+                    rgb_f32_dispatch_cascade(token, &src, &mut r, &mut gp, &mut bp);
+                    (src, r, gp, bp)
+                })
+            });
+        }
+    });
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+fn bench_chunk_size_choice(_suite: &mut Suite) {}
+
 zenbench::main!(
     bench_rgb24,
     bench_rgb48,
     bench_rgb_f32,
     bench_rgba_f32,
-    bench_dispatch_cadence
+    bench_dispatch_cadence,
+    bench_chunk_size_choice
 );

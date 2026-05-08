@@ -1,0 +1,83 @@
+    Finished `bench` profile [optimized] target(s) in 0.05s
+     Running benches/deinterleave.rs (target/release/deps/deinterleave-cb8280688dfe5ae5)
+=== SIMD Tier Detection ===
+  AVX2+FMA (x86-64-v3):    available (will dispatch)
+[zenbench] calibration: int=0.25ns/iter mem_bw=96.8GiB/s mem_lat=9.5ns
+[zenbench] timer resolution: 10ns, loop overhead: 0.37ns/iter, TSC: 4.491 ticks/ns (invariant)
+[zenbench] results → /tmp/zenbench/zenbench-1778216520-2e2891.txt
+
+═══════════════════════════════════════════════════════════════
+  zenbench  1778216520-2e2891
+  git: 84aea6fb65b8100e75be067e22993a7528161706
+═══════════════════════════════════════════════════════════════
+
+  rgb_f32 chunk size choice  5 rounds × 5K calls ⚠ only 5 rounds
+                                         mean ±mad ns  95% CI vs base             iB/s
+  ├─ 16px (clean)
+  │  ├─ 16px (clean) :: chunk16+t…        21.4 ±0.5ns  [20.9–21.9]ns            34254G
+  │  ├─ 16px (clean) :: chunk8+ta…        23.6 ±1.4ns  [+0.9%–+19.4%]           31100G [1]
+  │  ├─ 16px (clean) :: chunk4+ta…        21.3 ±0.1ns  [-3.9%–+3.3%]            34359G [2]
+  │  ╰─ 16px (clean) :: cascade 1…        20.7 ±0.2ns  [-5.5%–-0.6%]            35330G [3]
+  ├─ 17px (chunk16 +1 tail)
+  │  ├─ 17px (chunk16 +1 tail) ::…        24.1 ±0.7ns  [+1.5%–+23.6%]           30440G
+  │  ├─ 17px (chunk16 +1 tail) ::…        22.7 ±0.6ns  [+2.7%–+10.0%]           32274G
+  │  ├─ 17px (chunk16 +1 tail) ::…        22.2 ±0.2ns  [+1.7%–+6.3%]            32944G
+  │  ╰─ 17px (chunk16 +1 tail) ::…        22.3 ±1.2ns  [-1.1%–+10.1%]           32778G [4]
+  ├─ 31px (chunk16 +15 tail)
+  │  ├─ 31px (chunk16 +15 tail) :…        31.2 ±1.7ns  [+35.0%–+60.9%]          23466G
+  │  ├─ 31px (chunk16 +15 tail) :…        28.3 ±0.9ns  [+19.3%–+27.7%]          25869G
+  │  ├─ 31px (chunk16 +15 tail) :…        26.2 ±0.6ns  [+18.4%–+26.7%]          27952G
+  │  ╰─ 31px (chunk16 +15 tail) :…        25.9 ±1.0ns  [+18.2%–+24.7%]          28249G
+  ├─ 1024px (L1, clean)
+  │  ├─ 1024px (L1, clean) :: chu…       184.2 ±1.7ns  [+703.0%–+715.7%]         3977G [5]
+  │  ├─ 1024px (L1, clean) :: chu…       178.5 ±2.9ns  [+717.5%–+751.4%]         4103G
+  │  ├─ 1024px (L1, clean) :: chu…      214.6 ±11.1ns  [+867.2%–+942.7%]         3412G
+  │  ╰─ 1024px (L1, clean) :: cas…       197.9 ±3.3ns  [+748.7%–+796.1%]         3701G
+  ├─ 4099px (L1, +3 tail)
+  │  ├─ 4099px (L1, +3 tail) :: c…      678.2 ±10.0ns  [+3016.5%–+3126.7%]       1080G [6]
+  │  ├─ 4099px (L1, +3 tail) :: c…       679.9 ±8.3ns  [+3020.3%–+3136.8%]       1077G
+  │  ├─ 4099px (L1, +3 tail) :: c…      845.3 ±18.4ns  [+3786.3%–+3928.5%]        866G [7]
+  │  ╰─ 4099px (L1, +3 tail) :: c…      738.7 ±17.1ns  [+3145.8%–+3242.5%]        992G
+  ╰─ 65536px (L2)
+     ├─ 65536px (L2) :: chunk16+t…   13020.5 ±169.1ns  [+60327.4%–+61215.3%]     56.3G [8]
+     ├─ 65536px (L2) :: chunk8+ta…   13164.6 ±229.5ns  [+60500.2%–+62394.7%]     55.6G
+     ├─ 65536px (L2) :: chunk4+ta…    13721.7 ±70.3ns  [+64680.9%–+64997.7%]     53.4G
+     ╰─ 65536px (L2) :: cascade 1…   12893.2 ±292.8ns  [+59309.2%–+61181.7%]     56.8G [9]
+
+  16px (clean) :: cascade 1…  ██████████████████████████████████████ 35330 GiB/s
+  16px (clean) :: chunk4+ta…  █████████████████████████████████████ 34359 GiB/s
+  16px (clean) :: chunk16+t…  █████████████████████████████████████ 34254 GiB/s
+  17px (chunk16 +1 tail) ::…  ███████████████████████████████████ 32944 GiB/s
+  17px (chunk16 +1 tail) ::…  ███████████████████████████████████ 32778 GiB/s
+  17px (chunk16 +1 tail) ::…  ███████████████████████████████████ 32274 GiB/s
+  16px (clean) :: chunk8+ta…  █████████████████████████████████ 31100 GiB/s
+  17px (chunk16 +1 tail) ::…  █████████████████████████████████ 30440 GiB/s
+  31px (chunk16 +15 tail) :…  ██████████████████████████████ 28249 GiB/s
+  31px (chunk16 +15 tail) :…  ██████████████████████████████ 27952 GiB/s
+  31px (chunk16 +15 tail) :…  ████████████████████████████ 25869 GiB/s
+  31px (chunk16 +15 tail) :…  █████████████████████████ 23466 GiB/s
+  1024px (L1, clean) :: chu…  ████ 4103 GiB/s
+  1024px (L1, clean) :: chu…  ████ 3977 GiB/s
+  1024px (L1, clean) :: cas…  ████ 3701 GiB/s
+  1024px (L1, clean) :: chu…  ████ 3412 GiB/s
+  4099px (L1, +3 tail) :: c…  █ 1080 GiB/s
+  4099px (L1, +3 tail) :: c…  █ 1077 GiB/s
+  4099px (L1, +3 tail) :: c…  █ 992 GiB/s
+  4099px (L1, +3 tail) :: c…  █ 866 GiB/s
+  65536px (L2) :: cascade 1…  █ 56.8 GiB/s
+  65536px (L2) :: chunk16+t…  █ 56.3 GiB/s
+  65536px (L2) :: chunk8+ta…  █ 55.6 GiB/s
+  65536px (L2) :: chunk4+ta…  █ 53.4 GiB/s
+  [1] CI crosses zero
+  [2] CI crosses zero
+  [3] CI crosses zero
+  [4] CI crosses zero
+  [5] drift r=0.60 — later rounds slower
+  [6] drift r=-0.60 — later rounds faster
+  [7] drift r=0.80 — later rounds slower
+  [8] drift r=0.90 — later rounds slower
+  [9] drift r=-1.00 — later rounds faster
+
+  total: 22.8s
+═══════════════════════════════════════════════════════════════
+  filter: cargo bench -- --group=NAME  format: --format=llm|csv|md|json
