@@ -1871,9 +1871,8 @@ mod arm_f32_chunks {
     use super::*;
 
     // RGB chunk-4: vld3q_f32 hardware structure-load → 3×float32x4.
-    #[rite]
-    pub fn rgb_f32_chunk4_to_planes_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn rgb_f32_chunk4_to_planes_tokenless_neon(
         chunk: &[f32; 12],
     ) -> ([f32; 4], [f32; 4], [f32; 4]) {
         let float32x4x3_t(r, g, b) = vld3q_f32(chunk);
@@ -1887,9 +1886,8 @@ mod arm_f32_chunks {
     }
 
     // RGBA chunk-4: vld4q_f32 → 4×float32x4.
-    #[rite]
-    pub fn rgba_f32_chunk4_to_planes_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn rgba_f32_chunk4_to_planes_tokenless_neon(
         chunk: &[f32; 16],
     ) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
         let float32x4x4_t(r, g, b, a) = vld4q_f32(chunk);
@@ -1905,9 +1903,8 @@ mod arm_f32_chunks {
     }
 
     // RGB chunk-4 interleave: vst3q_f32.
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk4_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn planes_to_rgb_f32_chunk4_tokenless_neon(
         r: &[f32; 4],
         g: &[f32; 4],
         b: &[f32; 4],
@@ -1921,9 +1918,8 @@ mod arm_f32_chunks {
     }
 
     // RGBA chunk-4 interleave: vst4q_f32.
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk4_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn planes_to_rgba_f32_chunk4_tokenless_neon(
         r: &[f32; 4],
         g: &[f32; 4],
         b: &[f32; 4],
@@ -1939,9 +1935,8 @@ mod arm_f32_chunks {
     }
 
     // RGB chunk-8: 2 × vld3q_f32 (2× 4-pixel chunks).
-    #[rite]
-    pub fn rgb_f32_chunk8_to_planes_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn rgb_f32_chunk8_to_planes_tokenless_neon(
         chunk: &[f32; 24],
     ) -> ([f32; 8], [f32; 8], [f32; 8]) {
         let lo: &[f32; 12] = chunk[0..12].try_into().unwrap();
@@ -1967,9 +1962,8 @@ mod arm_f32_chunks {
     }
 
     // RGBA chunk-8: 2 × vld4q_f32.
-    #[rite]
-    pub fn rgba_f32_chunk8_to_planes_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn rgba_f32_chunk8_to_planes_tokenless_neon(
         chunk: &[f32; 32],
     ) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
         let lo: &[f32; 16] = chunk[0..16].try_into().unwrap();
@@ -1996,9 +1990,8 @@ mod arm_f32_chunks {
     }
 
     // RGB chunk-8 interleave: 2 × vst3q_f32.
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk8_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn planes_to_rgb_f32_chunk8_tokenless_neon(
         r: &[f32; 8],
         g: &[f32; 8],
         b: &[f32; 8],
