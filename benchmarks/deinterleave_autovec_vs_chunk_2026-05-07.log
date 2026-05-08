@@ -1,0 +1,110 @@
+    Finished `bench` profile [optimized] target(s) in 0.04s
+     Running benches/deinterleave.rs (target/release/deps/deinterleave-cb8280688dfe5ae5)
+=== SIMD Tier Detection ===
+  AVX2+FMA (x86-64-v3):    available (will dispatch)
+[zenbench] calibration: int=0.24ns/iter mem_bw=118.1GiB/s mem_lat=9.6ns
+[zenbench] timer resolution: 10ns, loop overhead: 0.18ns/iter, TSC: 4.491 ticks/ns (invariant)
+[zenbench] results → /tmp/zenbench/zenbench-1778217595-2e6950.txt
+
+═══════════════════════════════════════════════════════════════
+  zenbench  1778217595-2e6950
+  git: e910555eab01c9290e3bf171286ed7e63b58cb00
+═══════════════════════════════════════════════════════════════
+
+  rgb_f32 autovec vs chunk SIMD  4 rounds × 431 calls ⚠ only 4 rounds
+                                              mean ±mad ns  95% CI vs base                    iB/s
+  ├─ 64px (L1)
+  │  ├─ 64px (L1) :: scatter chun…             29.7 ±0.7ns  [29.0–30.4]ns                  394892G
+  │  ├─ 64px (L1) :: scatter auto…             31.0 ±3.0ns  [-4.8%–+15.6%]                 377742G [1] [2]
+  │  ├─ 64px (L1) :: gather chunk…             29.7 ±1.3ns  [+2.3%–+2.6%]                  394024G [3]
+  │  ╰─ 64px (L1) :: gather autov…             27.4 ±1.2ns  [-8.6%–-6.6%]                  427939G
+  ├─ 256px (L1)
+  │  ├─ 256px (L1) :: scatter chu…             63.3 ±2.4ns  [+93.6%–+147.1%]               184995G [4]
+  │  ├─ 256px (L1) :: scatter aut…             48.8 ±3.7ns  [+52.6%–+76.3%]                240114G [5]
+  │  ├─ 256px (L1) :: gather chun…             61.8 ±1.0ns  [+103.7%–+113.1%]              189485G [6]
+  │  ╰─ 256px (L1) :: gather auto…             60.1 ±0.9ns  [+99.1%–+106.0%]               194992G [7]
+  ├─ 1024px (L1)
+  │  ├─ 1024px (L1) :: scatter ch…            178.2 ±4.6ns  [+486.8%–+518.5%]               65772G
+  │  ├─ 1024px (L1) :: scatter au…           130.5 ±22.6ns  [+285.3%–+393.3%]               89768G
+  │  ├─ 1024px (L1) :: gather chu…            195.8 ±1.8ns  [+555.0%–+565.2%]               59856G [8]
+  │  ╰─ 1024px (L1) :: gather aut…            155.2 ±3.5ns  [+371.0%–+517.6%]               75487G [9]
+  ├─ 4096px (L1)
+  │  ├─ 4096px (L1) :: scatter ch…           719.1 ±10.7ns  [+2227.9%–+2479.8%]             16296G
+  │  ├─ 4096px (L1) :: scatter au…           703.9 ±22.0ns  [+2200.2%–+2355.8%]             16648G [10]
+  │  ├─ 4096px (L1) :: gather chu…            757.3 ±6.2ns  [+2426.5%–+2484.4%]             15473G [11]
+  │  ╰─ 4096px (L1) :: gather aut…           912.5 ±14.9ns  [+2470.1%–+3939.5%]             12843G [12]
+  ├─ 16384px (L1)
+  │  ├─ 16384px (L1) :: scatter c…          2691.3 ±29.2ns  [+8892.3%–+9043.6%]              4354G [13]
+  │  ├─ 16384px (L1) :: scatter a…         2857.3 ±139.6ns  [+9162.6%–+9894.2%]              4101G
+  │  ├─ 16384px (L1) :: gather ch…          3015.4 ±32.9ns  [+9698.6%–+10704.4%]             3886G
+  │  ╰─ 16384px (L1) :: gather au…          2868.4 ±19.6ns  [+9481.9%–+9676.4%]              4085G
+  ├─ 65536px (L2)
+  │  ├─ 65536px (L2) :: scatter c…        12686.1 ±302.0ns  [+41793.2%–+43504.8%]             924G
+  │  ├─ 65536px (L2) :: scatter a…        13029.5 ±285.4ns  [+43035.1%–+44576.9%]             899G
+  │  ├─ 65536px (L2) :: gather ch…        13233.6 ±326.8ns  [+43346.7%–+45526.5%]             886G [14]
+  │  ╰─ 65536px (L2) :: gather au…        13611.3 ±378.2ns  [+44749.3%–+46784.1%]             861G
+  ├─ 262144px (L3)
+  │  ├─ 262144px (L3) :: scatter …       50110.0 ±1286.2ns  [+170734.9%–+176624.0%]           234G
+  │  ├─ 262144px (L3) :: scatter …       51729.1 ±1097.4ns  [+167448.5%–+184708.2%]           227G [15]
+  │  ├─ 262144px (L3) :: gather c…       51621.7 ±1528.5ns  [+167904.2%–+180612.8%]           227G
+  │  ╰─ 262144px (L3) :: gather a…       47827.7 ±3057.0ns  [+153826.9%–+168307.4%]           245G [16]
+  ╰─ 1MP (L3)
+     ├─ 1MP (L3) :: scatter chunk…   6105252.6 ±134765.7ns  [+20219637.1%–+20926453.4%]      1.92G
+     ├─ 1MP (L3) :: scatter autov…   5842690.7 ±387886.6ns  [+18790467.0%–+20586090.1%]      2.01G [17]
+     ├─ 1MP (L3) :: gather chunk-…   5669354.0 ±157876.4ns  [+18493349.0%–+19859983.4%]      2.07G [18]
+     ╰─ 1MP (L3) :: gather autove…   5793855.5 ±106964.7ns  [+19501267.3%–+19986295.3%]      2.02G
+
+  64px (L1) :: gather autov…  █████████████████████████████████████ 427939 GiB/s
+  64px (L1) :: scatter chun…  ██████████████████████████████████ 394892 GiB/s
+  64px (L1) :: gather chunk…  ██████████████████████████████████ 394024 GiB/s
+  64px (L1) :: scatter auto…  █████████████████████████████████ 377742 GiB/s
+  256px (L1) :: scatter aut…  █████████████████████ 240114 GiB/s
+  256px (L1) :: gather auto…  █████████████████ 194992 GiB/s
+  256px (L1) :: gather chun…  ████████████████ 189485 GiB/s
+  256px (L1) :: scatter chu…  ████████████████ 184995 GiB/s
+  1024px (L1) :: scatter au…  ████████ 89768 GiB/s
+  1024px (L1) :: gather aut…  ███████ 75487 GiB/s
+  1024px (L1) :: scatter ch…  ██████ 65772 GiB/s
+  1024px (L1) :: gather chu…  █████ 59856 GiB/s
+  4096px (L1) :: scatter au…  █ 16648 GiB/s
+  4096px (L1) :: scatter ch…  █ 16296 GiB/s
+  4096px (L1) :: gather chu…  █ 15473 GiB/s
+  4096px (L1) :: gather aut…  █ 12843 GiB/s
+  16384px (L1) :: scatter c…  █ 4354 GiB/s
+  16384px (L1) :: scatter a…  █ 4101 GiB/s
+  16384px (L1) :: gather au…  █ 4085 GiB/s
+  16384px (L1) :: gather ch…  █ 3886 GiB/s
+  65536px (L2) :: scatter c…  █ 924 GiB/s
+  65536px (L2) :: scatter a…  █ 899 GiB/s
+  65536px (L2) :: gather ch…  █ 886 GiB/s
+  65536px (L2) :: gather au…  █ 861 GiB/s
+  262144px (L3) :: gather a…  █ 245 GiB/s
+  262144px (L3) :: scatter …  █ 234 GiB/s
+  262144px (L3) :: gather c…  █ 227 GiB/s
+  262144px (L3) :: scatter …  █ 227 GiB/s
+  1MP (L3) :: gather chunk-…  █ 2.07 GiB/s
+  1MP (L3) :: gather autove…  █ 2.02 GiB/s
+  1MP (L3) :: scatter autov…  █ 2.01 GiB/s
+  1MP (L3) :: scatter chunk…  █ 1.92 GiB/s
+  [1] CI crosses zero
+  [2] drift r=-0.80 — later rounds faster
+  [3] drift r=-1.00 — later rounds faster
+  [4] drift r=-1.00 — later rounds faster
+  [5] drift r=0.60 — later rounds slower
+  [6] drift r=0.80 — later rounds slower
+  [7] drift r=0.60 — later rounds slower
+  [8] drift r=0.80 — later rounds slower
+  [9] drift r=-1.00 — later rounds faster
+  [10] drift r=0.60 — later rounds slower
+  [11] drift r=-0.80 — later rounds faster
+  [12] CV=31%
+  [13] drift r=1.00 — later rounds slower
+  [14] drift r=-0.80 — later rounds faster
+  [15] drift r=1.00 — later rounds slower
+  [16] drift r=0.60 — later rounds slower
+  [17] drift r=0.80 — later rounds slower
+  [18] drift r=1.00 — later rounds slower
+
+  total: 127.8s
+═══════════════════════════════════════════════════════════════
+  filter: cargo bench -- --group=NAME  format: --format=llm|csv|md|json

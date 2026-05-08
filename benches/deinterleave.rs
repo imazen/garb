@@ -692,11 +692,233 @@ fn bench_chunk_size_choice(suite: &mut Suite) {
 #[cfg(not(target_arch = "x86_64"))]
 fn bench_chunk_size_choice(_suite: &mut Suite) {}
 
+// ===========================================================================
+// Hand-written chunk SIMD vs LLVM autovec under #[arcane(v3)]
+// ===========================================================================
+//
+// The f32 chunk SIMD bodies (in `mod x86_f32_chunks`) use 128-bit `_mm_*`
+// intrinsics exclusively (75 ops vs 0 `_mm256_*` ops in the f32 chunk
+// module — only the u8/u16 chunks use 256-bit AVX2 for the widening +
+// store steps). That means chunk size only changes loop overhead — not
+// SIMD throughput.
+//
+// The honest comparison is hand-written chunk SIMD vs LLVM autovec on
+// the plain scalar loop wrapped in `#[arcane]` AVX2 target_feature.
+// LLVM autovec under target_feature avx2,fma should be free to emit
+// 256-bit YMM ops if the loop shape allows. If autovec ties or beats
+// the hand-written chunks, the hand-written work is net-zero or
+// net-negative.
+
+#[cfg(target_arch = "x86_64")]
+#[archmage::arcane]
+fn autovec_avx2_rgb_f32_slice(
+    _t: X64V3Token,
+    src: &[f32],
+    r: &mut [f32],
+    g: &mut [f32],
+    b: &mut [f32],
+) {
+    garb::deinterleave::scalar_only_rgb_f32_to_planes(src, r, g, b);
+}
+
+#[cfg(target_arch = "x86_64")]
+#[archmage::arcane]
+fn autovec_avx2_rgba_f32_slice(
+    _t: X64V3Token,
+    src: &[f32],
+    r: &mut [f32],
+    g: &mut [f32],
+    b: &mut [f32],
+    a: &mut [f32],
+) {
+    garb::deinterleave::scalar_only_rgba_f32_to_planes(src, r, g, b, a);
+}
+
+#[cfg(target_arch = "x86_64")]
+#[archmage::arcane]
+fn autovec_avx2_planes_to_rgb_f32_slice(
+    _t: X64V3Token,
+    r: &[f32],
+    g: &[f32],
+    b: &[f32],
+    dst: &mut [f32],
+) {
+    garb::deinterleave::scalar_only_planes_f32_to_rgb(r, g, b, dst);
+}
+
+#[cfg(target_arch = "x86_64")]
+#[archmage::arcane]
+fn autovec_avx2_planes_to_rgba_f32_slice(
+    _t: X64V3Token,
+    r: &[f32],
+    g: &[f32],
+    b: &[f32],
+    a: &[f32],
+    dst: &mut [f32],
+) {
+    garb::deinterleave::scalar_only_planes_f32_to_rgba(r, g, b, a, dst);
+}
+
+const AUTOVEC_VS_CHUNK_SIZES: &[(&str, usize)] = &[
+    ("64px (L1)", 64),
+    ("256px (L1)", 256),
+    ("1024px (L1)", 1024),
+    ("4096px (L1)", 4096),
+    ("16384px (L1)", 16_384),
+    ("65536px (L2)", 65_536),
+    ("262144px (L3)", 262_144),
+    ("1MP (L3)", 1_048_576),
+];
+
+#[cfg(target_arch = "x86_64")]
+fn bench_autovec_vs_chunk(suite: &mut Suite) {
+    let token = X64V3Token::summon();
+    if token.is_none() {
+        eprintln!("[autovec_vs_chunk] AVX2 unavailable — skipping group");
+        return;
+    }
+    let token = token.unwrap();
+
+    suite.group("rgb_f32 autovec vs chunk SIMD", |g| {
+        for &(label, pixels) in AUTOVEC_VS_CHUNK_SIZES {
+            g.subgroup(label);
+            g.throughput(Throughput::Bytes((pixels * 3 * 4) as u64));
+
+            g.bench(&format!("{label} :: scatter chunk-SIMD"), move |b| {
+                b.with_input(move || {
+                    let src = make_f32(pixels, 3);
+                    let r = vec![0.0f32; pixels];
+                    let gp = vec![0.0f32; pixels];
+                    let bp = vec![0.0f32; pixels];
+                    (src, r, gp, bp)
+                })
+                .run(move |(src, mut r, mut gp, mut bp)| {
+                    rgb_f32_to_planes_f32(&src, &mut r, &mut gp, &mut bp).unwrap();
+                    (src, r, gp, bp)
+                })
+            });
+
+            g.bench(&format!("{label} :: scatter autovec(avx2)"), move |b| {
+                b.with_input(move || {
+                    let src = make_f32(pixels, 3);
+                    let r = vec![0.0f32; pixels];
+                    let gp = vec![0.0f32; pixels];
+                    let bp = vec![0.0f32; pixels];
+                    (src, r, gp, bp)
+                })
+                .run(move |(src, mut r, mut gp, mut bp)| {
+                    autovec_avx2_rgb_f32_slice(token, &src, &mut r, &mut gp, &mut bp);
+                    (src, r, gp, bp)
+                })
+            });
+
+            g.bench(&format!("{label} :: gather chunk-SIMD"), move |b| {
+                b.with_input(move || {
+                    let r = make_f32(pixels, 1);
+                    let gp = make_f32(pixels, 1);
+                    let bp = make_f32(pixels, 1);
+                    let dst = vec![0.0f32; pixels * 3];
+                    (r, gp, bp, dst)
+                })
+                .run(move |(r, gp, bp, mut dst)| {
+                    planes_f32_to_rgb_f32(&r, &gp, &bp, &mut dst).unwrap();
+                    (r, gp, bp, dst)
+                })
+            });
+
+            g.bench(&format!("{label} :: gather autovec(avx2)"), move |b| {
+                b.with_input(move || {
+                    let r = make_f32(pixels, 1);
+                    let gp = make_f32(pixels, 1);
+                    let bp = make_f32(pixels, 1);
+                    let dst = vec![0.0f32; pixels * 3];
+                    (r, gp, bp, dst)
+                })
+                .run(move |(r, gp, bp, mut dst)| {
+                    autovec_avx2_planes_to_rgb_f32_slice(token, &r, &gp, &bp, &mut dst);
+                    (r, gp, bp, dst)
+                })
+            });
+        }
+    });
+
+    suite.group("rgba_f32 autovec vs chunk SIMD", |g| {
+        for &(label, pixels) in AUTOVEC_VS_CHUNK_SIZES {
+            g.subgroup(label);
+            g.throughput(Throughput::Bytes((pixels * 4 * 4) as u64));
+
+            g.bench(&format!("{label} :: scatter chunk-SIMD"), move |b| {
+                b.with_input(move || {
+                    let src = make_f32(pixels, 4);
+                    let r = vec![0.0f32; pixels];
+                    let gp = vec![0.0f32; pixels];
+                    let bp = vec![0.0f32; pixels];
+                    let ap = vec![0.0f32; pixels];
+                    (src, r, gp, bp, ap)
+                })
+                .run(move |(src, mut r, mut gp, mut bp, mut ap)| {
+                    rgba_f32_to_planes_f32(&src, &mut r, &mut gp, &mut bp, &mut ap).unwrap();
+                    (src, r, gp, bp, ap)
+                })
+            });
+
+            g.bench(&format!("{label} :: scatter autovec(avx2)"), move |b| {
+                b.with_input(move || {
+                    let src = make_f32(pixels, 4);
+                    let r = vec![0.0f32; pixels];
+                    let gp = vec![0.0f32; pixels];
+                    let bp = vec![0.0f32; pixels];
+                    let ap = vec![0.0f32; pixels];
+                    (src, r, gp, bp, ap)
+                })
+                .run(move |(src, mut r, mut gp, mut bp, mut ap)| {
+                    autovec_avx2_rgba_f32_slice(token, &src, &mut r, &mut gp, &mut bp, &mut ap);
+                    (src, r, gp, bp, ap)
+                })
+            });
+
+            g.bench(&format!("{label} :: gather chunk-SIMD"), move |b| {
+                b.with_input(move || {
+                    let r = make_f32(pixels, 1);
+                    let gp = make_f32(pixels, 1);
+                    let bp = make_f32(pixels, 1);
+                    let ap = make_f32(pixels, 1);
+                    let dst = vec![0.0f32; pixels * 4];
+                    (r, gp, bp, ap, dst)
+                })
+                .run(move |(r, gp, bp, ap, mut dst)| {
+                    planes_f32_to_rgba_f32(&r, &gp, &bp, &ap, &mut dst).unwrap();
+                    (r, gp, bp, ap, dst)
+                })
+            });
+
+            g.bench(&format!("{label} :: gather autovec(avx2)"), move |b| {
+                b.with_input(move || {
+                    let r = make_f32(pixels, 1);
+                    let gp = make_f32(pixels, 1);
+                    let bp = make_f32(pixels, 1);
+                    let ap = make_f32(pixels, 1);
+                    let dst = vec![0.0f32; pixels * 4];
+                    (r, gp, bp, ap, dst)
+                })
+                .run(move |(r, gp, bp, ap, mut dst)| {
+                    autovec_avx2_planes_to_rgba_f32_slice(token, &r, &gp, &bp, &ap, &mut dst);
+                    (r, gp, bp, ap, dst)
+                })
+            });
+        }
+    });
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+fn bench_autovec_vs_chunk(_suite: &mut Suite) {}
+
 zenbench::main!(
     bench_rgb24,
     bench_rgb48,
     bench_rgb_f32,
     bench_rgba_f32,
     bench_dispatch_cadence,
-    bench_chunk_size_choice
+    bench_chunk_size_choice,
+    bench_autovec_vs_chunk
 );
