@@ -21,9 +21,6 @@
 use crate::SizeError;
 #[cfg(target_arch = "x86_64")]
 use archmage::X64V3Token;
-#[cfg(target_arch = "x86_64")]
-use archmage::autoversion;
-use archmage::incant;
 use archmage::prelude::*;
 
 // ===========================================================================
