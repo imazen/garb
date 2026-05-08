@@ -746,43 +746,20 @@ mod x86_f32 {
         b: &mut [f32],
     ) {
         let pixels = src.len() / 3;
-        let mut p = 0;
-        // 16-pixel chunks
-        while p + 16 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 48] = src[off_src..off_src + 48].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let bs = ci * 48;
+            let ps = ci * 16;
+            let chunk: &[f32; 48] = src[bs..bs + 48].try_into().unwrap();
             let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_tokenless_v3(chunk);
-            r[p..p + 16].copy_from_slice(&rc);
-            g[p..p + 16].copy_from_slice(&gc);
-            b[p..p + 16].copy_from_slice(&bc);
-            p += 16;
+            r[ps..ps + 16].copy_from_slice(&rc);
+            g[ps..ps + 16].copy_from_slice(&gc);
+            b[ps..ps + 16].copy_from_slice(&bc);
         }
-        // 8-pixel
-        while p + 8 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 24] = src[off_src..off_src + 24].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_tokenless_v3(chunk);
-            r[p..p + 8].copy_from_slice(&rc);
-            g[p..p + 8].copy_from_slice(&gc);
-            b[p..p + 8].copy_from_slice(&bc);
-            p += 8;
-        }
-        // 4-pixel
-        while p + 4 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 12] = src[off_src..off_src + 12].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_tokenless_v3(chunk);
-            r[p..p + 4].copy_from_slice(&rc);
-            g[p..p + 4].copy_from_slice(&gc);
-            b[p..p + 4].copy_from_slice(&bc);
-            p += 4;
-        }
-        // scalar tail
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             r[p] = src[p * 3];
             g[p] = src[p * 3 + 1];
             b[p] = src[p * 3 + 2];
-            p += 1;
         }
     }
 
@@ -796,43 +773,22 @@ mod x86_f32 {
         a: &mut [f32],
     ) {
         let pixels = src.len() / 4;
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 64] = src[off_src..off_src + 64].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let bs = ci * 64;
+            let ps = ci * 16;
+            let chunk: &[f32; 64] = src[bs..bs + 64].try_into().unwrap();
             let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_tokenless_v3(chunk);
-            r[p..p + 16].copy_from_slice(&rc);
-            g[p..p + 16].copy_from_slice(&gc);
-            b[p..p + 16].copy_from_slice(&bc);
-            a[p..p + 16].copy_from_slice(&ac);
-            p += 16;
+            r[ps..ps + 16].copy_from_slice(&rc);
+            g[ps..ps + 16].copy_from_slice(&gc);
+            b[ps..ps + 16].copy_from_slice(&bc);
+            a[ps..ps + 16].copy_from_slice(&ac);
         }
-        while p + 8 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 32] = src[off_src..off_src + 32].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_tokenless_v3(chunk);
-            r[p..p + 8].copy_from_slice(&rc);
-            g[p..p + 8].copy_from_slice(&gc);
-            b[p..p + 8].copy_from_slice(&bc);
-            a[p..p + 8].copy_from_slice(&ac);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 16] = src[off_src..off_src + 16].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_tokenless_v3(chunk);
-            r[p..p + 4].copy_from_slice(&rc);
-            g[p..p + 4].copy_from_slice(&gc);
-            b[p..p + 4].copy_from_slice(&bc);
-            a[p..p + 4].copy_from_slice(&ac);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             r[p] = src[p * 4];
             g[p] = src[p * 4 + 1];
             b[p] = src[p * 4 + 2];
             a[p] = src[p * 4 + 3];
-            p += 1;
         }
     }
 
@@ -845,39 +801,20 @@ mod x86_f32 {
         dst: &mut [f32],
     ) {
         let pixels = r.len();
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
-            let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
-            let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let ps = ci * 16;
+            let r_chunk: &[f32; 16] = r[ps..ps + 16].try_into().unwrap();
+            let g_chunk: &[f32; 16] = g[ps..ps + 16].try_into().unwrap();
+            let b_chunk: &[f32; 16] = b[ps..ps + 16].try_into().unwrap();
             let part = super::planes_to_rgb_f32_chunk16_tokenless_v3(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
+            let off = ps * 3;
             dst[off..off + 48].copy_from_slice(&part);
-            p += 16;
         }
-        while p + 8 <= pixels {
-            let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
-            let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
-            let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk8_tokenless_v3(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
-            dst[off..off + 24].copy_from_slice(&part);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
-            let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
-            let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk4_tokenless_v3(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
-            dst[off..off + 12].copy_from_slice(&part);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             dst[p * 3] = r[p];
             dst[p * 3 + 1] = g[p];
             dst[p * 3 + 2] = b[p];
-            p += 1;
         }
     }
 
@@ -891,46 +828,23 @@ mod x86_f32 {
         dst: &mut [f32],
     ) {
         let pixels = r.len();
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
-            let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
-            let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
-            let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let ps = ci * 16;
+            let r_chunk: &[f32; 16] = r[ps..ps + 16].try_into().unwrap();
+            let g_chunk: &[f32; 16] = g[ps..ps + 16].try_into().unwrap();
+            let b_chunk: &[f32; 16] = b[ps..ps + 16].try_into().unwrap();
+            let a_chunk: &[f32; 16] = a[ps..ps + 16].try_into().unwrap();
             let part =
                 super::planes_to_rgba_f32_chunk16_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
-            let off = p * 4;
+            let off = ps * 4;
             dst[off..off + 64].copy_from_slice(&part);
-            p += 16;
         }
-        while p + 8 <= pixels {
-            let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
-            let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
-            let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
-            let part =
-                super::planes_to_rgba_f32_chunk8_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
-            let off = p * 4;
-            dst[off..off + 32].copy_from_slice(&part);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
-            let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
-            let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
-            let part =
-                super::planes_to_rgba_f32_chunk4_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
-            let off = p * 4;
-            dst[off..off + 16].copy_from_slice(&part);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             dst[p * 4] = r[p];
             dst[p * 4 + 1] = g[p];
             dst[p * 4 + 2] = b[p];
             dst[p * 4 + 3] = a[p];
-            p += 1;
         }
     }
 }
@@ -948,8 +862,9 @@ use x86_f32::{
 //   `vld4q_f32` deinterleaves 4 RGBA pixels in a single instruction
 //   `vst3q_f32` / `vst4q_f32` interleave on the inverse path
 //
-// Each `*_impl_neon` chunks into 16 → 8 → 4 → scalar tail; the per-chunk
-// `#[rite]` SIMD functions inline into this `#[arcane]` region.
+// Each `*_impl_neon` does chunk-16 SIMD + flat scalar tail; the per-chunk
+// `#[rite(neon)]` SIMD functions inline into this `#[arcane]` region.
+// Chunk-size choice rationale: see `benchmarks/deinterleave_chunk_size_choice_*`.
 
 #[cfg(target_arch = "aarch64")]
 mod arm_f32 {
@@ -964,39 +879,20 @@ mod arm_f32 {
         b: &mut [f32],
     ) {
         let pixels = src.len() / 3;
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 48] = src[off_src..off_src + 48].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let bs = ci * 48;
+            let ps = ci * 16;
+            let chunk: &[f32; 48] = src[bs..bs + 48].try_into().unwrap();
             let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_tokenless_neon(chunk);
-            r[p..p + 16].copy_from_slice(&rc);
-            g[p..p + 16].copy_from_slice(&gc);
-            b[p..p + 16].copy_from_slice(&bc);
-            p += 16;
+            r[ps..ps + 16].copy_from_slice(&rc);
+            g[ps..ps + 16].copy_from_slice(&gc);
+            b[ps..ps + 16].copy_from_slice(&bc);
         }
-        while p + 8 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 24] = src[off_src..off_src + 24].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_tokenless_neon(chunk);
-            r[p..p + 8].copy_from_slice(&rc);
-            g[p..p + 8].copy_from_slice(&gc);
-            b[p..p + 8].copy_from_slice(&bc);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 12] = src[off_src..off_src + 12].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_tokenless_neon(chunk);
-            r[p..p + 4].copy_from_slice(&rc);
-            g[p..p + 4].copy_from_slice(&gc);
-            b[p..p + 4].copy_from_slice(&bc);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             r[p] = src[p * 3];
             g[p] = src[p * 3 + 1];
             b[p] = src[p * 3 + 2];
-            p += 1;
         }
     }
 
@@ -1010,43 +906,22 @@ mod arm_f32 {
         a: &mut [f32],
     ) {
         let pixels = src.len() / 4;
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 64] = src[off_src..off_src + 64].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let bs = ci * 64;
+            let ps = ci * 16;
+            let chunk: &[f32; 64] = src[bs..bs + 64].try_into().unwrap();
             let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_tokenless_neon(chunk);
-            r[p..p + 16].copy_from_slice(&rc);
-            g[p..p + 16].copy_from_slice(&gc);
-            b[p..p + 16].copy_from_slice(&bc);
-            a[p..p + 16].copy_from_slice(&ac);
-            p += 16;
+            r[ps..ps + 16].copy_from_slice(&rc);
+            g[ps..ps + 16].copy_from_slice(&gc);
+            b[ps..ps + 16].copy_from_slice(&bc);
+            a[ps..ps + 16].copy_from_slice(&ac);
         }
-        while p + 8 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 32] = src[off_src..off_src + 32].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_tokenless_neon(chunk);
-            r[p..p + 8].copy_from_slice(&rc);
-            g[p..p + 8].copy_from_slice(&gc);
-            b[p..p + 8].copy_from_slice(&bc);
-            a[p..p + 8].copy_from_slice(&ac);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 16] = src[off_src..off_src + 16].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_tokenless_neon(chunk);
-            r[p..p + 4].copy_from_slice(&rc);
-            g[p..p + 4].copy_from_slice(&gc);
-            b[p..p + 4].copy_from_slice(&bc);
-            a[p..p + 4].copy_from_slice(&ac);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             r[p] = src[p * 4];
             g[p] = src[p * 4 + 1];
             b[p] = src[p * 4 + 2];
             a[p] = src[p * 4 + 3];
-            p += 1;
         }
     }
 
@@ -1059,39 +934,20 @@ mod arm_f32 {
         dst: &mut [f32],
     ) {
         let pixels = r.len();
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
-            let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
-            let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let ps = ci * 16;
+            let r_chunk: &[f32; 16] = r[ps..ps + 16].try_into().unwrap();
+            let g_chunk: &[f32; 16] = g[ps..ps + 16].try_into().unwrap();
+            let b_chunk: &[f32; 16] = b[ps..ps + 16].try_into().unwrap();
             let part = super::planes_to_rgb_f32_chunk16_tokenless_neon(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
+            let off = ps * 3;
             dst[off..off + 48].copy_from_slice(&part);
-            p += 16;
         }
-        while p + 8 <= pixels {
-            let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
-            let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
-            let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk8_tokenless_neon(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
-            dst[off..off + 24].copy_from_slice(&part);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
-            let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
-            let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk4_tokenless_neon(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
-            dst[off..off + 12].copy_from_slice(&part);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             dst[p * 3] = r[p];
             dst[p * 3 + 1] = g[p];
             dst[p * 3 + 2] = b[p];
-            p += 1;
         }
     }
 
@@ -1105,47 +961,24 @@ mod arm_f32 {
         dst: &mut [f32],
     ) {
         let pixels = r.len();
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
-            let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
-            let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
-            let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let ps = ci * 16;
+            let r_chunk: &[f32; 16] = r[ps..ps + 16].try_into().unwrap();
+            let g_chunk: &[f32; 16] = g[ps..ps + 16].try_into().unwrap();
+            let b_chunk: &[f32; 16] = b[ps..ps + 16].try_into().unwrap();
+            let a_chunk: &[f32; 16] = a[ps..ps + 16].try_into().unwrap();
             let part = super::planes_to_rgba_f32_chunk16_tokenless_neon(
                 r_chunk, g_chunk, b_chunk, a_chunk,
             );
-            let off = p * 4;
+            let off = ps * 4;
             dst[off..off + 64].copy_from_slice(&part);
-            p += 16;
         }
-        while p + 8 <= pixels {
-            let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
-            let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
-            let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
-            let part =
-                super::planes_to_rgba_f32_chunk8_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
-            let off = p * 4;
-            dst[off..off + 32].copy_from_slice(&part);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
-            let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
-            let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
-            let part =
-                super::planes_to_rgba_f32_chunk4_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
-            let off = p * 4;
-            dst[off..off + 16].copy_from_slice(&part);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             dst[p * 4] = r[p];
             dst[p * 4 + 1] = g[p];
             dst[p * 4 + 2] = b[p];
             dst[p * 4 + 3] = a[p];
-            p += 1;
         }
     }
 }
@@ -1176,39 +1009,20 @@ mod wasm_f32 {
         b: &mut [f32],
     ) {
         let pixels = src.len() / 3;
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 48] = src[off_src..off_src + 48].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let bs = ci * 48;
+            let ps = ci * 16;
+            let chunk: &[f32; 48] = src[bs..bs + 48].try_into().unwrap();
             let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_tokenless_wasm128(chunk);
-            r[p..p + 16].copy_from_slice(&rc);
-            g[p..p + 16].copy_from_slice(&gc);
-            b[p..p + 16].copy_from_slice(&bc);
-            p += 16;
+            r[ps..ps + 16].copy_from_slice(&rc);
+            g[ps..ps + 16].copy_from_slice(&gc);
+            b[ps..ps + 16].copy_from_slice(&bc);
         }
-        while p + 8 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 24] = src[off_src..off_src + 24].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_tokenless_wasm128(chunk);
-            r[p..p + 8].copy_from_slice(&rc);
-            g[p..p + 8].copy_from_slice(&gc);
-            b[p..p + 8].copy_from_slice(&bc);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let off_src = p * 3;
-            let chunk: &[f32; 12] = src[off_src..off_src + 12].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_tokenless_wasm128(chunk);
-            r[p..p + 4].copy_from_slice(&rc);
-            g[p..p + 4].copy_from_slice(&gc);
-            b[p..p + 4].copy_from_slice(&bc);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             r[p] = src[p * 3];
             g[p] = src[p * 3 + 1];
             b[p] = src[p * 3 + 2];
-            p += 1;
         }
     }
 
@@ -1222,43 +1036,22 @@ mod wasm_f32 {
         a: &mut [f32],
     ) {
         let pixels = src.len() / 4;
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 64] = src[off_src..off_src + 64].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let bs = ci * 64;
+            let ps = ci * 16;
+            let chunk: &[f32; 64] = src[bs..bs + 64].try_into().unwrap();
             let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_tokenless_wasm128(chunk);
-            r[p..p + 16].copy_from_slice(&rc);
-            g[p..p + 16].copy_from_slice(&gc);
-            b[p..p + 16].copy_from_slice(&bc);
-            a[p..p + 16].copy_from_slice(&ac);
-            p += 16;
+            r[ps..ps + 16].copy_from_slice(&rc);
+            g[ps..ps + 16].copy_from_slice(&gc);
+            b[ps..ps + 16].copy_from_slice(&bc);
+            a[ps..ps + 16].copy_from_slice(&ac);
         }
-        while p + 8 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 32] = src[off_src..off_src + 32].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_tokenless_wasm128(chunk);
-            r[p..p + 8].copy_from_slice(&rc);
-            g[p..p + 8].copy_from_slice(&gc);
-            b[p..p + 8].copy_from_slice(&bc);
-            a[p..p + 8].copy_from_slice(&ac);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let off_src = p * 4;
-            let chunk: &[f32; 16] = src[off_src..off_src + 16].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_tokenless_wasm128(chunk);
-            r[p..p + 4].copy_from_slice(&rc);
-            g[p..p + 4].copy_from_slice(&gc);
-            b[p..p + 4].copy_from_slice(&bc);
-            a[p..p + 4].copy_from_slice(&ac);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             r[p] = src[p * 4];
             g[p] = src[p * 4 + 1];
             b[p] = src[p * 4 + 2];
             a[p] = src[p * 4 + 3];
-            p += 1;
         }
     }
 
@@ -1271,40 +1064,21 @@ mod wasm_f32 {
         dst: &mut [f32],
     ) {
         let pixels = r.len();
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
-            let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
-            let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let ps = ci * 16;
+            let r_chunk: &[f32; 16] = r[ps..ps + 16].try_into().unwrap();
+            let g_chunk: &[f32; 16] = g[ps..ps + 16].try_into().unwrap();
+            let b_chunk: &[f32; 16] = b[ps..ps + 16].try_into().unwrap();
             let part =
                 super::planes_to_rgb_f32_chunk16_tokenless_wasm128(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
+            let off = ps * 3;
             dst[off..off + 48].copy_from_slice(&part);
-            p += 16;
         }
-        while p + 8 <= pixels {
-            let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
-            let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
-            let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk8_tokenless_wasm128(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
-            dst[off..off + 24].copy_from_slice(&part);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
-            let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
-            let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk4_tokenless_wasm128(r_chunk, g_chunk, b_chunk);
-            let off = p * 3;
-            dst[off..off + 12].copy_from_slice(&part);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             dst[p * 3] = r[p];
             dst[p * 3 + 1] = g[p];
             dst[p * 3 + 2] = b[p];
-            p += 1;
         }
     }
 
@@ -1318,49 +1092,24 @@ mod wasm_f32 {
         dst: &mut [f32],
     ) {
         let pixels = r.len();
-        let mut p = 0;
-        while p + 16 <= pixels {
-            let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
-            let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
-            let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
-            let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
+        let n_chunks = pixels / 16;
+        for ci in 0..n_chunks {
+            let ps = ci * 16;
+            let r_chunk: &[f32; 16] = r[ps..ps + 16].try_into().unwrap();
+            let g_chunk: &[f32; 16] = g[ps..ps + 16].try_into().unwrap();
+            let b_chunk: &[f32; 16] = b[ps..ps + 16].try_into().unwrap();
+            let a_chunk: &[f32; 16] = a[ps..ps + 16].try_into().unwrap();
             let part = super::planes_to_rgba_f32_chunk16_tokenless_wasm128(
                 r_chunk, g_chunk, b_chunk, a_chunk,
             );
-            let off = p * 4;
+            let off = ps * 4;
             dst[off..off + 64].copy_from_slice(&part);
-            p += 16;
         }
-        while p + 8 <= pixels {
-            let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
-            let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
-            let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk8_tokenless_wasm128(
-                r_chunk, g_chunk, b_chunk, a_chunk,
-            );
-            let off = p * 4;
-            dst[off..off + 32].copy_from_slice(&part);
-            p += 8;
-        }
-        while p + 4 <= pixels {
-            let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
-            let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
-            let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk4_tokenless_wasm128(
-                r_chunk, g_chunk, b_chunk, a_chunk,
-            );
-            let off = p * 4;
-            dst[off..off + 16].copy_from_slice(&part);
-            p += 4;
-        }
-        while p < pixels {
+        for p in (n_chunks * 16)..pixels {
             dst[p * 4] = r[p];
             dst[p * 4 + 1] = g[p];
             dst[p * 4 + 2] = b[p];
             dst[p * 4 + 3] = a[p];
-            p += 1;
         }
     }
 }
