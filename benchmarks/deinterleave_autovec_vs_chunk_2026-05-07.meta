@@ -1,0 +1,41 @@
+commit:    e910555 + uncommitted (autovec_vs_chunk bench addition)
+host:      AMD Ryzen 9 7950X (Zen 4, water-cooled, 128 GB DDR5)
+cmd:       cargo bench --bench deinterleave --features experimental -- --group="rgb_f32 autovec vs chunk SIMD"
+zenbench:  0.1.7
+date:      2026-05-07 UTC
+
+Question: is the hand-written 128-bit XMM chunk SIMD actually faster than
+  what LLVM produces from plain scalar code wrapped in #[arcane(v3)]
+  (which can use 256-bit YMM ops)?
+
+Conclusion: NO, autovec is faster at the most representative size (1024px):
+  - scatter: autovec 130.5ns vs chunk 178.2ns (autovec +37%)
+  - gather:  autovec 155.2ns vs chunk 195.8ns (autovec +26%)
+  At larger sizes (16K+) they're within ~5%, memory-bandwidth-dominated.
+  At small sizes (64-256px) mixed, autovec mostly wins.
+
+Root cause: mod x86_f32_chunks uses 75 × _mm_* (128-bit XMM) ops and 0
+  _mm256_* (256-bit YMM) ops. The "v3" naming is misleading — it's
+  VEX-encoded SSE-style code, not real AVX2. LLVM autovec under
+  target_feature avx2,fma emits 256-bit YMM ops because it can; the
+  hand-written kernel can't because it was written with 128-bit
+  intrinsics throughout.
+
+Implication for PR #5 (deinterleave-f32-chunks):
+  The hand-written f32 chunk SIMD ships a net-negative implementation
+  vs autovec at the size range that matters for image processing.
+  Either:
+    A. Drop hand-written f32 chunk SIMD; route the slice dispatcher
+       through #[arcane(v3)] + scalar source (autovec).
+    B. Rewrite the chunk SIMD using actual 256-bit _mm256_* ops
+       (`_mm256_loadu_ps`, `_mm256_permutevar8x32_ps`, etc).
+       Separate engineering project.
+  Public chunk fns (chunk4/chunk8/chunk16) stay either way for
+  callers that want to fuse them into their own SIMD loops, but they
+  shouldn't be the path the slice dispatcher takes.
+
+Caveats:
+  - 5 rounds; some CIs cross zero / show drift on smaller sizes.
+  - "iB/s" column miscalibrated as in prior runs; trust ns timings.
+  - Tested RGB only — RGBA pattern likely similar (same chunk
+    construction logic, same XMM-only intrinsics).

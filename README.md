@@ -313,32 +313,61 @@ gray conversions. All functions have `_strided` variants.
 
 Pure identity (no transfer-function, no color matrix, no normalization)
 interleave/deinterleave between packed-RGB(A) buffers and `f32` planes.
-Hand-tuned AVX2 + NEON kernels where the speedup is meaningful; scalar
-elsewhere with autovec under the caller's `#[target_feature]` region.
+
+Two flavors of dispatch underneath, chosen per signal:
+
+- **u8 / u16 inputs** — hand-written `_mm_shuffle_epi8` deinterleave +
+  256-bit AVX2 widening (`_mm256_cvtepu8_epi32` + `_mm256_storeu_ps`).
+  Verified +21–52% over LLVM autovec at L1–L3 sizes (see
+  `benchmarks/{rgb24,rgb48}_chunk_vs_autovec_2026-05-07`). The
+  `_mm_shuffle_epi8` mask pattern is a deinterleave LLVM autovec
+  can't infer from generic strided indexing, so the hand-written
+  kernel earns its keep.
+- **f32 inputs** — `#[autoversion(v3, neon, wasm128)]` over the inline
+  scalar loop. LLVM autovec under each tier's `target_feature` emits
+  256-bit YMM (AVX2) / `vld3q_f32` (NEON) / `v128.load` (wasm SIMD128)
+  on the loop body. Beats the prior hand-written 128-bit-XMM chunks
+  by 26–37% at 1024 px (see `benchmarks/deinterleave_autovec_vs_chunk_2026-05-07`).
 
 | Function | Operation |
 |----------|-----------|
-| `rgb24_to_planes_f32` | RGB24 (`u8`, 3bpp) → 3 × `f32` planes (R, G, B). AVX2: vpshufb deinterleave + vpmovzxbd widen + vcvtdq2ps. NEON: vld3q_u8. |
-| `rgb48_to_planes_f32` | RGB48 (`u16`, 6bpp) → 3 × `f32` planes. AVX2: 3-way vpshufb + vpmovzxwd. NEON: vld3q_u16. |
-| `rgb_f32_to_planes_f32` | f32 RGB interleaved → 3 × `f32` planes (identity, no widen). |
+| `rgb24_to_planes_f32` | RGB24 (`u8`, 3bpp) → 3 × `f32` planes (R, G, B). AVX2 chunk SIMD: vpshufb + vpmovzxbd + vcvtdq2ps. NEON: vld3q_u8. |
+| `rgb48_to_planes_f32` | RGB48 (`u16`, 6bpp) → 3 × `f32` planes. AVX2 chunk SIMD: 3-way vpshufb + vpmovzxwd. NEON: vld3q_u16. |
+| `rgb_f32_to_planes_f32` | f32 RGB interleaved → 3 × `f32` planes (identity, no widen). `#[autoversion]` autovec. |
 | `rgba_f32_to_planes_f32` | f32 RGBA interleaved → 4 × `f32` planes. |
 | `planes_f32_to_rgb_f32` | 3 × `f32` planes → f32 RGB interleaved (gather). |
 | `planes_f32_to_rgba_f32` | 4 × `f32` planes → f32 RGBA interleaved. |
 
-For callers already inside a `#[target_feature(enable = "avx2,...")]` region
-(set up by `#[arcane]`, `#[rite]`, or `#[magetypes]`), chunk-level primitives
-take an `X64V3Token` and avoid per-call dispatch:
+#### Chunk-level u8/u16 hooks for fusion into caller SIMD loops
+
+For callers already inside a `#[target_feature(enable = "avx2,...")]`
+region (set up by `#[arcane]`, `#[rite]`, or `#[magetypes]`), the u8/u16
+chunk-level primitives skip per-call dispatch. They're tokenless — the
+caller's region establishes target_feature; `#[rite(v3)]` on each
+function adds the matching `#[target_feature]` and inlines into the
+caller's body without crossing an LLVM optimization boundary.
 
 | Function | Operation |
 |----------|-----------|
-| `rgb24_chunk8_to_planes_v3` | 8 packed RGB24 pixels → 3 × `[f32; 8]` (inline AVX2) |
-| `rgb48_chunk8_to_planes_v3` | 8 packed RGB48 pixels → 3 × `[f32; 8]` (inline AVX2) |
+| `rgb24_chunk8_to_planes_tokenless_v3` | 8 packed RGB24 pixels → 3 × `[f32; 8]` (inline AVX2) |
+| `rgb48_chunk8_to_planes_tokenless_v3` | 8 packed RGB48 pixels → 3 × `[f32; 8]` (inline AVX2) |
 | `rgb24_chunk8_to_planes_scalar` | Scalar fallback (autovec'd inline by the caller's target_feature region) |
 | `rgb48_chunk8_to_planes_scalar` | Scalar fallback for `u16` |
 
-These chunk hooks are `#[doc(hidden)]` — use them when you're inside a
-`#[magetypes]` kernel and want the scatter replaced without paying any
-dispatch overhead. (See `zenanalyze::tier1` for a complete example.)
+(See `zenanalyze::tier1` for a complete example.)
+
+#### Chunk-level f32 hooks (scalar only)
+
+For f32 input where autovec is the right answer, only the scalar chunks
+are exposed — callers in their own `#[arcane(<tier>)]` region get
+256-bit YMM autovec'd by LLVM. The tokenless `_v3` / `_neon` / `_wasm128`
+variants don't ship: they were faster at 128-bit XMM, slower than autovec
+at 256-bit YMM, and no longer earn their keep.
+
+| Function | Shape |
+|----------|-------|
+| `{rgb,rgba}_f32_chunk{4,8,16}_to_planes_scalar` | f32 chunk → planes (deinterleave) |
+| `planes_to_{rgb,rgba}_f32_chunk{4,8,16}_scalar` | planes → f32 chunk (interleave) |
 
 ### Generic API — `convert` / `convert_inplace` (feature `rgb`)
 

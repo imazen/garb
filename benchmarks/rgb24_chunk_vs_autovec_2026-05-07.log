@@ -1,0 +1,105 @@
+   Compiling serde_core v1.0.228
+   Compiling zmij v1.0.21
+   Compiling libc v0.2.185
+   Compiling rustix v1.1.4
+   Compiling num-traits v0.2.19
+   Compiling zerocopy v0.8.48
+   Compiling clap v4.6.1
+   Compiling bytemuck v1.25.0
+   Compiling archmage v0.9.21
+   Compiling alloca v0.4.0
+   Compiling rgb v0.8.53
+   Compiling garb v0.2.8 (/home/lilith/work/garb--cold-pr5)
+   Compiling plotters v0.3.7
+   Compiling sysinfo v0.36.1
+   Compiling page_size v0.6.0
+   Compiling fs4 v0.13.1
+   Compiling terminal_size v0.4.4
+   Compiling serde v1.0.228
+   Compiling serde_json v1.0.149
+   Compiling tinytemplate v1.2.1
+   Compiling zenbench v0.1.7
+   Compiling half v2.7.1
+   Compiling ciborium-ll v0.2.2
+   Compiling ciborium v0.2.2
+   Compiling criterion v0.8.2
+    Finished `bench` profile [optimized] target(s) in 5.66s
+     Running benches/deinterleave.rs (target/release/deps/deinterleave-cb8280688dfe5ae5)
+=== SIMD Tier Detection ===
+  AVX2+FMA (x86-64-v3):    available (will dispatch)
+[zenbench] calibration: int=0.22ns/iter mem_bw=117.6GiB/s mem_lat=9.4ns
+[zenbench] timer resolution: 10ns, loop overhead: 0.18ns/iter, TSC: 4.491 ticks/ns (invariant)
+[zenbench] results → /tmp/zenbench/zenbench-1778219002-2eb33c.txt
+
+═══════════════════════════════════════════════════════════════
+  zenbench  1778219002-2eb33c
+  git: 118f85748e20b75eb8480fefd12a60f928d97a14
+═══════════════════════════════════════════════════════════════
+
+  rgb24_to_planes_f32 (u8)  5 rounds × 25 calls ⚠ only 5 rounds
+                                           mean ±mad ns  95% CI vs base                    iB/s
+  ├─ 256px (L1)
+  │  ├─ 256px (L1) :: scalar                  216 ±20ns  [206–226]ns                    216673G
+  │  ├─ 256px (L1) :: scalar+auto…             127 ±6ns  [-42.9%–-41.0%]                370263G [1]
+  │  ╰─ 256px (L1) :: simd-dispat…             64 ±12ns  [-75.5%–-65.0%]                732863G [2]
+  ├─ 4096px (L1)
+  │  ├─ 4096px (L1) :: scalar                3293 ±17ns  [+1317.1%–+1329.1%]             14236G [3]
+  │  ├─ 4096px (L1) :: scalar+aut…           1218 ±30ns  [+451.7%–+472.5%]               38472G
+  │  ╰─ 4096px (L1) :: simd-dispa…            602 ±22ns  [+182.3%–+189.6%]               77865G
+  ├─ 65536px (L2)
+  │  ├─ 65536px (L2) :: scalar             50069 ±876ns  [+22125.6%–+22649.4%]             936G
+  │  ├─ 65536px (L2) :: scalar+au…         20055 ±144ns  [+9080.6%–+9137.5%]              2337G [4]
+  │  ╰─ 65536px (L2) :: simd-disp…          9706 ±711ns  [+4110.7%–+4662.6%]              4829G
+  ├─ 262144px (L3)
+  │  ├─ 262144px (L3) :: scalar         224781 ±31429ns  [+95144.5%–+112330.6%]            209G
+  │  ├─ 262144px (L3) :: scalar+a…         90719 ±995ns  [+36907.4%–+37910.6%]             517G [5] [6]
+  │  ╰─ 262144px (L3) :: simd-dis…       60268 ±11906ns  [+18132.2%–+37801.4%]             778G [7]
+  ├─ 1MP (L3)
+  │  ├─ 1MP (L3) :: scalar              873833 ±41741ns  [+372429.3%–+435202.6%]          53.6G
+  │  ├─ 1MP (L3) :: scalar+autove…     591211 ±190205ns  [+230839.7%–+318569.6%]          79.3G [8]
+  │  ╰─ 1MP (L3) :: simd-dispatch      467478 ±145361ns  [+174897.9%–+253176.1%]           100G [9]
+  ├─ 4MP (DRAM)
+  │  ├─ 4MP (DRAM) :: scalar         24292093 ±240225ns  [+11073588.3%–+11354515.1%]      1.93G [10]
+  │  ├─ 4MP (DRAM) :: scalar+auto…   22773471 ±173283ns  [+10358678.2%–+10511921.1%]      2.06G
+  │  ╰─ 4MP (DRAM) :: simd-dispat…   22520888 ±549457ns  [+10247188.5%–+10574974.6%]      2.08G
+  ╰─ 16MP (DRAM)
+     ├─ 16MP (DRAM) :: scalar        97045257 ±111150ns  [+45445058.5%–+45499469.1%]       495M [11]
+     ├─ 16MP (DRAM) :: scalar+aut…   91989479 ±858941ns  [+42283294.1%–+42762934.8%]       522M
+     ╰─ 16MP (DRAM) :: simd-dispa…   90824808 ±713259ns  [+41809735.2%–+42158248.9%]       528M
+
+  256px (L1) :: simd-dispat…  █████████████████████████████████████ 732863 GiB/s
+  256px (L1) :: scalar+auto…  ███████████████████ 370263 GiB/s
+  256px (L1) :: scalar        ███████████ 216673 GiB/s
+  4096px (L1) :: simd-dispa…  ████ 77865 GiB/s
+  4096px (L1) :: scalar+aut…  ██ 38472 GiB/s
+  4096px (L1) :: scalar       █ 14236 GiB/s
+  65536px (L2) :: simd-disp…  █ 4829 GiB/s
+  65536px (L2) :: scalar+au…  █ 2337 GiB/s
+  65536px (L2) :: scalar      █ 936 GiB/s
+  262144px (L3) :: simd-dis…  █ 778 GiB/s
+  262144px (L3) :: scalar+a…  █ 517 GiB/s
+  262144px (L3) :: scalar     █ 209 GiB/s
+  1MP (L3) :: simd-dispatch   █ 100 GiB/s
+  1MP (L3) :: scalar+autove…  █ 79.3 GiB/s
+  1MP (L3) :: scalar          █ 53.6 GiB/s
+  4MP (DRAM) :: simd-dispat…  █ 2.08 GiB/s
+  4MP (DRAM) :: scalar+auto…  █ 2.06 GiB/s
+  4MP (DRAM) :: scalar        █ 1.93 GiB/s
+  16MP (DRAM) :: simd-dispa…  █ 528 MiB/s
+  16MP (DRAM) :: scalar+aut…  █ 522 MiB/s
+  16MP (DRAM) :: scalar       █ 495 MiB/s
+  [1] drift r=1.00 — later rounds slower
+  [2] drift r=-0.60 — later rounds faster
+  [3] drift r=-0.80 — later rounds faster
+  [4] drift r=0.80 — later rounds slower
+  [5] drift r=-0.80 — later rounds faster
+  [6] CV=28%
+  [7] CV=46%
+  [8] CV=21%
+  [9] CV=23%
+  [10] drift r=0.90 — later rounds slower
+  [11] drift r=-1.00 — later rounds faster
+
+  total: 79.8s
+═══════════════════════════════════════════════════════════════
+  filter: cargo bench -- --group=NAME  format: --format=llm|csv|md|json

@@ -21,7 +21,6 @@
 use crate::SizeError;
 #[cfg(target_arch = "x86_64")]
 use archmage::X64V3Token;
-use archmage::incant;
 use archmage::prelude::*;
 
 // ===========================================================================
@@ -333,8 +332,8 @@ mod x86 {
         -128, -128, -128, -128, -128, -128, -128, -128, -128, -128, 2, 3, 8, 9, 14, 15,
     ];
 
-    #[rite]
-    pub fn rgb24_chunk8_v3(_t: X64V3Token, c: &[u8; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+    #[rite(v3)]
+    pub fn rgb24_chunk8_tokenless_v3(c: &[u8; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
         let lo16: &[u8; 16] = c[0..16].try_into().unwrap();
         let hi16: &[u8; 16] = c[8..24].try_into().unwrap();
         let lo = _mm_loadu_si128(lo16);
@@ -367,8 +366,8 @@ mod x86 {
         (r_out, g_out, b_out)
     }
 
-    #[rite]
-    pub fn rgb48_chunk8_v3(_t: X64V3Token, c: &[u16; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+    #[rite(v3)]
+    pub fn rgb48_chunk8_tokenless_v3(c: &[u16; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
         // Reinterpret the 24-u16 chunk as 48 bytes via 3 × 16-byte loads.
         let bytes: &[u8; 48] = bytemuck::cast_ref(c);
         let v1b: &[u8; 16] = bytes[0..16].try_into().unwrap();
@@ -438,7 +437,7 @@ mod x86 {
 
     #[arcane]
     pub(crate) fn rgb24_to_planes_impl_v3(
-        t: X64V3Token,
+        _t: X64V3Token,
         src: &[u8],
         r: &mut [f32],
         g: &mut [f32],
@@ -450,7 +449,7 @@ mod x86 {
             let bs = ci * 24;
             let ps = ci * 8;
             let c: &[u8; 24] = src[bs..bs + 24].try_into().unwrap();
-            let (rv, gv, bv) = rgb24_chunk8_v3(t, c);
+            let (rv, gv, bv) = rgb24_chunk8_tokenless_v3(c);
             r[ps..ps + 8].copy_from_slice(&rv);
             g[ps..ps + 8].copy_from_slice(&gv);
             b[ps..ps + 8].copy_from_slice(&bv);
@@ -464,7 +463,7 @@ mod x86 {
 
     #[arcane]
     pub(crate) fn rgb48_to_planes_impl_v3(
-        t: X64V3Token,
+        _t: X64V3Token,
         src: &[u16],
         r: &mut [f32],
         g: &mut [f32],
@@ -476,7 +475,7 @@ mod x86 {
             let bs = ci * 24;
             let ps = ci * 8;
             let c: &[u16; 24] = src[bs..bs + 24].try_into().unwrap();
-            let (rv, gv, bv) = rgb48_chunk8_v3(t, c);
+            let (rv, gv, bv) = rgb48_chunk8_tokenless_v3(c);
             r[ps..ps + 8].copy_from_slice(&rv);
             g[ps..ps + 8].copy_from_slice(&gv);
             b[ps..ps + 8].copy_from_slice(&bv);
@@ -518,13 +517,13 @@ use x86::{rgb24_to_planes_impl_v3, rgb48_to_planes_impl_v3};
 /// will fail to compile.
 #[cfg(target_arch = "x86_64")]
 #[doc(hidden)]
-pub use x86::rgb24_chunk8_v3 as rgb24_chunk8_to_planes_v3;
+pub use x86::rgb24_chunk8_tokenless_v3 as rgb24_chunk8_to_planes_tokenless_v3;
 
 /// AVX2 chunk-level deinterleave for `RGB48` (`u16` per channel). See
 /// [`rgb24_chunk8_to_planes_v3`]; same shape, just `&[u16; 24]` input.
 #[cfg(target_arch = "x86_64")]
 #[doc(hidden)]
-pub use x86::rgb48_chunk8_v3 as rgb48_chunk8_to_planes_v3;
+pub use x86::rgb48_chunk8_tokenless_v3 as rgb48_chunk8_to_planes_tokenless_v3;
 
 /// Scalar fallback chunk-level deinterleave. Compiles on every target;
 /// LLVM autovectorizes inside whatever target_feature region the caller
@@ -709,171 +708,6 @@ fn planes_to_rgba_f32_loop_scalar(r: &[f32], g: &[f32], b: &[f32], a: &[f32], ds
     }
 }
 
-pub(crate) fn rgb_f32_to_planes_impl_scalar(
-    _t: ScalarToken,
-    src: &[f32],
-    r: &mut [f32],
-    g: &mut [f32],
-    b: &mut [f32],
-) {
-    rgb_f32_to_planes_loop_scalar(src, r, g, b);
-}
-
-pub(crate) fn rgba_f32_to_planes_impl_scalar(
-    _t: ScalarToken,
-    src: &[f32],
-    r: &mut [f32],
-    g: &mut [f32],
-    b: &mut [f32],
-    a: &mut [f32],
-) {
-    rgba_f32_to_planes_loop_scalar(src, r, g, b, a);
-}
-
-pub(crate) fn planes_to_rgb_f32_impl_scalar(
-    _t: ScalarToken,
-    r: &[f32],
-    g: &[f32],
-    b: &[f32],
-    dst: &mut [f32],
-) {
-    planes_to_rgb_f32_loop_scalar(r, g, b, dst);
-}
-
-pub(crate) fn planes_to_rgba_f32_impl_scalar(
-    _t: ScalarToken,
-    r: &[f32],
-    g: &[f32],
-    b: &[f32],
-    a: &[f32],
-    dst: &mut [f32],
-) {
-    planes_to_rgba_f32_loop_scalar(r, g, b, a, dst);
-}
-
-// --- x86_64 AVX2 autovectorize wrappers ----------------------------------
-
-#[cfg(target_arch = "x86_64")]
-mod x86_f32 {
-    use super::*;
-
-    #[arcane]
-    pub(crate) fn rgb_f32_to_planes_impl_v3(
-        _t: X64V3Token,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-    ) {
-        super::rgb_f32_to_planes_loop_scalar(src, r, g, b);
-    }
-
-    #[arcane]
-    pub(crate) fn rgba_f32_to_planes_impl_v3(
-        _t: X64V3Token,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-        a: &mut [f32],
-    ) {
-        super::rgba_f32_to_planes_loop_scalar(src, r, g, b, a);
-    }
-
-    #[arcane]
-    pub(crate) fn planes_to_rgb_f32_impl_v3(
-        _t: X64V3Token,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgb_f32_loop_scalar(r, g, b, dst);
-    }
-
-    #[arcane]
-    pub(crate) fn planes_to_rgba_f32_impl_v3(
-        _t: X64V3Token,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        a: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgba_f32_loop_scalar(r, g, b, a, dst);
-    }
-}
-
-#[cfg(target_arch = "x86_64")]
-use x86_f32::{
-    planes_to_rgb_f32_impl_v3, planes_to_rgba_f32_impl_v3, rgb_f32_to_planes_impl_v3,
-    rgba_f32_to_planes_impl_v3,
-};
-
-// --- aarch64 NEON wrappers ------------------------------------------------
-//
-// NEON is the aarch64 baseline so the plain scalar function is already
-// compiled with NEON enabled — LLVM autovectorizes. We still expose a NEON
-// dispatch hook so future hand-tuned ld3q/st3q paths can plug in without
-// touching call sites.
-
-#[cfg(target_arch = "aarch64")]
-mod arm_f32 {
-    use super::*;
-
-    #[arcane]
-    pub(crate) fn rgb_f32_to_planes_impl_neon(
-        _t: NeonToken,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-    ) {
-        super::rgb_f32_to_planes_loop_scalar(src, r, g, b);
-    }
-
-    #[arcane]
-    pub(crate) fn rgba_f32_to_planes_impl_neon(
-        _t: NeonToken,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-        a: &mut [f32],
-    ) {
-        super::rgba_f32_to_planes_loop_scalar(src, r, g, b, a);
-    }
-
-    #[arcane]
-    pub(crate) fn planes_to_rgb_f32_impl_neon(
-        _t: NeonToken,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgb_f32_loop_scalar(r, g, b, dst);
-    }
-
-    #[arcane]
-    pub(crate) fn planes_to_rgba_f32_impl_neon(
-        _t: NeonToken,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        a: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgba_f32_loop_scalar(r, g, b, a, dst);
-    }
-}
-
-#[cfg(target_arch = "aarch64")]
-use arm_f32::{
-    planes_to_rgb_f32_impl_neon, planes_to_rgba_f32_impl_neon, rgb_f32_to_planes_impl_neon,
-    rgba_f32_to_planes_impl_neon,
-};
-
 // --- Public API ----------------------------------------------------------
 
 /// Deinterleave packed `f32` RGB into three contiguous `f32` planes.
@@ -885,6 +719,7 @@ use arm_f32::{
 /// - [`SizeError::NotPixelAligned`] if `src.len() % 3 != 0` or `src` is empty.
 /// - [`SizeError::PixelCountMismatch`] if any plane is shorter than the pixel
 ///   count.
+#[autoversion(v3, neon, wasm128)]
 pub fn rgb_f32_to_planes_f32(
     src: &[f32],
     r: &mut [f32],
@@ -898,10 +733,7 @@ pub fn rgb_f32_to_planes_f32(
     if r.len() < pixels || g.len() < pixels || b.len() < pixels {
         return Err(SizeError::PixelCountMismatch);
     }
-    let r = &mut r[..pixels];
-    let g = &mut g[..pixels];
-    let b = &mut b[..pixels];
-    incant!(rgb_f32_to_planes_impl(src, r, g, b), [v3, neon, scalar]);
+    rgb_f32_to_planes_loop_scalar(src, &mut r[..pixels], &mut g[..pixels], &mut b[..pixels]);
     Ok(())
 }
 
@@ -914,6 +746,7 @@ pub fn rgb_f32_to_planes_f32(
 /// - [`SizeError::NotPixelAligned`] if `src.len() % 4 != 0` or `src` is empty.
 /// - [`SizeError::PixelCountMismatch`] if any plane is shorter than the pixel
 ///   count.
+#[autoversion(v3, neon, wasm128)]
 pub fn rgba_f32_to_planes_f32(
     src: &[f32],
     r: &mut [f32],
@@ -928,11 +761,13 @@ pub fn rgba_f32_to_planes_f32(
     if r.len() < pixels || g.len() < pixels || b.len() < pixels || a.len() < pixels {
         return Err(SizeError::PixelCountMismatch);
     }
-    let r = &mut r[..pixels];
-    let g = &mut g[..pixels];
-    let b = &mut b[..pixels];
-    let a = &mut a[..pixels];
-    incant!(rgba_f32_to_planes_impl(src, r, g, b, a), [v3, neon, scalar]);
+    rgba_f32_to_planes_loop_scalar(
+        src,
+        &mut r[..pixels],
+        &mut g[..pixels],
+        &mut b[..pixels],
+        &mut a[..pixels],
+    );
     Ok(())
 }
 
@@ -945,6 +780,7 @@ pub fn rgba_f32_to_planes_f32(
 /// - [`SizeError::NotPixelAligned`] if any plane is empty or planes have
 ///   different lengths.
 /// - [`SizeError::PixelCountMismatch`] if `dst` is smaller than `3 × r.len()`.
+#[autoversion(v3, neon, wasm128)]
 pub fn planes_f32_to_rgb_f32(
     r: &[f32],
     g: &[f32],
@@ -958,8 +794,7 @@ pub fn planes_f32_to_rgb_f32(
     if dst.len() < pixels * 3 {
         return Err(SizeError::PixelCountMismatch);
     }
-    let dst = &mut dst[..pixels * 3];
-    incant!(planes_to_rgb_f32_impl(r, g, b, dst), [v3, neon, scalar]);
+    planes_to_rgb_f32_loop_scalar(r, g, b, &mut dst[..pixels * 3]);
     Ok(())
 }
 
@@ -972,6 +807,7 @@ pub fn planes_f32_to_rgb_f32(
 /// - [`SizeError::NotPixelAligned`] if any plane is empty or planes differ
 ///   in length.
 /// - [`SizeError::PixelCountMismatch`] if `dst` is smaller than `4 × r.len()`.
+#[autoversion(v3, neon, wasm128)]
 pub fn planes_f32_to_rgba_f32(
     r: &[f32],
     g: &[f32],
@@ -986,8 +822,7 @@ pub fn planes_f32_to_rgba_f32(
     if dst.len() < pixels * 4 {
         return Err(SizeError::PixelCountMismatch);
     }
-    let dst = &mut dst[..pixels * 4];
-    incant!(planes_to_rgba_f32_impl(r, g, b, a, dst), [v3, neon, scalar]);
+    planes_to_rgba_f32_loop_scalar(r, g, b, a, &mut dst[..pixels * 4]);
     Ok(())
 }
 
@@ -1100,6 +935,232 @@ pub fn scalar_only_planes_f32_to_rgba(r: &[f32], g: &[f32], b: &[f32], a: &[f32]
         dst.len(),
     );
     planes_to_rgba_f32_loop_scalar(r, g, b, a, &mut dst[..pixels * 4]);
+}
+
+// ===========================================================================
+// Chunk-level f32 RGB / RGBA deinterleave + interleave primitives
+// ---------------------------------------------------------------------------
+// Mirrors `rgb24_chunk8_to_planes_scalar` at f32 input, across {4, 8, 16}
+// pixel chunk widths × {RGB, RGBA} × {deinterleave, interleave}.
+//
+// Two flavors per shape:
+//   `*_scalar`           — fixed-array literal; LLVM is free to autovectorize
+//                          but isn't required to. Always available, always
+//                          safe, no token / no archmage type in signature.
+//   `*_tokenless_<tier>` — `#[rite(<tier>)]` per-arch SIMD specialization.
+//                          Tier-based rite adds `#[target_feature]` +
+//                          `#[inline]` directly; safe to call from any
+//                          matching `#[arcane]` / `#[rite]` / `#[target_feature]`
+//                          region. No token / no archmage type in signature.
+//                          Tiers exposed: `v3` (AVX2), `neon` (aarch64),
+//                          `wasm128` (wasm32 SIMD128).
+//
+// The `_tokenless_` infix distinguishes these from the older convention
+// (still used inside the slice-level `*_impl_*` dispatchers) where a bare
+// `_v3` / `_neon` / `_wasm128` suffix means "takes an `X64V3Token` /
+// `NeonToken` / `Wasm128Token` parameter". Garb's *public* surface is
+// archmage-token-free; tokens stay an internal implementation detail.
+// ===========================================================================
+
+// --- Chunk-of-4 deinterleave / interleave (scalar) -----------------------
+
+/// RGB f32 deinterleave, chunk-of-4-pixels (scalar). Loads 12 f32 values
+/// from interleaved RGBRGB... layout and returns three planar `[f32; 4]`
+/// arrays. The chunk-4 size matches the natural NEON / WASM128 vector lane
+/// count and feeds directly into the `vld3q_f32` hardware structure-load.
+#[inline]
+pub fn rgb_f32_chunk4_to_planes_scalar(chunk: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
+    (
+        [chunk[0], chunk[3], chunk[6], chunk[9]],
+        [chunk[1], chunk[4], chunk[7], chunk[10]],
+        [chunk[2], chunk[5], chunk[8], chunk[11]],
+    )
+}
+
+/// RGBA f32 deinterleave, chunk-of-4-pixels (scalar). Loads 16 f32 values
+/// from interleaved RGBARGBA... layout and returns four planar `[f32; 4]`
+/// arrays.
+#[inline]
+pub fn rgba_f32_chunk4_to_planes_scalar(
+    chunk: &[f32; 16],
+) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
+    (
+        [chunk[0], chunk[4], chunk[8], chunk[12]],
+        [chunk[1], chunk[5], chunk[9], chunk[13]],
+        [chunk[2], chunk[6], chunk[10], chunk[14]],
+        [chunk[3], chunk[7], chunk[11], chunk[15]],
+    )
+}
+
+/// RGB f32 interleave, chunk-of-4-pixels (scalar). Stores three planar
+/// `[f32; 4]` arrays into 12 f32 in interleaved RGBRGB... layout.
+#[inline]
+pub fn planes_to_rgb_f32_chunk4_scalar(r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
+    [
+        r[0], g[0], b[0], r[1], g[1], b[1], r[2], g[2], b[2], r[3], g[3], b[3],
+    ]
+}
+
+/// RGBA f32 interleave, chunk-of-4-pixels (scalar). Stores four planar
+/// `[f32; 4]` arrays into 16 f32 in interleaved RGBARGBA... layout.
+#[inline]
+pub fn planes_to_rgba_f32_chunk4_scalar(
+    r: &[f32; 4],
+    g: &[f32; 4],
+    b: &[f32; 4],
+    a: &[f32; 4],
+) -> [f32; 16] {
+    [
+        r[0], g[0], b[0], a[0], r[1], g[1], b[1], a[1], r[2], g[2], b[2], a[2], r[3], g[3], b[3],
+        a[3],
+    ]
+}
+
+// --- Chunk-of-8 deinterleave / interleave (scalar) -----------------------
+
+/// RGB f32 deinterleave, chunk-of-8-pixels (scalar). Loads 24 f32 values
+/// from interleaved RGBRGB... layout and returns three planar `[f32; 8]`
+/// arrays. Pairs naturally with AVX2 (`__m256` = 8×f32).
+#[inline]
+pub fn rgb_f32_chunk8_to_planes_scalar(chunk: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+    (
+        [
+            chunk[0], chunk[3], chunk[6], chunk[9], chunk[12], chunk[15], chunk[18], chunk[21],
+        ],
+        [
+            chunk[1], chunk[4], chunk[7], chunk[10], chunk[13], chunk[16], chunk[19], chunk[22],
+        ],
+        [
+            chunk[2], chunk[5], chunk[8], chunk[11], chunk[14], chunk[17], chunk[20], chunk[23],
+        ],
+    )
+}
+
+/// RGBA f32 deinterleave, chunk-of-8-pixels (scalar). Loads 32 f32 values
+/// from interleaved RGBARGBA... layout and returns four planar `[f32; 8]`
+/// arrays.
+#[inline]
+pub fn rgba_f32_chunk8_to_planes_scalar(
+    chunk: &[f32; 32],
+) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
+    (
+        [
+            chunk[0], chunk[4], chunk[8], chunk[12], chunk[16], chunk[20], chunk[24], chunk[28],
+        ],
+        [
+            chunk[1], chunk[5], chunk[9], chunk[13], chunk[17], chunk[21], chunk[25], chunk[29],
+        ],
+        [
+            chunk[2], chunk[6], chunk[10], chunk[14], chunk[18], chunk[22], chunk[26], chunk[30],
+        ],
+        [
+            chunk[3], chunk[7], chunk[11], chunk[15], chunk[19], chunk[23], chunk[27], chunk[31],
+        ],
+    )
+}
+
+/// RGB f32 interleave, chunk-of-8-pixels (scalar). Stores three planar
+/// `[f32; 8]` arrays into 24 f32 in interleaved RGBRGB... layout.
+#[inline]
+pub fn planes_to_rgb_f32_chunk8_scalar(r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
+    [
+        r[0], g[0], b[0], r[1], g[1], b[1], r[2], g[2], b[2], r[3], g[3], b[3], r[4], g[4], b[4],
+        r[5], g[5], b[5], r[6], g[6], b[6], r[7], g[7], b[7],
+    ]
+}
+
+/// RGBA f32 interleave, chunk-of-8-pixels (scalar). Stores four planar
+/// `[f32; 8]` arrays into 32 f32 in interleaved RGBARGBA... layout.
+#[inline]
+pub fn planes_to_rgba_f32_chunk8_scalar(
+    r: &[f32; 8],
+    g: &[f32; 8],
+    b: &[f32; 8],
+    a: &[f32; 8],
+) -> [f32; 32] {
+    [
+        r[0], g[0], b[0], a[0], r[1], g[1], b[1], a[1], r[2], g[2], b[2], a[2], r[3], g[3], b[3],
+        a[3], r[4], g[4], b[4], a[4], r[5], g[5], b[5], a[5], r[6], g[6], b[6], a[6], r[7], g[7],
+        b[7], a[7],
+    ]
+}
+
+// --- Chunk-of-16 deinterleave / interleave (scalar) ----------------------
+
+/// RGB f32 deinterleave, chunk-of-16-pixels (scalar). Loads 48 f32 values
+/// from interleaved RGBRGB... layout and returns three planar `[f32; 16]`
+/// arrays.
+#[inline]
+pub fn rgb_f32_chunk16_to_planes_scalar(chunk: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
+    let mut r = [0.0f32; 16];
+    let mut g = [0.0f32; 16];
+    let mut b = [0.0f32; 16];
+    let mut i = 0;
+    while i < 16 {
+        r[i] = chunk[i * 3];
+        g[i] = chunk[i * 3 + 1];
+        b[i] = chunk[i * 3 + 2];
+        i += 1;
+    }
+    (r, g, b)
+}
+
+/// RGBA f32 deinterleave, chunk-of-16-pixels (scalar). Loads 64 f32 values
+/// from interleaved RGBARGBA... layout and returns four planar `[f32; 16]`
+/// arrays.
+#[inline]
+pub fn rgba_f32_chunk16_to_planes_scalar(
+    chunk: &[f32; 64],
+) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
+    let mut r = [0.0f32; 16];
+    let mut g = [0.0f32; 16];
+    let mut b = [0.0f32; 16];
+    let mut a = [0.0f32; 16];
+    let mut i = 0;
+    while i < 16 {
+        r[i] = chunk[i * 4];
+        g[i] = chunk[i * 4 + 1];
+        b[i] = chunk[i * 4 + 2];
+        a[i] = chunk[i * 4 + 3];
+        i += 1;
+    }
+    (r, g, b, a)
+}
+
+/// RGB f32 interleave, chunk-of-16-pixels (scalar). Stores three planar
+/// `[f32; 16]` arrays into 48 f32 in interleaved RGBRGB... layout.
+#[inline]
+pub fn planes_to_rgb_f32_chunk16_scalar(r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
+    let mut out = [0.0f32; 48];
+    let mut i = 0;
+    while i < 16 {
+        out[i * 3] = r[i];
+        out[i * 3 + 1] = g[i];
+        out[i * 3 + 2] = b[i];
+        i += 1;
+    }
+    out
+}
+
+/// RGBA f32 interleave, chunk-of-16-pixels (scalar). Stores four planar
+/// `[f32; 16]` arrays into 64 f32 in interleaved RGBARGBA... layout.
+#[inline]
+pub fn planes_to_rgba_f32_chunk16_scalar(
+    r: &[f32; 16],
+    g: &[f32; 16],
+    b: &[f32; 16],
+    a: &[f32; 16],
+) -> [f32; 64] {
+    let mut out = [0.0f32; 64];
+    let mut i = 0;
+    while i < 16 {
+        out[i * 4] = r[i];
+        out[i * 4 + 1] = g[i];
+        out[i * 4 + 2] = b[i];
+        out[i * 4 + 3] = a[i];
+        i += 1;
+    }
+    out
 }
 
 // ===========================================================================
@@ -1382,5 +1443,232 @@ mod tests {
             Err(SizeError::NotPixelAligned)
         );
         let _ = &a;
+    }
+
+    // ----- Chunk-level f32 deinterleave / interleave round-trips --------
+
+    fn make_rgb_chunk<const N: usize, const M: usize>() -> [f32; M] {
+        // M = N * 3
+        let mut out = [0.0f32; M];
+        let mut i = 0;
+        while i < M {
+            out[i] = i as f32;
+            i += 1;
+        }
+        out
+    }
+
+    fn make_rgba_chunk<const N: usize, const M: usize>() -> [f32; M] {
+        // M = N * 4
+        let mut out = [0.0f32; M];
+        let mut i = 0;
+        while i < M {
+            out[i] = i as f32 * 0.25 - 7.0;
+            i += 1;
+        }
+        out
+    }
+
+    // --- chunk-4 -----------------------------------------------------------
+
+    #[test]
+    fn rgb_f32_chunk4_order_preserving() {
+        let src: [f32; 12] = make_rgb_chunk::<4, 12>();
+        let (r, g, b) = rgb_f32_chunk4_to_planes_scalar(&src);
+        assert_eq!(r, [0.0, 3.0, 6.0, 9.0]);
+        assert_eq!(g, [1.0, 4.0, 7.0, 10.0]);
+        assert_eq!(b, [2.0, 5.0, 8.0, 11.0]);
+    }
+
+    #[test]
+    fn rgb_f32_chunk4_round_trip() {
+        let src: [f32; 12] = make_rgb_chunk::<4, 12>();
+        let (r, g, b) = rgb_f32_chunk4_to_planes_scalar(&src);
+        let back = planes_to_rgb_f32_chunk4_scalar(&r, &g, &b);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgb_f32_chunk4_matches_slice_api() {
+        let src: [f32; 12] = make_rgb_chunk::<4, 12>();
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk4_to_planes_scalar(&src);
+        let mut r = [0.0f32; 4];
+        let mut g = [0.0f32; 4];
+        let mut b = [0.0f32; 4];
+        rgb_f32_to_planes_f32(&src, &mut r, &mut g, &mut b).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+    }
+
+    #[test]
+    fn rgba_f32_chunk4_order_preserving() {
+        let src: [f32; 16] = make_rgba_chunk::<4, 16>();
+        let (r, g, b, a) = rgba_f32_chunk4_to_planes_scalar(&src);
+        for i in 0..4 {
+            assert_eq!(r[i], src[i * 4]);
+            assert_eq!(g[i], src[i * 4 + 1]);
+            assert_eq!(b[i], src[i * 4 + 2]);
+            assert_eq!(a[i], src[i * 4 + 3]);
+        }
+    }
+
+    #[test]
+    fn rgba_f32_chunk4_round_trip() {
+        let src: [f32; 16] = make_rgba_chunk::<4, 16>();
+        let (r, g, b, a) = rgba_f32_chunk4_to_planes_scalar(&src);
+        let back = planes_to_rgba_f32_chunk4_scalar(&r, &g, &b, &a);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgba_f32_chunk4_matches_slice_api() {
+        let src: [f32; 16] = make_rgba_chunk::<4, 16>();
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk4_to_planes_scalar(&src);
+        let mut r = [0.0f32; 4];
+        let mut g = [0.0f32; 4];
+        let mut b = [0.0f32; 4];
+        let mut a = [0.0f32; 4];
+        rgba_f32_to_planes_f32(&src, &mut r, &mut g, &mut b, &mut a).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+        assert_eq!(a_chunk, a);
+    }
+
+    // --- chunk-8 -----------------------------------------------------------
+
+    #[test]
+    fn rgb_f32_chunk8_order_preserving() {
+        let src: [f32; 24] = make_rgb_chunk::<8, 24>();
+        let (r, g, b) = rgb_f32_chunk8_to_planes_scalar(&src);
+        assert_eq!(r, [0.0, 3.0, 6.0, 9.0, 12.0, 15.0, 18.0, 21.0]);
+        assert_eq!(g, [1.0, 4.0, 7.0, 10.0, 13.0, 16.0, 19.0, 22.0]);
+        assert_eq!(b, [2.0, 5.0, 8.0, 11.0, 14.0, 17.0, 20.0, 23.0]);
+    }
+
+    #[test]
+    fn rgb_f32_chunk8_round_trip() {
+        let src: [f32; 24] = make_rgb_chunk::<8, 24>();
+        let (r, g, b) = rgb_f32_chunk8_to_planes_scalar(&src);
+        let back = planes_to_rgb_f32_chunk8_scalar(&r, &g, &b);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgb_f32_chunk8_matches_slice_api() {
+        let src: [f32; 24] = make_rgb_chunk::<8, 24>();
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk8_to_planes_scalar(&src);
+        let mut r = [0.0f32; 8];
+        let mut g = [0.0f32; 8];
+        let mut b = [0.0f32; 8];
+        rgb_f32_to_planes_f32(&src, &mut r, &mut g, &mut b).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+    }
+
+    #[test]
+    fn rgba_f32_chunk8_order_preserving() {
+        let src: [f32; 32] = make_rgba_chunk::<8, 32>();
+        let (r, g, b, a) = rgba_f32_chunk8_to_planes_scalar(&src);
+        for i in 0..8 {
+            assert_eq!(r[i], src[i * 4]);
+            assert_eq!(g[i], src[i * 4 + 1]);
+            assert_eq!(b[i], src[i * 4 + 2]);
+            assert_eq!(a[i], src[i * 4 + 3]);
+        }
+    }
+
+    #[test]
+    fn rgba_f32_chunk8_round_trip() {
+        let src: [f32; 32] = make_rgba_chunk::<8, 32>();
+        let (r, g, b, a) = rgba_f32_chunk8_to_planes_scalar(&src);
+        let back = planes_to_rgba_f32_chunk8_scalar(&r, &g, &b, &a);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgba_f32_chunk8_matches_slice_api() {
+        let src: [f32; 32] = make_rgba_chunk::<8, 32>();
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk8_to_planes_scalar(&src);
+        let mut r = [0.0f32; 8];
+        let mut g = [0.0f32; 8];
+        let mut b = [0.0f32; 8];
+        let mut a = [0.0f32; 8];
+        rgba_f32_to_planes_f32(&src, &mut r, &mut g, &mut b, &mut a).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+        assert_eq!(a_chunk, a);
+    }
+
+    // --- chunk-16 ----------------------------------------------------------
+
+    #[test]
+    fn rgb_f32_chunk16_order_preserving() {
+        let src: [f32; 48] = make_rgb_chunk::<16, 48>();
+        let (r, g, b) = rgb_f32_chunk16_to_planes_scalar(&src);
+        for i in 0..16 {
+            assert_eq!(r[i], (i * 3) as f32);
+            assert_eq!(g[i], (i * 3 + 1) as f32);
+            assert_eq!(b[i], (i * 3 + 2) as f32);
+        }
+    }
+
+    #[test]
+    fn rgb_f32_chunk16_round_trip() {
+        let src: [f32; 48] = make_rgb_chunk::<16, 48>();
+        let (r, g, b) = rgb_f32_chunk16_to_planes_scalar(&src);
+        let back = planes_to_rgb_f32_chunk16_scalar(&r, &g, &b);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgb_f32_chunk16_matches_slice_api() {
+        let src: [f32; 48] = make_rgb_chunk::<16, 48>();
+        let (r_chunk, g_chunk, b_chunk) = rgb_f32_chunk16_to_planes_scalar(&src);
+        let mut r = [0.0f32; 16];
+        let mut g = [0.0f32; 16];
+        let mut b = [0.0f32; 16];
+        rgb_f32_to_planes_f32(&src, &mut r, &mut g, &mut b).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+    }
+
+    #[test]
+    fn rgba_f32_chunk16_order_preserving() {
+        let src: [f32; 64] = make_rgba_chunk::<16, 64>();
+        let (r, g, b, a) = rgba_f32_chunk16_to_planes_scalar(&src);
+        for i in 0..16 {
+            assert_eq!(r[i], src[i * 4]);
+            assert_eq!(g[i], src[i * 4 + 1]);
+            assert_eq!(b[i], src[i * 4 + 2]);
+            assert_eq!(a[i], src[i * 4 + 3]);
+        }
+    }
+
+    #[test]
+    fn rgba_f32_chunk16_round_trip() {
+        let src: [f32; 64] = make_rgba_chunk::<16, 64>();
+        let (r, g, b, a) = rgba_f32_chunk16_to_planes_scalar(&src);
+        let back = planes_to_rgba_f32_chunk16_scalar(&r, &g, &b, &a);
+        assert_eq!(back, src);
+    }
+
+    #[test]
+    fn rgba_f32_chunk16_matches_slice_api() {
+        let src: [f32; 64] = make_rgba_chunk::<16, 64>();
+        let (r_chunk, g_chunk, b_chunk, a_chunk) = rgba_f32_chunk16_to_planes_scalar(&src);
+        let mut r = [0.0f32; 16];
+        let mut g = [0.0f32; 16];
+        let mut b = [0.0f32; 16];
+        let mut a = [0.0f32; 16];
+        rgba_f32_to_planes_f32(&src, &mut r, &mut g, &mut b, &mut a).unwrap();
+        assert_eq!(r_chunk, r);
+        assert_eq!(g_chunk, g);
+        assert_eq!(b_chunk, b);
+        assert_eq!(a_chunk, a);
     }
 }

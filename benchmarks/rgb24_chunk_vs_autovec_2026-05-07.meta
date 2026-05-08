@@ -1,0 +1,29 @@
+commit:    118f857 (current branch tip)
+host:      AMD Ryzen 9 7950X (Zen 4)
+cmd:       cargo bench --bench deinterleave --features experimental -- --group="rgb24_to_planes_f32"
+zenbench:  0.1.7
+date:      2026-05-07 UTC
+
+Question: u8→f32 chunk SIMD (`rgb24_chunk8_tokenless_v3`) — does it
+  actually beat autovec like the f32 chunks failed to?
+
+Conclusion: YES, it wins 21-52% at L1-L3 sizes:
+  | size       | scalar  | autovec | chunk-SIMD | chunk vs autovec |
+  | 256px      |   216ns |   127ns |    64ns    |     +50%         |
+  | 4096px     |  3293ns |  1218ns |   602ns    |     +51%         |
+  | 65536px    | 50069ns | 20055ns |  9706ns    |     +52%         |
+  | 262144px   |  224.8µ |  90.7µ  |   60.3µ    |     +34%         |
+  | 1MP        |  873.8µ |  591.2µ |  467.5µ    |     +21%         |
+  | 4MP+ (DRAM)|  (memory-bound — all 3 tied) |
+
+Why u8 wins where f32 lost:
+  - `_mm_shuffle_epi8` with the precomputed mask is a pattern autovec
+    can't infer from generic strided indexing — the deinterleave step
+    legitimately needs hand-written SIMD.
+  - The widening + store IS 256-bit AVX2 (`_mm256_cvtepu8_epi32` +
+    `_mm256_cvtepi32_ps` + `_mm256_storeu_ps`) — unlike the f32 chunks
+    which were 128-bit XMM throughout.
+
+Action: KEEP `rgb24_chunk8_tokenless_v3` and the rgb24 slice-level
+  chunk dispatcher. Verified net-positive. Same logic applies for
+  `rgb48_chunk8_tokenless_v3` (see rgb48_chunk_vs_autovec_2026-05-07).

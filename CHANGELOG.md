@@ -7,6 +7,100 @@
 <!-- Breaking changes that will ship together in the next major (or minor for 0.x) release.
      Add items here as you discover them. Do NOT ship these piecemeal — batch them. -->
 
+## [0.2.8] - 2026-05-07
+
+### Removed (BREAKING)
+
+- `garb::deinterleave::rgb24_chunk8_to_planes_v3(_t: X64V3Token, ...)` and
+  `rgb48_chunk8_to_planes_v3(_t: X64V3Token, ...)` — replaced by their
+  tokenless equivalents below. These were the only two public APIs in the
+  crate that mentioned an archmage `Token` type in their signature.
+  Removing them decouples garb's semver from archmage's. v0.2.7 is yanked
+  because its archmage-coupled surface was unintentional. Callers update
+  call sites by dropping the token argument and renaming the suffix from
+  `_v3` to `_tokenless_v3`.
+
+### Not added (PR #5's hand-written f32 chunk SIMD dropped)
+
+PR #5 introduced 36 hand-written 128-bit-XMM f32 chunk SIMD primitives
+(`{rgb,rgba}_f32_chunk{4,8,16}_to_planes_{v3,neon,wasm128}` and the
+`planes_to_*` inverses). They were never published. Audit during this
+PR found:
+
+- Every f32 chunk SIMD body used `_mm_*` (128-bit XMM) intrinsics
+  exclusively — 75 ops vs 0 `_mm256_*` ops in the f32 chunk module.
+  The `_v3` naming was misleading; these were VEX-encoded SSE-style
+  ops, not real 256-bit AVX2.
+- Bench (`benchmarks/deinterleave_autovec_vs_chunk_2026-05-07`):
+  LLVM autovec on the plain scalar loop wrapped in `#[arcane(v3)]`
+  beats the hand-written 128-bit chunks by 26-37% at 1024px (the
+  realistic image-row size). At larger sizes (16K+) they're within
+  ~5%, memory-bandwidth-dominated.
+- Direct asm: autovec emits 20 YMM uses + 6 XMM uses; the
+  hand-written dispatcher emits 20 YMM + 67 XMM. LLVM uses 256-bit
+  ops on the scalar loop; the hand-written code can't.
+
+The hand-written f32 chunk SIMD shipped a net-negative implementation
+vs autovec. Dropped before publish. Slice dispatchers route through
+LLVM autovec on the `#[inline(always)]` scalar loop body inside an
+`#[arcane(<tier>)]` region; the same path the public dispatcher took
+in v0.2.6 / v0.2.7. Future engineering work could rewrite the chunks
+using actual 256-bit `_mm256_*` ops and might beat autovec — that's a
+separate PR.
+
+### Added (experimental)
+
+- **Pure-scalar f32 chunk primitives** (12) — `{rgb,rgba}_f32_chunk{4,8,16}_to_planes_scalar`
+  and `planes_to_{rgb,rgba}_f32_chunk{4,8,16}_scalar`. Always available,
+  always safe, no archmage dependency. Useful for callers in non-SIMD
+  regions or — more usefully — for callers inside their own
+  `#[arcane(<tier>)]` region where LLVM autovec lifts them to YMM.
+  These are the path `zenpixels-convert/fast_gamut_v2.rs` now uses.
+
+- **Slice-level f32 dispatchers** (4) — `rgb_f32_to_planes_f32`,
+  `rgba_f32_to_planes_f32`, `planes_f32_to_rgb_f32`, `planes_f32_to_rgba_f32`.
+  Internal `incant!` dispatch over `[v3, neon, wasm128, scalar]`,
+  each tier's body being a thin `#[arcane(<tier>)]` wrapper that
+  inlines the scalar loop. Takes plain `&[f32]` / `&mut [f32]`;
+  no archmage type in signature.
+
+- 2 u8/u16 tokenless replacements — `rgb24_chunk8_to_planes_tokenless_v3`
+  and `rgb48_chunk8_to_planes_tokenless_v3` replace the removed
+  token-accepting forms. Same SIMD body (`vpshufb` + 256-bit
+  `vpmovzxbd` + `vcvtdq2ps` + 256-bit store) — these *do* use
+  256-bit AVX2 for the widening + store steps, unlike the f32
+  chunks. No token in signature.
+
+### Notes
+
+- All new items are gated by the existing `experimental` cargo feature.
+- No archmage types appear in any public signature in this crate after
+  v0.2.8. archmage stays a build-time dep but is not part of garb's API
+  contract.
+- `cargo build --release --features experimental` cold-build cost: ~12 ms
+  cheaper than v0.2.7 thanks to deleting the 1180-line chunk-SIMD module
+  block.
+- Supersedes the v0.2.7 PR #5 work.
+
+### Migration
+
+Downstream callers of v0.2.7's two token-taking APIs:
+
+```rust
+// Before (v0.2.7):
+let (r, g, b) = garb::deinterleave::rgb24_chunk8_to_planes_v3(token, chunk);
+
+// After (v0.2.8):
+let (r, g, b) = garb::deinterleave::rgb24_chunk8_to_planes_tokenless_v3(chunk);
+```
+
+`zenpixels-convert/fast_gamut_v2.rs` was the only caller of PR #5's
+hand-written f32 chunk SIMD. Migration: rename `*_chunk{4,8}_to_planes_tokenless_{v3,neon,wasm128}` →
+`*_chunk{4,8}_to_planes_scalar`. Caller is already inside `#[arcane(<tier>)]`,
+so LLVM autovec lifts the scalar body to 256-bit YMM.
+
+Tracking: imazen/garb#7
+
 ## [0.2.7] - 2026-04-29
 
 ### Added (experimental)
