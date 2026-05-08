@@ -7,6 +7,83 @@
 <!-- Breaking changes that will ship together in the next major (or minor for 0.x) release.
      Add items here as you discover them. Do NOT ship these piecemeal — batch them. -->
 
+## [0.2.8] - 2026-05-07
+
+### Removed (BREAKING)
+
+- `garb::deinterleave::rgb24_chunk8_to_planes_v3(_t: X64V3Token, ...)` and
+  `rgb48_chunk8_to_planes_v3(_t: X64V3Token, ...)` — replaced by their
+  tokenless equivalents below. These were the only two public APIs in the
+  crate that mentioned an archmage `Token` type in their signature.
+  Removing them decouples garb's semver from archmage's. v0.2.7 is yanked
+  because its archmage-coupled surface was unintentional. Callers update
+  call sites by dropping the token argument and renaming the suffix from
+  `_v3` to `_tokenless_v3`.
+
+### Added (experimental)
+
+- **Tokenless `#[rite(<tier>)]` chunk primitives** in `garb::deinterleave::`.
+  Each is a `pub fn` with no archmage type in its signature, decorated
+  with archmage's tier-based `#[rite(<tier>)]` form (which adds
+  `#[target_feature]` + `#[inline]` + `#[cfg(target_arch)]` automatically).
+  Safe to call from any matching `#[arcane]` / `#[rite]` / `#[target_feature]`
+  region; inlines into the caller without crossing an LLVM optimization
+  boundary. Tiers exposed: `v3` (AVX2), `neon` (aarch64), `wasm128` (wasm32
+  SIMD128).
+  - 36 f32 chunk variants — `{rgb,rgba}_f32_chunk{4,8,16}_to_planes_tokenless_{v3,neon,wasm128}`
+    (deinterleave, 18) and `planes_to_{rgb,rgba}_f32_chunk{4,8,16}_tokenless_{v3,neon,wasm128}`
+    (interleave, 18). Real SIMD bodies — NEON `vld3q_f32` / `vld4q_f32`,
+    AVX2 `_mm_shuffle_ps` / `_mm_permute_ps` / `_mm_blend_ps`, wasm32
+    `i32x4_shuffle`. Routed through the slice-level dispatchers via
+    16 → 8 → 4 → scalar pipeline.
+  - 2 u8/u16 chunk replacements — `rgb24_chunk8_to_planes_tokenless_v3`
+    and `rgb48_chunk8_to_planes_tokenless_v3` replace the removed token-
+    accepting forms. Same SIMD body (vpshufb + vpmovzxbd + vcvtdq2ps), no
+    token in signature.
+
+- **Pure-scalar f32 chunk primitives** (12) — `{rgb,rgba}_f32_chunk{4,8,16}_to_planes_scalar`
+  and `planes_to_{rgb,rgba}_f32_chunk{4,8,16}_scalar`. Always available,
+  always safe, no archmage dependency. Useful for callers in non-SIMD
+  regions or as parity-check ground truth.
+
+- **Slice-level f32 dispatchers** (4) — `rgb_f32_to_planes_f32`,
+  `rgba_f32_to_planes_f32`, `planes_f32_to_rgb_f32`, `planes_f32_to_rgba_f32`.
+  Internal `incant!` dispatch over `[v3, neon, wasm128, scalar]`. Take
+  plain `&[f32]` / `&mut [f32]`; no archmage type in signature.
+
+- `tests/asm_inline_check.rs` — verifies the per-arch chunk fns inline
+  cleanly into a sample `#[arcane]` caller. Updated to use the tokenless
+  names.
+
+### Notes
+
+- All new items are gated by the existing `experimental` cargo feature.
+- No archmage types appear in any public signature in this crate after
+  v0.2.8. archmage stays a build-time dep but is not part of garb's API
+  contract.
+- `cargo build --release --features experimental` cold-build cost: same
+  as the v0.2.7-equivalent token-taking PR (~+60 ms over main on garb's
+  own crate). The `_tokenless_<tier>` rename and `#[rite(<tier>)]` swap
+  are zero-LOC-delta in lowered code.
+- Supersedes the v0.2.7 PR #5 work.
+
+### Migration
+
+Downstream callers of v0.2.7's two token-taking APIs:
+
+```rust
+// Before (v0.2.7):
+let (r, g, b) = garb::deinterleave::rgb24_chunk8_to_planes_v3(token, chunk);
+
+// After (v0.2.8):
+let (r, g, b) = garb::deinterleave::rgb24_chunk8_to_planes_tokenless_v3(chunk);
+```
+
+The token must already be in scope (caller is inside an `#[arcane]` or
+`#[rite]` region), but garb no longer asks for it.
+
+Tracking: imazen/garb#7
+
 ## [0.2.7] - 2026-04-29
 
 ### Added (experimental)

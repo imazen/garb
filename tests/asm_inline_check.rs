@@ -34,45 +34,45 @@
 mod x86_inline {
     use archmage::prelude::*;
     use garb::deinterleave::{
-        planes_to_rgb_f32_chunk16_v3, planes_to_rgba_f32_chunk16_v3, rgb_f32_chunk16_to_planes_v3,
-        rgba_f32_chunk16_to_planes_v3,
+        planes_to_rgb_f32_chunk16_tokenless_v3, planes_to_rgba_f32_chunk16_tokenless_v3, rgb_f32_chunk16_to_planes_tokenless_v3,
+        rgba_f32_chunk16_to_planes_tokenless_v3,
     };
 
     #[archmage::arcane]
     pub fn sample_caller_v3_rgb_chunk16(
-        t: X64V3Token,
+        _t: X64V3Token,
         src: &[f32; 48],
     ) -> ([f32; 16], [f32; 16], [f32; 16]) {
-        rgb_f32_chunk16_to_planes_v3(t, src)
+        rgb_f32_chunk16_to_planes_tokenless_v3(src)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_v3_rgba_chunk16(
-        t: X64V3Token,
+        _t: X64V3Token,
         src: &[f32; 64],
     ) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
-        rgba_f32_chunk16_to_planes_v3(t, src)
+        rgba_f32_chunk16_to_planes_tokenless_v3(src)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_v3_planes_to_rgb_chunk16(
-        t: X64V3Token,
+        _t: X64V3Token,
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
     ) -> [f32; 48] {
-        planes_to_rgb_f32_chunk16_v3(t, r, g, b)
+        planes_to_rgb_f32_chunk16_tokenless_v3(r, g, b)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_v3_planes_to_rgba_chunk16(
-        t: X64V3Token,
+        _t: X64V3Token,
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
         a: &[f32; 16],
     ) -> [f32; 64] {
-        planes_to_rgba_f32_chunk16_v3(t, r, g, b, a)
+        planes_to_rgba_f32_chunk16_tokenless_v3(r, g, b, a)
     }
 }
 
@@ -80,45 +80,45 @@ mod x86_inline {
 mod neon_inline {
     use archmage::prelude::*;
     use garb::deinterleave::{
-        planes_to_rgb_f32_chunk16_neon, planes_to_rgba_f32_chunk16_neon,
-        rgb_f32_chunk16_to_planes_neon, rgba_f32_chunk16_to_planes_neon,
+        planes_to_rgb_f32_chunk16_tokenless_neon, planes_to_rgba_f32_chunk16_tokenless_neon,
+        rgb_f32_chunk16_to_planes_tokenless_neon, rgba_f32_chunk16_to_planes_tokenless_neon,
     };
 
     #[archmage::arcane]
     pub fn sample_caller_neon_rgb_chunk16(
-        t: NeonToken,
+        _t: NeonToken,
         src: &[f32; 48],
     ) -> ([f32; 16], [f32; 16], [f32; 16]) {
-        rgb_f32_chunk16_to_planes_neon(t, src)
+        rgb_f32_chunk16_to_planes_tokenless_neon(src)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_neon_rgba_chunk16(
-        t: NeonToken,
+        _t: NeonToken,
         src: &[f32; 64],
     ) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
-        rgba_f32_chunk16_to_planes_neon(t, src)
+        rgba_f32_chunk16_to_planes_tokenless_neon(src)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_neon_planes_to_rgb_chunk16(
-        t: NeonToken,
+        _t: NeonToken,
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
     ) -> [f32; 48] {
-        planes_to_rgb_f32_chunk16_neon(t, r, g, b)
+        planes_to_rgb_f32_chunk16_tokenless_neon(r, g, b)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_neon_planes_to_rgba_chunk16(
-        t: NeonToken,
+        _t: NeonToken,
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
         a: &[f32; 16],
     ) -> [f32; 64] {
-        planes_to_rgba_f32_chunk16_neon(t, r, g, b, a)
+        planes_to_rgba_f32_chunk16_tokenless_neon(r, g, b, a)
     }
 }
 
@@ -126,45 +126,45 @@ mod neon_inline {
 mod wasm_inline {
     use archmage::prelude::*;
     use garb::deinterleave::{
-        planes_to_rgb_f32_chunk16_wasm128, planes_to_rgba_f32_chunk16_wasm128,
-        rgb_f32_chunk16_to_planes_wasm128, rgba_f32_chunk16_to_planes_wasm128,
+        planes_to_rgb_f32_chunk16_tokenless_wasm128, planes_to_rgba_f32_chunk16_tokenless_wasm128,
+        rgb_f32_chunk16_to_planes_tokenless_wasm128, rgba_f32_chunk16_to_planes_tokenless_wasm128,
     };
 
     #[archmage::arcane]
     pub fn sample_caller_wasm128_rgb_chunk16(
-        t: Wasm128Token,
+        _t: Wasm128Token,
         src: &[f32; 48],
     ) -> ([f32; 16], [f32; 16], [f32; 16]) {
-        rgb_f32_chunk16_to_planes_wasm128(t, src)
+        rgb_f32_chunk16_to_planes_tokenless_wasm128(src)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_wasm128_rgba_chunk16(
-        t: Wasm128Token,
+        _t: Wasm128Token,
         src: &[f32; 64],
     ) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
-        rgba_f32_chunk16_to_planes_wasm128(t, src)
+        rgba_f32_chunk16_to_planes_tokenless_wasm128(src)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_wasm128_planes_to_rgb_chunk16(
-        t: Wasm128Token,
+        _t: Wasm128Token,
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
     ) -> [f32; 48] {
-        planes_to_rgb_f32_chunk16_wasm128(t, r, g, b)
+        planes_to_rgb_f32_chunk16_tokenless_wasm128(r, g, b)
     }
 
     #[archmage::arcane]
     pub fn sample_caller_wasm128_planes_to_rgba_chunk16(
-        t: Wasm128Token,
+        _t: Wasm128Token,
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
         a: &[f32; 16],
     ) -> [f32; 64] {
-        planes_to_rgba_f32_chunk16_wasm128(t, r, g, b, a)
+        planes_to_rgba_f32_chunk16_tokenless_wasm128(r, g, b, a)
     }
 }
 

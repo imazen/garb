@@ -307,8 +307,8 @@ mod x86 {
         -128, -128, -128, -128, -128, -128, -128, -128, -128, -128, 2, 3, 8, 9, 14, 15,
     ];
 
-    #[rite]
-    pub fn rgb24_chunk8_v3(_t: X64V3Token, c: &[u8; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+    #[rite(v3)]
+    pub fn rgb24_chunk8_tokenless_v3(c: &[u8; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
         let lo16: &[u8; 16] = c[0..16].try_into().unwrap();
         let hi16: &[u8; 16] = c[8..24].try_into().unwrap();
         let lo = _mm_loadu_si128(lo16);
@@ -341,8 +341,8 @@ mod x86 {
         (r_out, g_out, b_out)
     }
 
-    #[rite]
-    pub fn rgb48_chunk8_v3(_t: X64V3Token, c: &[u16; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+    #[rite(v3)]
+    pub fn rgb48_chunk8_tokenless_v3(c: &[u16; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
         // Reinterpret the 24-u16 chunk as 48 bytes via 3 × 16-byte loads.
         let bytes: &[u8; 48] = bytemuck::cast_ref(c);
         let v1b: &[u8; 16] = bytes[0..16].try_into().unwrap();
@@ -412,7 +412,7 @@ mod x86 {
 
     #[arcane]
     pub(crate) fn rgb24_to_planes_impl_v3(
-        t: X64V3Token,
+        _t: X64V3Token,
         src: &[u8],
         r: &mut [f32],
         g: &mut [f32],
@@ -424,7 +424,7 @@ mod x86 {
             let bs = ci * 24;
             let ps = ci * 8;
             let c: &[u8; 24] = src[bs..bs + 24].try_into().unwrap();
-            let (rv, gv, bv) = rgb24_chunk8_v3(t, c);
+            let (rv, gv, bv) = rgb24_chunk8_tokenless_v3(c);
             r[ps..ps + 8].copy_from_slice(&rv);
             g[ps..ps + 8].copy_from_slice(&gv);
             b[ps..ps + 8].copy_from_slice(&bv);
@@ -438,7 +438,7 @@ mod x86 {
 
     #[arcane]
     pub(crate) fn rgb48_to_planes_impl_v3(
-        t: X64V3Token,
+        _t: X64V3Token,
         src: &[u16],
         r: &mut [f32],
         g: &mut [f32],
@@ -450,7 +450,7 @@ mod x86 {
             let bs = ci * 24;
             let ps = ci * 8;
             let c: &[u16; 24] = src[bs..bs + 24].try_into().unwrap();
-            let (rv, gv, bv) = rgb48_chunk8_v3(t, c);
+            let (rv, gv, bv) = rgb48_chunk8_tokenless_v3(c);
             r[ps..ps + 8].copy_from_slice(&rv);
             g[ps..ps + 8].copy_from_slice(&gv);
             b[ps..ps + 8].copy_from_slice(&bv);
@@ -492,13 +492,13 @@ use x86::{rgb24_to_planes_impl_v3, rgb48_to_planes_impl_v3};
 /// will fail to compile.
 #[cfg(target_arch = "x86_64")]
 #[doc(hidden)]
-pub use x86::rgb24_chunk8_v3 as rgb24_chunk8_to_planes_v3;
+pub use x86::rgb24_chunk8_tokenless_v3 as rgb24_chunk8_to_planes_v3;
 
 /// AVX2 chunk-level deinterleave for `RGB48` (`u16` per channel). See
 /// [`rgb24_chunk8_to_planes_v3`]; same shape, just `&[u16; 24]` input.
 #[cfg(target_arch = "x86_64")]
 #[doc(hidden)]
-pub use x86::rgb48_chunk8_v3 as rgb48_chunk8_to_planes_v3;
+pub use x86::rgb48_chunk8_tokenless_v3 as rgb48_chunk8_to_planes_v3;
 
 /// Scalar fallback chunk-level deinterleave. Compiles on every target;
 /// LLVM autovectorizes inside whatever target_feature region the caller
@@ -739,7 +739,7 @@ mod x86_f32 {
 
     #[arcane]
     pub(crate) fn rgb_f32_to_planes_impl_v3(
-        t: X64V3Token,
+        _t: X64V3Token,
         src: &[f32],
         r: &mut [f32],
         g: &mut [f32],
@@ -751,7 +751,7 @@ mod x86_f32 {
         while p + 16 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 48] = src[off_src..off_src + 48].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_v3(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_tokenless_v3(chunk);
             r[p..p + 16].copy_from_slice(&rc);
             g[p..p + 16].copy_from_slice(&gc);
             b[p..p + 16].copy_from_slice(&bc);
@@ -761,7 +761,7 @@ mod x86_f32 {
         while p + 8 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 24] = src[off_src..off_src + 24].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_v3(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_tokenless_v3(chunk);
             r[p..p + 8].copy_from_slice(&rc);
             g[p..p + 8].copy_from_slice(&gc);
             b[p..p + 8].copy_from_slice(&bc);
@@ -771,7 +771,7 @@ mod x86_f32 {
         while p + 4 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 12] = src[off_src..off_src + 12].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_v3(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_tokenless_v3(chunk);
             r[p..p + 4].copy_from_slice(&rc);
             g[p..p + 4].copy_from_slice(&gc);
             b[p..p + 4].copy_from_slice(&bc);
@@ -788,7 +788,7 @@ mod x86_f32 {
 
     #[arcane]
     pub(crate) fn rgba_f32_to_planes_impl_v3(
-        t: X64V3Token,
+        _t: X64V3Token,
         src: &[f32],
         r: &mut [f32],
         g: &mut [f32],
@@ -800,7 +800,7 @@ mod x86_f32 {
         while p + 16 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 64] = src[off_src..off_src + 64].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_v3(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_tokenless_v3(chunk);
             r[p..p + 16].copy_from_slice(&rc);
             g[p..p + 16].copy_from_slice(&gc);
             b[p..p + 16].copy_from_slice(&bc);
@@ -810,7 +810,7 @@ mod x86_f32 {
         while p + 8 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 32] = src[off_src..off_src + 32].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_v3(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_tokenless_v3(chunk);
             r[p..p + 8].copy_from_slice(&rc);
             g[p..p + 8].copy_from_slice(&gc);
             b[p..p + 8].copy_from_slice(&bc);
@@ -820,7 +820,7 @@ mod x86_f32 {
         while p + 4 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 16] = src[off_src..off_src + 16].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_v3(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_tokenless_v3(chunk);
             r[p..p + 4].copy_from_slice(&rc);
             g[p..p + 4].copy_from_slice(&gc);
             b[p..p + 4].copy_from_slice(&bc);
@@ -838,7 +838,7 @@ mod x86_f32 {
 
     #[arcane]
     pub(crate) fn planes_to_rgb_f32_impl_v3(
-        t: X64V3Token,
+        _t: X64V3Token,
         r: &[f32],
         g: &[f32],
         b: &[f32],
@@ -850,7 +850,7 @@ mod x86_f32 {
             let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
             let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk16_v3(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk16_tokenless_v3(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 48].copy_from_slice(&part);
             p += 16;
@@ -859,7 +859,7 @@ mod x86_f32 {
             let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
             let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk8_v3(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk8_tokenless_v3(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 24].copy_from_slice(&part);
             p += 8;
@@ -868,7 +868,7 @@ mod x86_f32 {
             let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
             let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk4_v3(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk4_tokenless_v3(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 12].copy_from_slice(&part);
             p += 4;
@@ -883,7 +883,7 @@ mod x86_f32 {
 
     #[arcane]
     pub(crate) fn planes_to_rgba_f32_impl_v3(
-        t: X64V3Token,
+        _t: X64V3Token,
         r: &[f32],
         g: &[f32],
         b: &[f32],
@@ -897,7 +897,7 @@ mod x86_f32 {
             let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
             let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk16_v3(t, r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk16_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 64].copy_from_slice(&part);
             p += 16;
@@ -907,7 +907,7 @@ mod x86_f32 {
             let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
             let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk8_v3(t, r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk8_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 32].copy_from_slice(&part);
             p += 8;
@@ -917,7 +917,7 @@ mod x86_f32 {
             let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
             let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk4_v3(t, r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk4_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 16].copy_from_slice(&part);
             p += 4;
@@ -954,7 +954,7 @@ mod arm_f32 {
 
     #[arcane]
     pub(crate) fn rgb_f32_to_planes_impl_neon(
-        t: NeonToken,
+        _t: NeonToken,
         src: &[f32],
         r: &mut [f32],
         g: &mut [f32],
@@ -965,7 +965,7 @@ mod arm_f32 {
         while p + 16 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 48] = src[off_src..off_src + 48].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_neon(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_tokenless_neon(chunk);
             r[p..p + 16].copy_from_slice(&rc);
             g[p..p + 16].copy_from_slice(&gc);
             b[p..p + 16].copy_from_slice(&bc);
@@ -974,7 +974,7 @@ mod arm_f32 {
         while p + 8 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 24] = src[off_src..off_src + 24].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_neon(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_tokenless_neon(chunk);
             r[p..p + 8].copy_from_slice(&rc);
             g[p..p + 8].copy_from_slice(&gc);
             b[p..p + 8].copy_from_slice(&bc);
@@ -983,7 +983,7 @@ mod arm_f32 {
         while p + 4 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 12] = src[off_src..off_src + 12].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_neon(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_tokenless_neon(chunk);
             r[p..p + 4].copy_from_slice(&rc);
             g[p..p + 4].copy_from_slice(&gc);
             b[p..p + 4].copy_from_slice(&bc);
@@ -999,7 +999,7 @@ mod arm_f32 {
 
     #[arcane]
     pub(crate) fn rgba_f32_to_planes_impl_neon(
-        t: NeonToken,
+        _t: NeonToken,
         src: &[f32],
         r: &mut [f32],
         g: &mut [f32],
@@ -1011,7 +1011,7 @@ mod arm_f32 {
         while p + 16 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 64] = src[off_src..off_src + 64].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_neon(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_tokenless_neon(chunk);
             r[p..p + 16].copy_from_slice(&rc);
             g[p..p + 16].copy_from_slice(&gc);
             b[p..p + 16].copy_from_slice(&bc);
@@ -1021,7 +1021,7 @@ mod arm_f32 {
         while p + 8 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 32] = src[off_src..off_src + 32].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_neon(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_tokenless_neon(chunk);
             r[p..p + 8].copy_from_slice(&rc);
             g[p..p + 8].copy_from_slice(&gc);
             b[p..p + 8].copy_from_slice(&bc);
@@ -1031,7 +1031,7 @@ mod arm_f32 {
         while p + 4 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 16] = src[off_src..off_src + 16].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_neon(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_tokenless_neon(chunk);
             r[p..p + 4].copy_from_slice(&rc);
             g[p..p + 4].copy_from_slice(&gc);
             b[p..p + 4].copy_from_slice(&bc);
@@ -1049,7 +1049,7 @@ mod arm_f32 {
 
     #[arcane]
     pub(crate) fn planes_to_rgb_f32_impl_neon(
-        t: NeonToken,
+        _t: NeonToken,
         r: &[f32],
         g: &[f32],
         b: &[f32],
@@ -1061,7 +1061,7 @@ mod arm_f32 {
             let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
             let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk16_neon(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk16_tokenless_neon(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 48].copy_from_slice(&part);
             p += 16;
@@ -1070,7 +1070,7 @@ mod arm_f32 {
             let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
             let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk8_neon(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk8_tokenless_neon(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 24].copy_from_slice(&part);
             p += 8;
@@ -1079,7 +1079,7 @@ mod arm_f32 {
             let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
             let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk4_neon(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk4_tokenless_neon(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 12].copy_from_slice(&part);
             p += 4;
@@ -1094,7 +1094,7 @@ mod arm_f32 {
 
     #[arcane]
     pub(crate) fn planes_to_rgba_f32_impl_neon(
-        t: NeonToken,
+        _t: NeonToken,
         r: &[f32],
         g: &[f32],
         b: &[f32],
@@ -1109,7 +1109,7 @@ mod arm_f32 {
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
             let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
             let part =
-                super::planes_to_rgba_f32_chunk16_neon(t, r_chunk, g_chunk, b_chunk, a_chunk);
+                super::planes_to_rgba_f32_chunk16_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 64].copy_from_slice(&part);
             p += 16;
@@ -1119,7 +1119,7 @@ mod arm_f32 {
             let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
             let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk8_neon(t, r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk8_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 32].copy_from_slice(&part);
             p += 8;
@@ -1129,7 +1129,7 @@ mod arm_f32 {
             let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
             let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk4_neon(t, r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk4_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 16].copy_from_slice(&part);
             p += 4;
@@ -1163,7 +1163,7 @@ mod wasm_f32 {
 
     #[archmage::arcane]
     pub(crate) fn rgb_f32_to_planes_impl_wasm128(
-        t: Wasm128Token,
+        _t: Wasm128Token,
         src: &[f32],
         r: &mut [f32],
         g: &mut [f32],
@@ -1174,7 +1174,7 @@ mod wasm_f32 {
         while p + 16 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 48] = src[off_src..off_src + 48].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_wasm128(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk16_to_planes_tokenless_wasm128(chunk);
             r[p..p + 16].copy_from_slice(&rc);
             g[p..p + 16].copy_from_slice(&gc);
             b[p..p + 16].copy_from_slice(&bc);
@@ -1183,7 +1183,7 @@ mod wasm_f32 {
         while p + 8 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 24] = src[off_src..off_src + 24].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_wasm128(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk8_to_planes_tokenless_wasm128(chunk);
             r[p..p + 8].copy_from_slice(&rc);
             g[p..p + 8].copy_from_slice(&gc);
             b[p..p + 8].copy_from_slice(&bc);
@@ -1192,7 +1192,7 @@ mod wasm_f32 {
         while p + 4 <= pixels {
             let off_src = p * 3;
             let chunk: &[f32; 12] = src[off_src..off_src + 12].try_into().unwrap();
-            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_wasm128(t, chunk);
+            let (rc, gc, bc) = super::rgb_f32_chunk4_to_planes_tokenless_wasm128(chunk);
             r[p..p + 4].copy_from_slice(&rc);
             g[p..p + 4].copy_from_slice(&gc);
             b[p..p + 4].copy_from_slice(&bc);
@@ -1208,7 +1208,7 @@ mod wasm_f32 {
 
     #[archmage::arcane]
     pub(crate) fn rgba_f32_to_planes_impl_wasm128(
-        t: Wasm128Token,
+        _t: Wasm128Token,
         src: &[f32],
         r: &mut [f32],
         g: &mut [f32],
@@ -1220,7 +1220,7 @@ mod wasm_f32 {
         while p + 16 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 64] = src[off_src..off_src + 64].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_wasm128(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk16_to_planes_tokenless_wasm128(chunk);
             r[p..p + 16].copy_from_slice(&rc);
             g[p..p + 16].copy_from_slice(&gc);
             b[p..p + 16].copy_from_slice(&bc);
@@ -1230,7 +1230,7 @@ mod wasm_f32 {
         while p + 8 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 32] = src[off_src..off_src + 32].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_wasm128(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk8_to_planes_tokenless_wasm128(chunk);
             r[p..p + 8].copy_from_slice(&rc);
             g[p..p + 8].copy_from_slice(&gc);
             b[p..p + 8].copy_from_slice(&bc);
@@ -1240,7 +1240,7 @@ mod wasm_f32 {
         while p + 4 <= pixels {
             let off_src = p * 4;
             let chunk: &[f32; 16] = src[off_src..off_src + 16].try_into().unwrap();
-            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_wasm128(t, chunk);
+            let (rc, gc, bc, ac) = super::rgba_f32_chunk4_to_planes_tokenless_wasm128(chunk);
             r[p..p + 4].copy_from_slice(&rc);
             g[p..p + 4].copy_from_slice(&gc);
             b[p..p + 4].copy_from_slice(&bc);
@@ -1258,7 +1258,7 @@ mod wasm_f32 {
 
     #[archmage::arcane]
     pub(crate) fn planes_to_rgb_f32_impl_wasm128(
-        t: Wasm128Token,
+        _t: Wasm128Token,
         r: &[f32],
         g: &[f32],
         b: &[f32],
@@ -1270,7 +1270,7 @@ mod wasm_f32 {
             let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
             let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk16_wasm128(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk16_tokenless_wasm128(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 48].copy_from_slice(&part);
             p += 16;
@@ -1279,7 +1279,7 @@ mod wasm_f32 {
             let r_chunk: &[f32; 8] = r[p..p + 8].try_into().unwrap();
             let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk8_wasm128(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk8_tokenless_wasm128(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 24].copy_from_slice(&part);
             p += 8;
@@ -1288,7 +1288,7 @@ mod wasm_f32 {
             let r_chunk: &[f32; 4] = r[p..p + 4].try_into().unwrap();
             let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk4_wasm128(t, r_chunk, g_chunk, b_chunk);
+            let part = super::planes_to_rgb_f32_chunk4_tokenless_wasm128(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 12].copy_from_slice(&part);
             p += 4;
@@ -1303,7 +1303,7 @@ mod wasm_f32 {
 
     #[archmage::arcane]
     pub(crate) fn planes_to_rgba_f32_impl_wasm128(
-        t: Wasm128Token,
+        _t: Wasm128Token,
         r: &[f32],
         g: &[f32],
         b: &[f32],
@@ -1318,7 +1318,7 @@ mod wasm_f32 {
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
             let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
             let part =
-                super::planes_to_rgba_f32_chunk16_wasm128(t, r_chunk, g_chunk, b_chunk, a_chunk);
+                super::planes_to_rgba_f32_chunk16_tokenless_wasm128(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 64].copy_from_slice(&part);
             p += 16;
@@ -1329,7 +1329,7 @@ mod wasm_f32 {
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
             let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
             let part =
-                super::planes_to_rgba_f32_chunk8_wasm128(t, r_chunk, g_chunk, b_chunk, a_chunk);
+                super::planes_to_rgba_f32_chunk8_tokenless_wasm128(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 32].copy_from_slice(&part);
             p += 8;
@@ -1340,7 +1340,7 @@ mod wasm_f32 {
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
             let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
             let part =
-                super::planes_to_rgba_f32_chunk4_wasm128(t, r_chunk, g_chunk, b_chunk, a_chunk);
+                super::planes_to_rgba_f32_chunk4_tokenless_wasm128(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 16].copy_from_slice(&part);
             p += 4;
@@ -1922,9 +1922,8 @@ mod arm_f32_chunks {
     }
 
     // RGBA chunk-8 interleave: 2 × vst4q_f32.
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk8_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn planes_to_rgba_f32_chunk8_tokenless_neon(
         r: &[f32; 8],
         g: &[f32; 8],
         b: &[f32; 8],
@@ -1962,9 +1961,8 @@ mod arm_f32_chunks {
     }
 
     // RGB chunk-16: 4 × vld3q_f32.
-    #[rite]
-    pub fn rgb_f32_chunk16_to_planes_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn rgb_f32_chunk16_to_planes_tokenless_neon(
         chunk: &[f32; 48],
     ) -> ([f32; 16], [f32; 16], [f32; 16]) {
         let mut r_out = [0.0f32; 16];
@@ -1986,9 +1984,8 @@ mod arm_f32_chunks {
     }
 
     // RGBA chunk-16: 4 × vld4q_f32.
-    #[rite]
-    pub fn rgba_f32_chunk16_to_planes_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn rgba_f32_chunk16_to_planes_tokenless_neon(
         chunk: &[f32; 64],
     ) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
         let mut r_out = [0.0f32; 16];
@@ -2013,9 +2010,8 @@ mod arm_f32_chunks {
     }
 
     // RGB chunk-16 interleave: 4 × vst3q_f32.
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk16_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn planes_to_rgb_f32_chunk16_tokenless_neon(
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
@@ -2037,9 +2033,8 @@ mod arm_f32_chunks {
     }
 
     // RGBA chunk-16 interleave: 4 × vst4q_f32.
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk16_neon(
-        _t: NeonToken,
+    #[rite(neon)]
+    pub fn planes_to_rgba_f32_chunk16_tokenless_neon(
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
@@ -2070,11 +2065,11 @@ mod arm_f32_chunks {
 
 #[cfg(target_arch = "aarch64")]
 pub use arm_f32_chunks::{
-    planes_to_rgb_f32_chunk4_neon, planes_to_rgb_f32_chunk8_neon, planes_to_rgb_f32_chunk16_neon,
-    planes_to_rgba_f32_chunk4_neon, planes_to_rgba_f32_chunk8_neon,
-    planes_to_rgba_f32_chunk16_neon, rgb_f32_chunk4_to_planes_neon, rgb_f32_chunk8_to_planes_neon,
-    rgb_f32_chunk16_to_planes_neon, rgba_f32_chunk4_to_planes_neon, rgba_f32_chunk8_to_planes_neon,
-    rgba_f32_chunk16_to_planes_neon,
+    planes_to_rgb_f32_chunk4_tokenless_neon, planes_to_rgb_f32_chunk8_tokenless_neon, planes_to_rgb_f32_chunk16_tokenless_neon,
+    planes_to_rgba_f32_chunk4_tokenless_neon, planes_to_rgba_f32_chunk8_tokenless_neon,
+    planes_to_rgba_f32_chunk16_tokenless_neon, rgb_f32_chunk4_to_planes_tokenless_neon, rgb_f32_chunk8_to_planes_tokenless_neon,
+    rgb_f32_chunk16_to_planes_tokenless_neon, rgba_f32_chunk4_to_planes_tokenless_neon, rgba_f32_chunk8_to_planes_tokenless_neon,
+    rgba_f32_chunk16_to_planes_tokenless_neon,
 };
 
 // ---------------------------------------------------------------------------
@@ -2115,13 +2110,12 @@ mod x86_f32_chunks {
     //   shuf(a, b, IMM) lays a-lanes in result[0..2], b-lanes in result[2..4].
     //   That can place 2 of the 4 needed lanes; we pull the remaining 2 from
     //   c via permute + blend. The detailed lane math is in the comments
-    //   inside `rgb_f32_chunk4_to_planes_v3` below.
+    //   inside `rgb_f32_chunk4_to_planes_tokenless_v3` below.
 
     /// AVX2 chunk-4 RGB deinterleave. 128-bit shuffles. 9 SIMD ops total
     /// (3 loads, 3 shuf_ps on a/b, 3 permute_ps on c, 3 blend_ps, 3 stores).
-    #[rite]
-    pub fn rgb_f32_chunk4_to_planes_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn rgb_f32_chunk4_to_planes_tokenless_v3(
         chunk: &[f32; 12],
     ) -> ([f32; 4], [f32; 4], [f32; 4]) {
         // a = [r0, g0, b0, r1]
@@ -2180,9 +2174,8 @@ mod x86_f32_chunks {
     /// AVX2 chunk-4 RGBA deinterleave. 4-way f32 transpose via
     /// `_mm_unpacklo_ps` / `_mm_unpackhi_ps` / `_mm_movelh_ps` / `_mm_movehl_ps`
     /// — the standard `_MM_TRANSPOSE4_PS` recipe.
-    #[rite]
-    pub fn rgba_f32_chunk4_to_planes_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn rgba_f32_chunk4_to_planes_tokenless_v3(
         chunk: &[f32; 16],
     ) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
         // 4 rows of 4 floats each:
@@ -2232,11 +2225,10 @@ mod x86_f32_chunks {
         (r_out, g_out, b_out, a_out)
     }
 
-    /// AVX2 chunk-4 RGB interleave. Inverse of `rgb_f32_chunk4_to_planes_v3`
+    /// AVX2 chunk-4 RGB interleave. Inverse of `rgb_f32_chunk4_to_planes_tokenless_v3`
     /// using shufps/blend.
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk4_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn planes_to_rgb_f32_chunk4_tokenless_v3(
         r: &[f32; 4],
         g: &[f32; 4],
         b: &[f32; 4],
@@ -2307,9 +2299,8 @@ mod x86_f32_chunks {
     }
 
     /// AVX2 chunk-4 RGBA interleave. Inverse 4×4 transpose.
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk4_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn planes_to_rgba_f32_chunk4_tokenless_v3(
         r: &[f32; 4],
         g: &[f32; 4],
         b: &[f32; 4],
@@ -2363,15 +2354,14 @@ mod x86_f32_chunks {
 
     /// AVX2 chunk-8 RGB deinterleave: two chunk-4 calls; each emits 4 R,
     /// 4 G, 4 B floats; we concatenate.
-    #[rite]
-    pub fn rgb_f32_chunk8_to_planes_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn rgb_f32_chunk8_to_planes_tokenless_v3(
         chunk: &[f32; 24],
     ) -> ([f32; 8], [f32; 8], [f32; 8]) {
         let lo: &[f32; 12] = chunk[0..12].try_into().unwrap();
         let hi: &[f32; 12] = chunk[12..24].try_into().unwrap();
-        let (r0, g0, b0) = rgb_f32_chunk4_to_planes_v3(_t, lo);
-        let (r1, g1, b1) = rgb_f32_chunk4_to_planes_v3(_t, hi);
+        let (r0, g0, b0) = rgb_f32_chunk4_to_planes_tokenless_v3(lo);
+        let (r1, g1, b1) = rgb_f32_chunk4_to_planes_tokenless_v3(hi);
         let mut r_out = [0.0f32; 8];
         let mut g_out = [0.0f32; 8];
         let mut b_out = [0.0f32; 8];
@@ -2385,15 +2375,14 @@ mod x86_f32_chunks {
     }
 
     /// AVX2 chunk-8 RGBA deinterleave: two chunk-4 calls; concat.
-    #[rite]
-    pub fn rgba_f32_chunk8_to_planes_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn rgba_f32_chunk8_to_planes_tokenless_v3(
         chunk: &[f32; 32],
     ) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
         let lo: &[f32; 16] = chunk[0..16].try_into().unwrap();
         let hi: &[f32; 16] = chunk[16..32].try_into().unwrap();
-        let (r0, g0, b0, a0) = rgba_f32_chunk4_to_planes_v3(_t, lo);
-        let (r1, g1, b1, a1) = rgba_f32_chunk4_to_planes_v3(_t, hi);
+        let (r0, g0, b0, a0) = rgba_f32_chunk4_to_planes_tokenless_v3(lo);
+        let (r1, g1, b1, a1) = rgba_f32_chunk4_to_planes_tokenless_v3(hi);
         let mut r_out = [0.0f32; 8];
         let mut g_out = [0.0f32; 8];
         let mut b_out = [0.0f32; 8];
@@ -2410,9 +2399,8 @@ mod x86_f32_chunks {
     }
 
     /// AVX2 chunk-8 RGB interleave: two chunk-4 calls; concat.
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk8_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn planes_to_rgb_f32_chunk8_tokenless_v3(
         r: &[f32; 8],
         g: &[f32; 8],
         b: &[f32; 8],
@@ -2423,8 +2411,8 @@ mod x86_f32_chunks {
         let g_hi: &[f32; 4] = g[4..8].try_into().unwrap();
         let b_lo: &[f32; 4] = b[0..4].try_into().unwrap();
         let b_hi: &[f32; 4] = b[4..8].try_into().unwrap();
-        let lo = planes_to_rgb_f32_chunk4_v3(_t, r_lo, g_lo, b_lo);
-        let hi = planes_to_rgb_f32_chunk4_v3(_t, r_hi, g_hi, b_hi);
+        let lo = planes_to_rgb_f32_chunk4_tokenless_v3(r_lo, g_lo, b_lo);
+        let hi = planes_to_rgb_f32_chunk4_tokenless_v3(r_hi, g_hi, b_hi);
         let mut out = [0.0f32; 24];
         out[0..12].copy_from_slice(&lo);
         out[12..24].copy_from_slice(&hi);
@@ -2432,9 +2420,8 @@ mod x86_f32_chunks {
     }
 
     /// AVX2 chunk-8 RGBA interleave: two chunk-4 calls; concat.
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk8_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn planes_to_rgba_f32_chunk8_tokenless_v3(
         r: &[f32; 8],
         g: &[f32; 8],
         b: &[f32; 8],
@@ -2448,8 +2435,8 @@ mod x86_f32_chunks {
         let b_hi: &[f32; 4] = b[4..8].try_into().unwrap();
         let a_lo: &[f32; 4] = a[0..4].try_into().unwrap();
         let a_hi: &[f32; 4] = a[4..8].try_into().unwrap();
-        let lo = planes_to_rgba_f32_chunk4_v3(_t, r_lo, g_lo, b_lo, a_lo);
-        let hi = planes_to_rgba_f32_chunk4_v3(_t, r_hi, g_hi, b_hi, a_hi);
+        let lo = planes_to_rgba_f32_chunk4_tokenless_v3(r_lo, g_lo, b_lo, a_lo);
+        let hi = planes_to_rgba_f32_chunk4_tokenless_v3(r_hi, g_hi, b_hi, a_hi);
         let mut out = [0.0f32; 32];
         out[0..16].copy_from_slice(&lo);
         out[16..32].copy_from_slice(&hi);
@@ -2457,9 +2444,8 @@ mod x86_f32_chunks {
     }
 
     /// AVX2 chunk-16 RGB deinterleave: four chunk-4 calls; concat.
-    #[rite]
-    pub fn rgb_f32_chunk16_to_planes_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn rgb_f32_chunk16_to_planes_tokenless_v3(
         chunk: &[f32; 48],
     ) -> ([f32; 16], [f32; 16], [f32; 16]) {
         let mut r_out = [0.0f32; 16];
@@ -2468,7 +2454,7 @@ mod x86_f32_chunks {
         let mut k = 0;
         while k < 4 {
             let in_chunk: &[f32; 12] = chunk[k * 12..k * 12 + 12].try_into().unwrap();
-            let (rv, gv, bv) = rgb_f32_chunk4_to_planes_v3(_t, in_chunk);
+            let (rv, gv, bv) = rgb_f32_chunk4_to_planes_tokenless_v3(in_chunk);
             r_out[k * 4..k * 4 + 4].copy_from_slice(&rv);
             g_out[k * 4..k * 4 + 4].copy_from_slice(&gv);
             b_out[k * 4..k * 4 + 4].copy_from_slice(&bv);
@@ -2478,9 +2464,8 @@ mod x86_f32_chunks {
     }
 
     /// AVX2 chunk-16 RGBA deinterleave: four chunk-4 calls; concat.
-    #[rite]
-    pub fn rgba_f32_chunk16_to_planes_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn rgba_f32_chunk16_to_planes_tokenless_v3(
         chunk: &[f32; 64],
     ) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
         let mut r_out = [0.0f32; 16];
@@ -2490,7 +2475,7 @@ mod x86_f32_chunks {
         let mut k = 0;
         while k < 4 {
             let in_chunk: &[f32; 16] = chunk[k * 16..k * 16 + 16].try_into().unwrap();
-            let (rv, gv, bv, av) = rgba_f32_chunk4_to_planes_v3(_t, in_chunk);
+            let (rv, gv, bv, av) = rgba_f32_chunk4_to_planes_tokenless_v3(in_chunk);
             r_out[k * 4..k * 4 + 4].copy_from_slice(&rv);
             g_out[k * 4..k * 4 + 4].copy_from_slice(&gv);
             b_out[k * 4..k * 4 + 4].copy_from_slice(&bv);
@@ -2501,9 +2486,8 @@ mod x86_f32_chunks {
     }
 
     /// AVX2 chunk-16 RGB interleave: four chunk-4 calls; concat.
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk16_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn planes_to_rgb_f32_chunk16_tokenless_v3(
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
@@ -2514,7 +2498,7 @@ mod x86_f32_chunks {
             let r_slice: &[f32; 4] = r[k * 4..k * 4 + 4].try_into().unwrap();
             let g_slice: &[f32; 4] = g[k * 4..k * 4 + 4].try_into().unwrap();
             let b_slice: &[f32; 4] = b[k * 4..k * 4 + 4].try_into().unwrap();
-            let part = planes_to_rgb_f32_chunk4_v3(_t, r_slice, g_slice, b_slice);
+            let part = planes_to_rgb_f32_chunk4_tokenless_v3(r_slice, g_slice, b_slice);
             out[k * 12..k * 12 + 12].copy_from_slice(&part);
             k += 1;
         }
@@ -2522,9 +2506,8 @@ mod x86_f32_chunks {
     }
 
     /// AVX2 chunk-16 RGBA interleave: four chunk-4 calls; concat.
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk16_v3(
-        _t: X64V3Token,
+    #[rite(v3)]
+    pub fn planes_to_rgba_f32_chunk16_tokenless_v3(
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
@@ -2537,7 +2520,7 @@ mod x86_f32_chunks {
             let g_slice: &[f32; 4] = g[k * 4..k * 4 + 4].try_into().unwrap();
             let b_slice: &[f32; 4] = b[k * 4..k * 4 + 4].try_into().unwrap();
             let a_slice: &[f32; 4] = a[k * 4..k * 4 + 4].try_into().unwrap();
-            let part = planes_to_rgba_f32_chunk4_v3(_t, r_slice, g_slice, b_slice, a_slice);
+            let part = planes_to_rgba_f32_chunk4_tokenless_v3(r_slice, g_slice, b_slice, a_slice);
             out[k * 16..k * 16 + 16].copy_from_slice(&part);
             k += 1;
         }
@@ -2547,10 +2530,10 @@ mod x86_f32_chunks {
 
 #[cfg(target_arch = "x86_64")]
 pub use x86_f32_chunks::{
-    planes_to_rgb_f32_chunk4_v3, planes_to_rgb_f32_chunk8_v3, planes_to_rgb_f32_chunk16_v3,
-    planes_to_rgba_f32_chunk4_v3, planes_to_rgba_f32_chunk8_v3, planes_to_rgba_f32_chunk16_v3,
-    rgb_f32_chunk4_to_planes_v3, rgb_f32_chunk8_to_planes_v3, rgb_f32_chunk16_to_planes_v3,
-    rgba_f32_chunk4_to_planes_v3, rgba_f32_chunk8_to_planes_v3, rgba_f32_chunk16_to_planes_v3,
+    planes_to_rgb_f32_chunk4_tokenless_v3, planes_to_rgb_f32_chunk8_tokenless_v3, planes_to_rgb_f32_chunk16_tokenless_v3,
+    planes_to_rgba_f32_chunk4_tokenless_v3, planes_to_rgba_f32_chunk8_tokenless_v3, planes_to_rgba_f32_chunk16_tokenless_v3,
+    rgb_f32_chunk4_to_planes_tokenless_v3, rgb_f32_chunk8_to_planes_tokenless_v3, rgb_f32_chunk16_to_planes_tokenless_v3,
+    rgba_f32_chunk4_to_planes_tokenless_v3, rgba_f32_chunk8_to_planes_tokenless_v3, rgba_f32_chunk16_to_planes_tokenless_v3,
 };
 
 // ---------------------------------------------------------------------------
@@ -2568,9 +2551,8 @@ mod wasm_f32_chunks {
 
     /// WASM SIMD128 chunk-4 RGB deinterleave. Uses `i32x4_shuffle` macros
     /// (which compile to `i8x16.shuffle` SIMD instructions).
-    #[rite]
-    pub fn rgb_f32_chunk4_to_planes_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn rgb_f32_chunk4_to_planes_tokenless_wasm128(
         chunk: &[f32; 12],
     ) -> ([f32; 4], [f32; 4], [f32; 4]) {
         // Reinterpret f32 lanes as i32 lanes for the shuffle macro
@@ -2618,9 +2600,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-4 RGBA deinterleave: 4×4 transpose via shuffle.
-    #[rite]
-    pub fn rgba_f32_chunk4_to_planes_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn rgba_f32_chunk4_to_planes_tokenless_wasm128(
         chunk: &[f32; 16],
     ) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
         let r0_arr: &[u8; 16] =
@@ -2668,9 +2649,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-4 RGB interleave (inverse of deinterleave).
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk4_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn planes_to_rgb_f32_chunk4_tokenless_wasm128(
         r: &[f32; 4],
         g: &[f32; 4],
         b: &[f32; 4],
@@ -2721,9 +2701,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-4 RGBA interleave (inverse 4×4 transpose).
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk4_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn planes_to_rgba_f32_chunk4_tokenless_wasm128(
         r: &[f32; 4],
         g: &[f32; 4],
         b: &[f32; 4],
@@ -2776,15 +2755,14 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-8 RGB deinterleave (2 × chunk-4).
-    #[rite]
-    pub fn rgb_f32_chunk8_to_planes_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn rgb_f32_chunk8_to_planes_tokenless_wasm128(
         chunk: &[f32; 24],
     ) -> ([f32; 8], [f32; 8], [f32; 8]) {
         let lo: &[f32; 12] = chunk[0..12].try_into().unwrap();
         let hi: &[f32; 12] = chunk[12..24].try_into().unwrap();
-        let (r0, g0, b0) = rgb_f32_chunk4_to_planes_wasm128(_t, lo);
-        let (r1, g1, b1) = rgb_f32_chunk4_to_planes_wasm128(_t, hi);
+        let (r0, g0, b0) = rgb_f32_chunk4_to_planes_tokenless_wasm128(lo);
+        let (r1, g1, b1) = rgb_f32_chunk4_to_planes_tokenless_wasm128(hi);
         let mut r_out = [0.0f32; 8];
         let mut g_out = [0.0f32; 8];
         let mut b_out = [0.0f32; 8];
@@ -2798,15 +2776,14 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-8 RGBA deinterleave (2 × chunk-4).
-    #[rite]
-    pub fn rgba_f32_chunk8_to_planes_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn rgba_f32_chunk8_to_planes_tokenless_wasm128(
         chunk: &[f32; 32],
     ) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
         let lo: &[f32; 16] = chunk[0..16].try_into().unwrap();
         let hi: &[f32; 16] = chunk[16..32].try_into().unwrap();
-        let (r0, g0, b0, a0) = rgba_f32_chunk4_to_planes_wasm128(_t, lo);
-        let (r1, g1, b1, a1) = rgba_f32_chunk4_to_planes_wasm128(_t, hi);
+        let (r0, g0, b0, a0) = rgba_f32_chunk4_to_planes_tokenless_wasm128(lo);
+        let (r1, g1, b1, a1) = rgba_f32_chunk4_to_planes_tokenless_wasm128(hi);
         let mut r_out = [0.0f32; 8];
         let mut g_out = [0.0f32; 8];
         let mut b_out = [0.0f32; 8];
@@ -2823,9 +2800,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-8 RGB interleave (2 × chunk-4).
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk8_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn planes_to_rgb_f32_chunk8_tokenless_wasm128(
         r: &[f32; 8],
         g: &[f32; 8],
         b: &[f32; 8],
@@ -2836,8 +2812,8 @@ mod wasm_f32_chunks {
         let g_hi: &[f32; 4] = g[4..8].try_into().unwrap();
         let b_lo: &[f32; 4] = b[0..4].try_into().unwrap();
         let b_hi: &[f32; 4] = b[4..8].try_into().unwrap();
-        let lo = planes_to_rgb_f32_chunk4_wasm128(_t, r_lo, g_lo, b_lo);
-        let hi = planes_to_rgb_f32_chunk4_wasm128(_t, r_hi, g_hi, b_hi);
+        let lo = planes_to_rgb_f32_chunk4_tokenless_wasm128(r_lo, g_lo, b_lo);
+        let hi = planes_to_rgb_f32_chunk4_tokenless_wasm128(r_hi, g_hi, b_hi);
         let mut out = [0.0f32; 24];
         out[0..12].copy_from_slice(&lo);
         out[12..24].copy_from_slice(&hi);
@@ -2845,9 +2821,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-8 RGBA interleave (2 × chunk-4).
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk8_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn planes_to_rgba_f32_chunk8_tokenless_wasm128(
         r: &[f32; 8],
         g: &[f32; 8],
         b: &[f32; 8],
@@ -2861,8 +2836,8 @@ mod wasm_f32_chunks {
         let b_hi: &[f32; 4] = b[4..8].try_into().unwrap();
         let a_lo: &[f32; 4] = a[0..4].try_into().unwrap();
         let a_hi: &[f32; 4] = a[4..8].try_into().unwrap();
-        let lo = planes_to_rgba_f32_chunk4_wasm128(_t, r_lo, g_lo, b_lo, a_lo);
-        let hi = planes_to_rgba_f32_chunk4_wasm128(_t, r_hi, g_hi, b_hi, a_hi);
+        let lo = planes_to_rgba_f32_chunk4_tokenless_wasm128(r_lo, g_lo, b_lo, a_lo);
+        let hi = planes_to_rgba_f32_chunk4_tokenless_wasm128(r_hi, g_hi, b_hi, a_hi);
         let mut out = [0.0f32; 32];
         out[0..16].copy_from_slice(&lo);
         out[16..32].copy_from_slice(&hi);
@@ -2870,9 +2845,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-16 RGB deinterleave (4 × chunk-4).
-    #[rite]
-    pub fn rgb_f32_chunk16_to_planes_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn rgb_f32_chunk16_to_planes_tokenless_wasm128(
         chunk: &[f32; 48],
     ) -> ([f32; 16], [f32; 16], [f32; 16]) {
         let mut r_out = [0.0f32; 16];
@@ -2881,7 +2855,7 @@ mod wasm_f32_chunks {
         let mut k = 0;
         while k < 4 {
             let in_chunk: &[f32; 12] = chunk[k * 12..k * 12 + 12].try_into().unwrap();
-            let (rv, gv, bv) = rgb_f32_chunk4_to_planes_wasm128(_t, in_chunk);
+            let (rv, gv, bv) = rgb_f32_chunk4_to_planes_tokenless_wasm128(in_chunk);
             r_out[k * 4..k * 4 + 4].copy_from_slice(&rv);
             g_out[k * 4..k * 4 + 4].copy_from_slice(&gv);
             b_out[k * 4..k * 4 + 4].copy_from_slice(&bv);
@@ -2891,9 +2865,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-16 RGBA deinterleave (4 × chunk-4).
-    #[rite]
-    pub fn rgba_f32_chunk16_to_planes_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn rgba_f32_chunk16_to_planes_tokenless_wasm128(
         chunk: &[f32; 64],
     ) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
         let mut r_out = [0.0f32; 16];
@@ -2903,7 +2876,7 @@ mod wasm_f32_chunks {
         let mut k = 0;
         while k < 4 {
             let in_chunk: &[f32; 16] = chunk[k * 16..k * 16 + 16].try_into().unwrap();
-            let (rv, gv, bv, av) = rgba_f32_chunk4_to_planes_wasm128(_t, in_chunk);
+            let (rv, gv, bv, av) = rgba_f32_chunk4_to_planes_tokenless_wasm128(in_chunk);
             r_out[k * 4..k * 4 + 4].copy_from_slice(&rv);
             g_out[k * 4..k * 4 + 4].copy_from_slice(&gv);
             b_out[k * 4..k * 4 + 4].copy_from_slice(&bv);
@@ -2914,9 +2887,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-16 RGB interleave (4 × chunk-4).
-    #[rite]
-    pub fn planes_to_rgb_f32_chunk16_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn planes_to_rgb_f32_chunk16_tokenless_wasm128(
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
@@ -2927,7 +2899,7 @@ mod wasm_f32_chunks {
             let r_slice: &[f32; 4] = r[k * 4..k * 4 + 4].try_into().unwrap();
             let g_slice: &[f32; 4] = g[k * 4..k * 4 + 4].try_into().unwrap();
             let b_slice: &[f32; 4] = b[k * 4..k * 4 + 4].try_into().unwrap();
-            let part = planes_to_rgb_f32_chunk4_wasm128(_t, r_slice, g_slice, b_slice);
+            let part = planes_to_rgb_f32_chunk4_tokenless_wasm128(r_slice, g_slice, b_slice);
             out[k * 12..k * 12 + 12].copy_from_slice(&part);
             k += 1;
         }
@@ -2935,9 +2907,8 @@ mod wasm_f32_chunks {
     }
 
     /// WASM SIMD128 chunk-16 RGBA interleave (4 × chunk-4).
-    #[rite]
-    pub fn planes_to_rgba_f32_chunk16_wasm128(
-        _t: Wasm128Token,
+    #[rite(wasm128)]
+    pub fn planes_to_rgba_f32_chunk16_tokenless_wasm128(
         r: &[f32; 16],
         g: &[f32; 16],
         b: &[f32; 16],
@@ -2950,7 +2921,7 @@ mod wasm_f32_chunks {
             let g_slice: &[f32; 4] = g[k * 4..k * 4 + 4].try_into().unwrap();
             let b_slice: &[f32; 4] = b[k * 4..k * 4 + 4].try_into().unwrap();
             let a_slice: &[f32; 4] = a[k * 4..k * 4 + 4].try_into().unwrap();
-            let part = planes_to_rgba_f32_chunk4_wasm128(_t, r_slice, g_slice, b_slice, a_slice);
+            let part = planes_to_rgba_f32_chunk4_tokenless_wasm128(r_slice, g_slice, b_slice, a_slice);
             out[k * 16..k * 16 + 16].copy_from_slice(&part);
             k += 1;
         }
@@ -2960,12 +2931,12 @@ mod wasm_f32_chunks {
 
 #[cfg(target_arch = "wasm32")]
 pub use wasm_f32_chunks::{
-    planes_to_rgb_f32_chunk4_wasm128, planes_to_rgb_f32_chunk8_wasm128,
-    planes_to_rgb_f32_chunk16_wasm128, planes_to_rgba_f32_chunk4_wasm128,
-    planes_to_rgba_f32_chunk8_wasm128, planes_to_rgba_f32_chunk16_wasm128,
-    rgb_f32_chunk4_to_planes_wasm128, rgb_f32_chunk8_to_planes_wasm128,
-    rgb_f32_chunk16_to_planes_wasm128, rgba_f32_chunk4_to_planes_wasm128,
-    rgba_f32_chunk8_to_planes_wasm128, rgba_f32_chunk16_to_planes_wasm128,
+    planes_to_rgb_f32_chunk4_tokenless_wasm128, planes_to_rgb_f32_chunk8_tokenless_wasm128,
+    planes_to_rgb_f32_chunk16_tokenless_wasm128, planes_to_rgba_f32_chunk4_tokenless_wasm128,
+    planes_to_rgba_f32_chunk8_tokenless_wasm128, planes_to_rgba_f32_chunk16_tokenless_wasm128,
+    rgb_f32_chunk4_to_planes_tokenless_wasm128, rgb_f32_chunk8_to_planes_tokenless_wasm128,
+    rgb_f32_chunk16_to_planes_tokenless_wasm128, rgba_f32_chunk4_to_planes_tokenless_wasm128,
+    rgba_f32_chunk8_to_planes_tokenless_wasm128, rgba_f32_chunk16_to_planes_tokenless_wasm128,
 };
 
 // ===========================================================================
@@ -3493,8 +3464,8 @@ mod tests {
             let src: [f32; 12] = core::array::from_fn(|i| (i as f32) * 0.123 - 4.0);
             let s = rgb_f32_chunk4_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: X64V3Token, c: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
-                rgb_f32_chunk4_to_planes_v3(t, c)
+            fn call(_t: X64V3Token, c: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
+                rgb_f32_chunk4_to_planes_tokenless_v3(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v, "rgb_f32_chunk4_v3 mismatch with scalar");
@@ -3508,8 +3479,8 @@ mod tests {
             let src: [f32; 16] = core::array::from_fn(|i| (i as f32) * 0.25 - 7.0);
             let s = rgba_f32_chunk4_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: X64V3Token, c: &[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
-                rgba_f32_chunk4_to_planes_v3(t, c)
+            fn call(_t: X64V3Token, c: &[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
+                rgba_f32_chunk4_to_planes_tokenless_v3(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3525,8 +3496,8 @@ mod tests {
             let b: [f32; 4] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk4_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: X64V3Token, r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
-                planes_to_rgb_f32_chunk4_v3(t, r, g, b)
+            fn call(_t: X64V3Token, r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
+                planes_to_rgb_f32_chunk4_tokenless_v3(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -3544,13 +3515,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk4_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: X64V3Token,
+                _t: X64V3Token,
                 r: &[f32; 4],
                 g: &[f32; 4],
                 b: &[f32; 4],
                 a: &[f32; 4],
             ) -> [f32; 16] {
-                planes_to_rgba_f32_chunk4_v3(t, r, g, b, a)
+                planes_to_rgba_f32_chunk4_tokenless_v3(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
@@ -3564,8 +3535,8 @@ mod tests {
             let src: [f32; 24] = core::array::from_fn(|i| (i as f32) * 0.31 - 5.0);
             let s = rgb_f32_chunk8_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: X64V3Token, c: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
-                rgb_f32_chunk8_to_planes_v3(t, c)
+            fn call(_t: X64V3Token, c: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+                rgb_f32_chunk8_to_planes_tokenless_v3(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3579,8 +3550,8 @@ mod tests {
             let src: [f32; 32] = core::array::from_fn(|i| (i as f32) * 0.17 + 2.0);
             let s = rgba_f32_chunk8_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: X64V3Token, c: &[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
-                rgba_f32_chunk8_to_planes_v3(t, c)
+            fn call(_t: X64V3Token, c: &[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
+                rgba_f32_chunk8_to_planes_tokenless_v3(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3596,8 +3567,8 @@ mod tests {
             let b: [f32; 8] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk8_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: X64V3Token, r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
-                planes_to_rgb_f32_chunk8_v3(t, r, g, b)
+            fn call(_t: X64V3Token, r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
+                planes_to_rgb_f32_chunk8_tokenless_v3(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -3615,13 +3586,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk8_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: X64V3Token,
+                _t: X64V3Token,
                 r: &[f32; 8],
                 g: &[f32; 8],
                 b: &[f32; 8],
                 a: &[f32; 8],
             ) -> [f32; 32] {
-                planes_to_rgba_f32_chunk8_v3(t, r, g, b, a)
+                planes_to_rgba_f32_chunk8_tokenless_v3(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
@@ -3635,8 +3606,8 @@ mod tests {
             let src: [f32; 48] = core::array::from_fn(|i| (i as f32) * 0.21 - 1.0);
             let s = rgb_f32_chunk16_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: X64V3Token, c: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
-                rgb_f32_chunk16_to_planes_v3(t, c)
+            fn call(_t: X64V3Token, c: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
+                rgb_f32_chunk16_to_planes_tokenless_v3(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3650,8 +3621,8 @@ mod tests {
             let src: [f32; 64] = core::array::from_fn(|i| (i as f32) * 0.11 + 5.0);
             let s = rgba_f32_chunk16_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: X64V3Token, c: &[f32; 64]) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
-                rgba_f32_chunk16_to_planes_v3(t, c)
+            fn call(_t: X64V3Token, c: &[f32; 64]) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
+                rgba_f32_chunk16_to_planes_tokenless_v3(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3667,8 +3638,8 @@ mod tests {
             let b: [f32; 16] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk16_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: X64V3Token, r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
-                planes_to_rgb_f32_chunk16_v3(t, r, g, b)
+            fn call(_t: X64V3Token, r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
+                planes_to_rgb_f32_chunk16_tokenless_v3(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -3686,13 +3657,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk16_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: X64V3Token,
+                _t: X64V3Token,
                 r: &[f32; 16],
                 g: &[f32; 16],
                 b: &[f32; 16],
                 a: &[f32; 16],
             ) -> [f32; 64] {
-                planes_to_rgba_f32_chunk16_v3(t, r, g, b, a)
+                planes_to_rgba_f32_chunk16_tokenless_v3(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
@@ -3708,8 +3679,8 @@ mod tests {
             let src: [f32; 12] = core::array::from_fn(|i| (i as f32) * 0.123 - 4.0);
             let s = rgb_f32_chunk4_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: NeonToken, c: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
-                rgb_f32_chunk4_to_planes_neon(t, c)
+            fn call(_t: NeonToken, c: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
+                rgb_f32_chunk4_to_planes_tokenless_neon(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3723,8 +3694,8 @@ mod tests {
             let src: [f32; 16] = core::array::from_fn(|i| (i as f32) * 0.25 - 7.0);
             let s = rgba_f32_chunk4_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: NeonToken, c: &[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
-                rgba_f32_chunk4_to_planes_neon(t, c)
+            fn call(_t: NeonToken, c: &[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
+                rgba_f32_chunk4_to_planes_tokenless_neon(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3740,8 +3711,8 @@ mod tests {
             let b: [f32; 4] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk4_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: NeonToken, r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
-                planes_to_rgb_f32_chunk4_neon(t, r, g, b)
+            fn call(_t: NeonToken, r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
+                planes_to_rgb_f32_chunk4_tokenless_neon(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -3759,13 +3730,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk4_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: NeonToken,
+                _t: NeonToken,
                 r: &[f32; 4],
                 g: &[f32; 4],
                 b: &[f32; 4],
                 a: &[f32; 4],
             ) -> [f32; 16] {
-                planes_to_rgba_f32_chunk4_neon(t, r, g, b, a)
+                planes_to_rgba_f32_chunk4_tokenless_neon(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
@@ -3779,8 +3750,8 @@ mod tests {
             let src: [f32; 24] = core::array::from_fn(|i| (i as f32) * 0.31 - 5.0);
             let s = rgb_f32_chunk8_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: NeonToken, c: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
-                rgb_f32_chunk8_to_planes_neon(t, c)
+            fn call(_t: NeonToken, c: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+                rgb_f32_chunk8_to_planes_tokenless_neon(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3794,8 +3765,8 @@ mod tests {
             let src: [f32; 32] = core::array::from_fn(|i| (i as f32) * 0.17 + 2.0);
             let s = rgba_f32_chunk8_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: NeonToken, c: &[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
-                rgba_f32_chunk8_to_planes_neon(t, c)
+            fn call(_t: NeonToken, c: &[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
+                rgba_f32_chunk8_to_planes_tokenless_neon(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3811,8 +3782,8 @@ mod tests {
             let b: [f32; 8] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk8_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: NeonToken, r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
-                planes_to_rgb_f32_chunk8_neon(t, r, g, b)
+            fn call(_t: NeonToken, r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
+                planes_to_rgb_f32_chunk8_tokenless_neon(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -3830,13 +3801,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk8_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: NeonToken,
+                _t: NeonToken,
                 r: &[f32; 8],
                 g: &[f32; 8],
                 b: &[f32; 8],
                 a: &[f32; 8],
             ) -> [f32; 32] {
-                planes_to_rgba_f32_chunk8_neon(t, r, g, b, a)
+                planes_to_rgba_f32_chunk8_tokenless_neon(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
@@ -3850,8 +3821,8 @@ mod tests {
             let src: [f32; 48] = core::array::from_fn(|i| (i as f32) * 0.21 - 1.0);
             let s = rgb_f32_chunk16_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: NeonToken, c: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
-                rgb_f32_chunk16_to_planes_neon(t, c)
+            fn call(_t: NeonToken, c: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
+                rgb_f32_chunk16_to_planes_tokenless_neon(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3865,8 +3836,8 @@ mod tests {
             let src: [f32; 64] = core::array::from_fn(|i| (i as f32) * 0.11 + 5.0);
             let s = rgba_f32_chunk16_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: NeonToken, c: &[f32; 64]) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
-                rgba_f32_chunk16_to_planes_neon(t, c)
+            fn call(_t: NeonToken, c: &[f32; 64]) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
+                rgba_f32_chunk16_to_planes_tokenless_neon(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3882,8 +3853,8 @@ mod tests {
             let b: [f32; 16] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk16_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: NeonToken, r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
-                planes_to_rgb_f32_chunk16_neon(t, r, g, b)
+            fn call(_t: NeonToken, r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
+                planes_to_rgb_f32_chunk16_tokenless_neon(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -3901,13 +3872,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk16_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: NeonToken,
+                _t: NeonToken,
                 r: &[f32; 16],
                 g: &[f32; 16],
                 b: &[f32; 16],
                 a: &[f32; 16],
             ) -> [f32; 64] {
-                planes_to_rgba_f32_chunk16_neon(t, r, g, b, a)
+                planes_to_rgba_f32_chunk16_tokenless_neon(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
@@ -3926,8 +3897,8 @@ mod tests {
             let src: [f32; 12] = core::array::from_fn(|i| (i as f32) * 0.123 - 4.0);
             let s = rgb_f32_chunk4_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: Wasm128Token, c: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
-                rgb_f32_chunk4_to_planes_wasm128(t, c)
+            fn call(_t: Wasm128Token, c: &[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4]) {
+                rgb_f32_chunk4_to_planes_tokenless_wasm128(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3941,8 +3912,8 @@ mod tests {
             let src: [f32; 16] = core::array::from_fn(|i| (i as f32) * 0.25 - 7.0);
             let s = rgba_f32_chunk4_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: Wasm128Token, c: &[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
-                rgba_f32_chunk4_to_planes_wasm128(t, c)
+            fn call(_t: Wasm128Token, c: &[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
+                rgba_f32_chunk4_to_planes_tokenless_wasm128(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -3958,8 +3929,8 @@ mod tests {
             let b: [f32; 4] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk4_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: Wasm128Token, r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
-                planes_to_rgb_f32_chunk4_wasm128(t, r, g, b)
+            fn call(_t: Wasm128Token, r: &[f32; 4], g: &[f32; 4], b: &[f32; 4]) -> [f32; 12] {
+                planes_to_rgb_f32_chunk4_tokenless_wasm128(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -3977,13 +3948,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk4_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: Wasm128Token,
+                _t: Wasm128Token,
                 r: &[f32; 4],
                 g: &[f32; 4],
                 b: &[f32; 4],
                 a: &[f32; 4],
             ) -> [f32; 16] {
-                planes_to_rgba_f32_chunk4_wasm128(t, r, g, b, a)
+                planes_to_rgba_f32_chunk4_tokenless_wasm128(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
@@ -3997,8 +3968,8 @@ mod tests {
             let src: [f32; 24] = core::array::from_fn(|i| (i as f32) * 0.31 - 5.0);
             let s = rgb_f32_chunk8_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: Wasm128Token, c: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
-                rgb_f32_chunk8_to_planes_wasm128(t, c)
+            fn call(_t: Wasm128Token, c: &[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8]) {
+                rgb_f32_chunk8_to_planes_tokenless_wasm128(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -4012,8 +3983,8 @@ mod tests {
             let src: [f32; 32] = core::array::from_fn(|i| (i as f32) * 0.17 + 2.0);
             let s = rgba_f32_chunk8_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: Wasm128Token, c: &[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
-                rgba_f32_chunk8_to_planes_wasm128(t, c)
+            fn call(_t: Wasm128Token, c: &[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8]) {
+                rgba_f32_chunk8_to_planes_tokenless_wasm128(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -4029,8 +4000,8 @@ mod tests {
             let b: [f32; 8] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk8_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: Wasm128Token, r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
-                planes_to_rgb_f32_chunk8_wasm128(t, r, g, b)
+            fn call(_t: Wasm128Token, r: &[f32; 8], g: &[f32; 8], b: &[f32; 8]) -> [f32; 24] {
+                planes_to_rgb_f32_chunk8_tokenless_wasm128(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -4048,13 +4019,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk8_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: Wasm128Token,
+                _t: Wasm128Token,
                 r: &[f32; 8],
                 g: &[f32; 8],
                 b: &[f32; 8],
                 a: &[f32; 8],
             ) -> [f32; 32] {
-                planes_to_rgba_f32_chunk8_wasm128(t, r, g, b, a)
+                planes_to_rgba_f32_chunk8_tokenless_wasm128(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
@@ -4068,8 +4039,8 @@ mod tests {
             let src: [f32; 48] = core::array::from_fn(|i| (i as f32) * 0.21 - 1.0);
             let s = rgb_f32_chunk16_to_planes_scalar(&src);
             #[archmage::arcane]
-            fn call(t: Wasm128Token, c: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
-                rgb_f32_chunk16_to_planes_wasm128(t, c)
+            fn call(_t: Wasm128Token, c: &[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16]) {
+                rgb_f32_chunk16_to_planes_tokenless_wasm128(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -4084,10 +4055,10 @@ mod tests {
             let s = rgba_f32_chunk16_to_planes_scalar(&src);
             #[archmage::arcane]
             fn call(
-                t: Wasm128Token,
+                _t: Wasm128Token,
                 c: &[f32; 64],
             ) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16]) {
-                rgba_f32_chunk16_to_planes_wasm128(t, c)
+                rgba_f32_chunk16_to_planes_tokenless_wasm128(c)
             }
             let v = call(t, &src);
             assert_eq!(s, v);
@@ -4103,8 +4074,8 @@ mod tests {
             let b: [f32; 16] = core::array::from_fn(|i| i as f32 * -0.75 + 3.0);
             let s = planes_to_rgb_f32_chunk16_scalar(&r, &g, &b);
             #[archmage::arcane]
-            fn call(t: Wasm128Token, r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
-                planes_to_rgb_f32_chunk16_wasm128(t, r, g, b)
+            fn call(_t: Wasm128Token, r: &[f32; 16], g: &[f32; 16], b: &[f32; 16]) -> [f32; 48] {
+                planes_to_rgb_f32_chunk16_tokenless_wasm128(r, g, b)
             }
             let v = call(t, &r, &g, &b);
             assert_eq!(s, v);
@@ -4122,13 +4093,13 @@ mod tests {
             let s = planes_to_rgba_f32_chunk16_scalar(&r, &g, &b, &a);
             #[archmage::arcane]
             fn call(
-                t: Wasm128Token,
+                _t: Wasm128Token,
                 r: &[f32; 16],
                 g: &[f32; 16],
                 b: &[f32; 16],
                 a: &[f32; 16],
             ) -> [f32; 64] {
-                planes_to_rgba_f32_chunk16_wasm128(t, r, g, b, a)
+                planes_to_rgba_f32_chunk16_tokenless_wasm128(r, g, b, a)
             }
             let v = call(t, &r, &g, &b, &a);
             assert_eq!(s, v);
