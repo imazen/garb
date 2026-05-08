@@ -9,82 +9,44 @@
 
 ## [0.2.8] - 2026-05-07
 
-### Removed (BREAKING)
+v0.2.7 is yanked. Migration is one renamed function call (see below).
 
-- `garb::deinterleave::rgb24_chunk8_to_planes_v3(_t: X64V3Token, ...)` and
-  `rgb48_chunk8_to_planes_v3(_t: X64V3Token, ...)` — replaced by their
-  tokenless equivalents below. These were the only two public APIs in the
-  crate that mentioned an archmage `Token` type in their signature.
-  Removing them decouples garb's semver from archmage's. v0.2.7 is yanked
-  because its archmage-coupled surface was unintentional. Callers update
-  call sites by dropping the token argument and renaming the suffix from
-  `_v3` to `_tokenless_v3`.
+### Removed (BREAKING, experimental)
 
-### Not added (PR #5's hand-written f32 chunk SIMD dropped)
+- `garb::deinterleave::rgb24_chunk8_to_planes_v3(_t: X64V3Token, ...)`
+- `garb::deinterleave::rgb48_chunk8_to_planes_v3(_t: X64V3Token, ...)`
 
-PR #5 introduced 36 hand-written 128-bit-XMM f32 chunk SIMD primitives
-(`{rgb,rgba}_f32_chunk{4,8,16}_to_planes_{v3,neon,wasm128}` and the
-`planes_to_*` inverses). They were never published. Audit during this
-PR found:
-
-- Every f32 chunk SIMD body used `_mm_*` (128-bit XMM) intrinsics
-  exclusively — 75 ops vs 0 `_mm256_*` ops in the f32 chunk module.
-  The `_v3` naming was misleading; these were VEX-encoded SSE-style
-  ops, not real 256-bit AVX2.
-- Bench (`benchmarks/deinterleave_autovec_vs_chunk_2026-05-07`):
-  LLVM autovec on the plain scalar loop wrapped in `#[arcane(v3)]`
-  beats the hand-written 128-bit chunks by 26-37% at 1024px (the
-  realistic image-row size). At larger sizes (16K+) they're within
-  ~5%, memory-bandwidth-dominated.
-- Direct asm: autovec emits 20 YMM uses + 6 XMM uses; the
-  hand-written dispatcher emits 20 YMM + 67 XMM. LLVM uses 256-bit
-  ops on the scalar loop; the hand-written code can't.
-
-The hand-written f32 chunk SIMD shipped a net-negative implementation
-vs autovec. Dropped before publish. Slice dispatchers route through
-LLVM autovec on the `#[inline(always)]` scalar loop body inside an
-`#[arcane(<tier>)]` region; the same path the public dispatcher took
-in v0.2.6 / v0.2.7. Future engineering work could rewrite the chunks
-using actual 256-bit `_mm256_*` ops and might beat autovec — that's a
-separate PR.
+These were the only two public APIs in the crate that mentioned an
+archmage `Token` type in their signature. v0.2.7 shipped them by
+oversight; coupling garb's semver to archmage's via a public type wasn't
+intentional. Both are replaced 1:1 by tokenless equivalents below.
 
 ### Added (experimental)
 
-- **Pure-scalar f32 chunk primitives** (12) — `{rgb,rgba}_f32_chunk{4,8,16}_to_planes_scalar`
-  and `planes_to_{rgb,rgba}_f32_chunk{4,8,16}_scalar`. Always available,
-  always safe, no archmage dependency. Useful for callers in non-SIMD
-  regions or — more usefully — for callers inside their own
-  `#[arcane(<tier>)]` region where LLVM autovec lifts them to YMM.
-  These are the path `zenpixels-convert/fast_gamut_v2.rs` now uses.
+- `rgb24_chunk8_to_planes_tokenless_v3` — replaces the removed `_v3`
+  form. Same SIMD body (`vpshufb` deinterleave + 256-bit
+  `_mm256_cvtepu8_epi32` + `_mm256_storeu_ps`); decorated with
+  archmage's tier-based `#[rite(v3)]` so it's safe to call from any
+  matching `#[arcane]` / `#[rite]` / `#[target_feature]` region without
+  a token in the signature.
+- `rgb48_chunk8_to_planes_tokenless_v3` — same pattern, `u16` source.
+- Twelve pure-scalar f32 chunk primitives:
+  `{rgb,rgba}_f32_chunk{4,8,16}_to_planes_scalar` and the
+  `planes_to_{rgb,rgba}_f32_chunk{4,8,16}_scalar` inverses. Always
+  available, always safe, no archmage dependency. Inside a caller's
+  `#[arcane(<tier>)]` region they autovec to 256-bit YMM (AVX2) /
+  `vld3q_f32` (NEON) / SIMD128 (wasm).
 
-- **Slice-level f32 dispatchers** (4) — `rgb_f32_to_planes_f32`,
-  `rgba_f32_to_planes_f32`, `planes_f32_to_rgb_f32`, `planes_f32_to_rgba_f32`.
-  Internal `incant!` dispatch over `[v3, neon, wasm128, scalar]`,
-  each tier's body being a thin `#[arcane(<tier>)]` wrapper that
-  inlines the scalar loop. Takes plain `&[f32]` / `&mut [f32]`;
-  no archmage type in signature.
+### Changed (internal, no public API change)
 
-- 2 u8/u16 tokenless replacements — `rgb24_chunk8_to_planes_tokenless_v3`
-  and `rgb48_chunk8_to_planes_tokenless_v3` replace the removed
-  token-accepting forms. Same SIMD body (`vpshufb` + 256-bit
-  `vpmovzxbd` + `vcvtdq2ps` + 256-bit store) — these *do* use
-  256-bit AVX2 for the widening + store steps, unlike the f32
-  chunks. No token in signature.
-
-### Notes
-
-- All new items are gated by the existing `experimental` cargo feature.
-- No archmage types appear in any public signature in this crate after
-  v0.2.8. archmage stays a build-time dep but is not part of garb's API
-  contract.
-- `cargo build --release --features experimental` cold-build cost: ~12 ms
-  cheaper than v0.2.7 thanks to deleting the 1180-line chunk-SIMD module
-  block.
-- Supersedes the v0.2.7 PR #5 work.
+- The four f32 slice dispatchers (`rgb_f32_to_planes_f32`,
+  `rgba_f32_to_planes_f32`, `planes_f32_to_rgb_f32`,
+  `planes_f32_to_rgba_f32`, all already public in v0.2.7) are now
+  decorated with `#[autoversion(v3, neon, wasm128)]` instead of
+  hand-rolled `incant!` over per-arch `#[arcane]` wrappers. Identical
+  asm, same behavior — replaces ~240 lines of dispatcher boilerplate.
 
 ### Migration
-
-Downstream callers of v0.2.7's two token-taking APIs:
 
 ```rust
 // Before (v0.2.7):
@@ -94,10 +56,17 @@ let (r, g, b) = garb::deinterleave::rgb24_chunk8_to_planes_v3(token, chunk);
 let (r, g, b) = garb::deinterleave::rgb24_chunk8_to_planes_tokenless_v3(chunk);
 ```
 
-`zenpixels-convert/fast_gamut_v2.rs` was the only caller of PR #5's
-hand-written f32 chunk SIMD. Migration: rename `*_chunk{4,8}_to_planes_tokenless_{v3,neon,wasm128}` →
-`*_chunk{4,8}_to_planes_scalar`. Caller is already inside `#[arcane(<tier>)]`,
-so LLVM autovec lifts the scalar body to 256-bit YMM.
+The `token` (an `archmage::X64V3Token`) must already be in scope —
+caller is inside an `#[arcane]` or `#[rite]` region — but garb no
+longer asks for it.
+
+### Notes
+
+- All new items remain gated by the existing `experimental` cargo
+  feature.
+- No archmage types appear in any public signature in this crate after
+  v0.2.8. archmage stays a build-time dep but is not part of garb's API
+  contract.
 
 Tracking: imazen/garb#7
 
