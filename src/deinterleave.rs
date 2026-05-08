@@ -492,13 +492,13 @@ use x86::{rgb24_to_planes_impl_v3, rgb48_to_planes_impl_v3};
 /// will fail to compile.
 #[cfg(target_arch = "x86_64")]
 #[doc(hidden)]
-pub use x86::rgb24_chunk8_tokenless_v3 as rgb24_chunk8_to_planes_v3;
+pub use x86::rgb24_chunk8_tokenless_v3 as rgb24_chunk8_to_planes_tokenless_v3;
 
 /// AVX2 chunk-level deinterleave for `RGB48` (`u16` per channel). See
 /// [`rgb24_chunk8_to_planes_v3`]; same shape, just `&[u16; 24]` input.
 #[cfg(target_arch = "x86_64")]
 #[doc(hidden)]
-pub use x86::rgb48_chunk8_tokenless_v3 as rgb48_chunk8_to_planes_v3;
+pub use x86::rgb48_chunk8_tokenless_v3 as rgb48_chunk8_to_planes_tokenless_v3;
 
 /// Scalar fallback chunk-level deinterleave. Compiles on every target;
 /// LLVM autovectorizes inside whatever target_feature region the caller
@@ -897,7 +897,8 @@ mod x86_f32 {
             let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
             let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk16_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part =
+                super::planes_to_rgba_f32_chunk16_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 64].copy_from_slice(&part);
             p += 16;
@@ -907,7 +908,8 @@ mod x86_f32 {
             let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
             let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk8_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part =
+                super::planes_to_rgba_f32_chunk8_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 32].copy_from_slice(&part);
             p += 8;
@@ -917,7 +919,8 @@ mod x86_f32 {
             let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
             let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk4_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part =
+                super::planes_to_rgba_f32_chunk4_tokenless_v3(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 16].copy_from_slice(&part);
             p += 4;
@@ -1108,8 +1111,9 @@ mod arm_f32 {
             let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
             let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
-            let part =
-                super::planes_to_rgba_f32_chunk16_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk16_tokenless_neon(
+                r_chunk, g_chunk, b_chunk, a_chunk,
+            );
             let off = p * 4;
             dst[off..off + 64].copy_from_slice(&part);
             p += 16;
@@ -1119,7 +1123,8 @@ mod arm_f32 {
             let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
             let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk8_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part =
+                super::planes_to_rgba_f32_chunk8_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 32].copy_from_slice(&part);
             p += 8;
@@ -1129,7 +1134,8 @@ mod arm_f32 {
             let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
             let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
-            let part = super::planes_to_rgba_f32_chunk4_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part =
+                super::planes_to_rgba_f32_chunk4_tokenless_neon(r_chunk, g_chunk, b_chunk, a_chunk);
             let off = p * 4;
             dst[off..off + 16].copy_from_slice(&part);
             p += 4;
@@ -1270,7 +1276,8 @@ mod wasm_f32 {
             let r_chunk: &[f32; 16] = r[p..p + 16].try_into().unwrap();
             let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
-            let part = super::planes_to_rgb_f32_chunk16_tokenless_wasm128(r_chunk, g_chunk, b_chunk);
+            let part =
+                super::planes_to_rgb_f32_chunk16_tokenless_wasm128(r_chunk, g_chunk, b_chunk);
             let off = p * 3;
             dst[off..off + 48].copy_from_slice(&part);
             p += 16;
@@ -1317,8 +1324,9 @@ mod wasm_f32 {
             let g_chunk: &[f32; 16] = g[p..p + 16].try_into().unwrap();
             let b_chunk: &[f32; 16] = b[p..p + 16].try_into().unwrap();
             let a_chunk: &[f32; 16] = a[p..p + 16].try_into().unwrap();
-            let part =
-                super::planes_to_rgba_f32_chunk16_tokenless_wasm128(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk16_tokenless_wasm128(
+                r_chunk, g_chunk, b_chunk, a_chunk,
+            );
             let off = p * 4;
             dst[off..off + 64].copy_from_slice(&part);
             p += 16;
@@ -1328,8 +1336,9 @@ mod wasm_f32 {
             let g_chunk: &[f32; 8] = g[p..p + 8].try_into().unwrap();
             let b_chunk: &[f32; 8] = b[p..p + 8].try_into().unwrap();
             let a_chunk: &[f32; 8] = a[p..p + 8].try_into().unwrap();
-            let part =
-                super::planes_to_rgba_f32_chunk8_tokenless_wasm128(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk8_tokenless_wasm128(
+                r_chunk, g_chunk, b_chunk, a_chunk,
+            );
             let off = p * 4;
             dst[off..off + 32].copy_from_slice(&part);
             p += 8;
@@ -1339,8 +1348,9 @@ mod wasm_f32 {
             let g_chunk: &[f32; 4] = g[p..p + 4].try_into().unwrap();
             let b_chunk: &[f32; 4] = b[p..p + 4].try_into().unwrap();
             let a_chunk: &[f32; 4] = a[p..p + 4].try_into().unwrap();
-            let part =
-                super::planes_to_rgba_f32_chunk4_tokenless_wasm128(r_chunk, g_chunk, b_chunk, a_chunk);
+            let part = super::planes_to_rgba_f32_chunk4_tokenless_wasm128(
+                r_chunk, g_chunk, b_chunk, a_chunk,
+            );
             let off = p * 4;
             dst[off..off + 16].copy_from_slice(&part);
             p += 4;
@@ -2065,11 +2075,12 @@ mod arm_f32_chunks {
 
 #[cfg(target_arch = "aarch64")]
 pub use arm_f32_chunks::{
-    planes_to_rgb_f32_chunk4_tokenless_neon, planes_to_rgb_f32_chunk8_tokenless_neon, planes_to_rgb_f32_chunk16_tokenless_neon,
-    planes_to_rgba_f32_chunk4_tokenless_neon, planes_to_rgba_f32_chunk8_tokenless_neon,
-    planes_to_rgba_f32_chunk16_tokenless_neon, rgb_f32_chunk4_to_planes_tokenless_neon, rgb_f32_chunk8_to_planes_tokenless_neon,
-    rgb_f32_chunk16_to_planes_tokenless_neon, rgba_f32_chunk4_to_planes_tokenless_neon, rgba_f32_chunk8_to_planes_tokenless_neon,
-    rgba_f32_chunk16_to_planes_tokenless_neon,
+    planes_to_rgb_f32_chunk4_tokenless_neon, planes_to_rgb_f32_chunk8_tokenless_neon,
+    planes_to_rgb_f32_chunk16_tokenless_neon, planes_to_rgba_f32_chunk4_tokenless_neon,
+    planes_to_rgba_f32_chunk8_tokenless_neon, planes_to_rgba_f32_chunk16_tokenless_neon,
+    rgb_f32_chunk4_to_planes_tokenless_neon, rgb_f32_chunk8_to_planes_tokenless_neon,
+    rgb_f32_chunk16_to_planes_tokenless_neon, rgba_f32_chunk4_to_planes_tokenless_neon,
+    rgba_f32_chunk8_to_planes_tokenless_neon, rgba_f32_chunk16_to_planes_tokenless_neon,
 };
 
 // ---------------------------------------------------------------------------
@@ -2530,10 +2541,12 @@ mod x86_f32_chunks {
 
 #[cfg(target_arch = "x86_64")]
 pub use x86_f32_chunks::{
-    planes_to_rgb_f32_chunk4_tokenless_v3, planes_to_rgb_f32_chunk8_tokenless_v3, planes_to_rgb_f32_chunk16_tokenless_v3,
-    planes_to_rgba_f32_chunk4_tokenless_v3, planes_to_rgba_f32_chunk8_tokenless_v3, planes_to_rgba_f32_chunk16_tokenless_v3,
-    rgb_f32_chunk4_to_planes_tokenless_v3, rgb_f32_chunk8_to_planes_tokenless_v3, rgb_f32_chunk16_to_planes_tokenless_v3,
-    rgba_f32_chunk4_to_planes_tokenless_v3, rgba_f32_chunk8_to_planes_tokenless_v3, rgba_f32_chunk16_to_planes_tokenless_v3,
+    planes_to_rgb_f32_chunk4_tokenless_v3, planes_to_rgb_f32_chunk8_tokenless_v3,
+    planes_to_rgb_f32_chunk16_tokenless_v3, planes_to_rgba_f32_chunk4_tokenless_v3,
+    planes_to_rgba_f32_chunk8_tokenless_v3, planes_to_rgba_f32_chunk16_tokenless_v3,
+    rgb_f32_chunk4_to_planes_tokenless_v3, rgb_f32_chunk8_to_planes_tokenless_v3,
+    rgb_f32_chunk16_to_planes_tokenless_v3, rgba_f32_chunk4_to_planes_tokenless_v3,
+    rgba_f32_chunk8_to_planes_tokenless_v3, rgba_f32_chunk16_to_planes_tokenless_v3,
 };
 
 // ---------------------------------------------------------------------------
@@ -2921,7 +2934,8 @@ mod wasm_f32_chunks {
             let g_slice: &[f32; 4] = g[k * 4..k * 4 + 4].try_into().unwrap();
             let b_slice: &[f32; 4] = b[k * 4..k * 4 + 4].try_into().unwrap();
             let a_slice: &[f32; 4] = a[k * 4..k * 4 + 4].try_into().unwrap();
-            let part = planes_to_rgba_f32_chunk4_tokenless_wasm128(r_slice, g_slice, b_slice, a_slice);
+            let part =
+                planes_to_rgba_f32_chunk4_tokenless_wasm128(r_slice, g_slice, b_slice, a_slice);
             out[k * 16..k * 16 + 16].copy_from_slice(&part);
             k += 1;
         }

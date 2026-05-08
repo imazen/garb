@@ -34,8 +34,8 @@
 mod x86_inline {
     use archmage::prelude::*;
     use garb::deinterleave::{
-        planes_to_rgb_f32_chunk16_tokenless_v3, planes_to_rgba_f32_chunk16_tokenless_v3, rgb_f32_chunk16_to_planes_tokenless_v3,
-        rgba_f32_chunk16_to_planes_tokenless_v3,
+        planes_to_rgb_f32_chunk16_tokenless_v3, planes_to_rgba_f32_chunk16_tokenless_v3,
+        rgb_f32_chunk16_to_planes_tokenless_v3, rgba_f32_chunk16_to_planes_tokenless_v3,
     };
 
     #[archmage::arcane]
