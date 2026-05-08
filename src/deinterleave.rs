@@ -21,6 +21,8 @@
 use crate::SizeError;
 #[cfg(target_arch = "x86_64")]
 use archmage::X64V3Token;
+#[cfg(target_arch = "x86_64")]
+use archmage::autoversion;
 use archmage::incant;
 use archmage::prelude::*;
 
@@ -683,247 +685,6 @@ fn planes_to_rgba_f32_loop_scalar(r: &[f32], g: &[f32], b: &[f32], a: &[f32], ds
     }
 }
 
-pub(crate) fn rgb_f32_to_planes_impl_scalar(
-    _t: ScalarToken,
-    src: &[f32],
-    r: &mut [f32],
-    g: &mut [f32],
-    b: &mut [f32],
-) {
-    rgb_f32_to_planes_loop_scalar(src, r, g, b);
-}
-
-pub(crate) fn rgba_f32_to_planes_impl_scalar(
-    _t: ScalarToken,
-    src: &[f32],
-    r: &mut [f32],
-    g: &mut [f32],
-    b: &mut [f32],
-    a: &mut [f32],
-) {
-    rgba_f32_to_planes_loop_scalar(src, r, g, b, a);
-}
-
-pub(crate) fn planes_to_rgb_f32_impl_scalar(
-    _t: ScalarToken,
-    r: &[f32],
-    g: &[f32],
-    b: &[f32],
-    dst: &mut [f32],
-) {
-    planes_to_rgb_f32_loop_scalar(r, g, b, dst);
-}
-
-pub(crate) fn planes_to_rgba_f32_impl_scalar(
-    _t: ScalarToken,
-    r: &[f32],
-    g: &[f32],
-    b: &[f32],
-    a: &[f32],
-    dst: &mut [f32],
-) {
-    planes_to_rgba_f32_loop_scalar(r, g, b, a, dst);
-}
-
-// --- x86_64 AVX2 chunked SIMD wrappers ----------------------------------
-//
-// Each `*_impl_v3` chunks the input into 16-pixel groups (calling
-// `*_chunk16_*_v3`), drops to chunk-8 / chunk-4 for the tail, then
-// finishes with scalar pixel-by-pixel for the final < 4 pixels. The
-// per-chunk SIMD functions are `#[rite]` so they fuse into this
-// `#[arcane]` region with no `call` instruction at the chunk boundary.
-
-// f32 dispatchers: thin `#[arcane(<tier>)]` wrappers around the inline scalar
-// loop. LLVM autovec under target_feature avx2,fma emits 256-bit YMM ops —
-// 26-37% faster at 1024px than the previous hand-written 128-bit chunk SIMD.
-// See benchmarks/deinterleave_autovec_vs_chunk_2026-05-07.{log,meta}.
-
-#[cfg(target_arch = "x86_64")]
-mod x86_f32 {
-    use super::*;
-
-    #[arcane]
-    pub(crate) fn rgb_f32_to_planes_impl_v3(
-        _t: X64V3Token,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-    ) {
-        super::rgb_f32_to_planes_loop_scalar(src, r, g, b);
-    }
-
-    #[arcane]
-    pub(crate) fn rgba_f32_to_planes_impl_v3(
-        _t: X64V3Token,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-        a: &mut [f32],
-    ) {
-        super::rgba_f32_to_planes_loop_scalar(src, r, g, b, a);
-    }
-
-    #[arcane]
-    pub(crate) fn planes_to_rgb_f32_impl_v3(
-        _t: X64V3Token,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgb_f32_loop_scalar(r, g, b, dst);
-    }
-
-    #[arcane]
-    pub(crate) fn planes_to_rgba_f32_impl_v3(
-        _t: X64V3Token,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        a: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgba_f32_loop_scalar(r, g, b, a, dst);
-    }
-}
-
-#[cfg(target_arch = "x86_64")]
-use x86_f32::{
-    planes_to_rgb_f32_impl_v3, planes_to_rgba_f32_impl_v3, rgb_f32_to_planes_impl_v3,
-    rgba_f32_to_planes_impl_v3,
-};
-
-// --- aarch64 NEON chunked SIMD wrappers ----------------------------------
-//
-// NEON has dedicated hardware structure-load/store instructions for f32:
-//   `vld3q_f32` deinterleaves 4 RGB pixels in a single instruction
-//   `vld4q_f32` deinterleaves 4 RGBA pixels in a single instruction
-//   `vst3q_f32` / `vst4q_f32` interleave on the inverse path
-//
-// Each `*_impl_neon` does chunk-16 SIMD + flat scalar tail; the per-chunk
-// `#[rite(neon)]` SIMD functions inline into this `#[arcane]` region.
-// Chunk-size choice rationale: see `benchmarks/deinterleave_chunk_size_choice_*`.
-
-#[cfg(target_arch = "aarch64")]
-mod arm_f32 {
-    use super::*;
-
-    #[arcane]
-    pub(crate) fn rgb_f32_to_planes_impl_neon(
-        _t: NeonToken,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-    ) {
-        super::rgb_f32_to_planes_loop_scalar(src, r, g, b);
-    }
-
-    #[arcane]
-    pub(crate) fn rgba_f32_to_planes_impl_neon(
-        _t: NeonToken,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-        a: &mut [f32],
-    ) {
-        super::rgba_f32_to_planes_loop_scalar(src, r, g, b, a);
-    }
-
-    #[arcane]
-    pub(crate) fn planes_to_rgb_f32_impl_neon(
-        _t: NeonToken,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgb_f32_loop_scalar(r, g, b, dst);
-    }
-
-    #[arcane]
-    pub(crate) fn planes_to_rgba_f32_impl_neon(
-        _t: NeonToken,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        a: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgba_f32_loop_scalar(r, g, b, a, dst);
-    }
-}
-
-#[cfg(target_arch = "aarch64")]
-use arm_f32::{
-    planes_to_rgb_f32_impl_neon, planes_to_rgba_f32_impl_neon, rgb_f32_to_planes_impl_neon,
-    rgba_f32_to_planes_impl_neon,
-};
-
-// wasm32 SIMD128 dispatchers — same autovec-wrapper pattern. LLVM autovec
-// under target_feature simd128 emits `v128.load` / `v128.store` on the
-// scalar loop body where it can.
-
-#[cfg(target_arch = "wasm32")]
-mod wasm_f32 {
-    use super::*;
-
-    #[archmage::arcane]
-    pub(crate) fn rgb_f32_to_planes_impl_wasm128(
-        _t: Wasm128Token,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-    ) {
-        super::rgb_f32_to_planes_loop_scalar(src, r, g, b);
-    }
-
-    #[archmage::arcane]
-    pub(crate) fn rgba_f32_to_planes_impl_wasm128(
-        _t: Wasm128Token,
-        src: &[f32],
-        r: &mut [f32],
-        g: &mut [f32],
-        b: &mut [f32],
-        a: &mut [f32],
-    ) {
-        super::rgba_f32_to_planes_loop_scalar(src, r, g, b, a);
-    }
-
-    #[archmage::arcane]
-    pub(crate) fn planes_to_rgb_f32_impl_wasm128(
-        _t: Wasm128Token,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgb_f32_loop_scalar(r, g, b, dst);
-    }
-
-    #[archmage::arcane]
-    pub(crate) fn planes_to_rgba_f32_impl_wasm128(
-        _t: Wasm128Token,
-        r: &[f32],
-        g: &[f32],
-        b: &[f32],
-        a: &[f32],
-        dst: &mut [f32],
-    ) {
-        super::planes_to_rgba_f32_loop_scalar(r, g, b, a, dst);
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-use wasm_f32::{
-    planes_to_rgb_f32_impl_wasm128, planes_to_rgba_f32_impl_wasm128,
-    rgb_f32_to_planes_impl_wasm128, rgba_f32_to_planes_impl_wasm128,
-};
-
 // --- Public API ----------------------------------------------------------
 
 /// Deinterleave packed `f32` RGB into three contiguous `f32` planes.
@@ -935,6 +696,7 @@ use wasm_f32::{
 /// - [`SizeError::NotPixelAligned`] if `src.len() % 3 != 0` or `src` is empty.
 /// - [`SizeError::PixelCountMismatch`] if any plane is shorter than the pixel
 ///   count.
+#[autoversion(v3, neon, wasm128)]
 pub fn rgb_f32_to_planes_f32(
     src: &[f32],
     r: &mut [f32],
@@ -948,13 +710,7 @@ pub fn rgb_f32_to_planes_f32(
     if r.len() < pixels || g.len() < pixels || b.len() < pixels {
         return Err(SizeError::PixelCountMismatch);
     }
-    let r = &mut r[..pixels];
-    let g = &mut g[..pixels];
-    let b = &mut b[..pixels];
-    incant!(
-        rgb_f32_to_planes_impl(src, r, g, b),
-        [v3, neon, wasm128, scalar]
-    );
+    rgb_f32_to_planes_loop_scalar(src, &mut r[..pixels], &mut g[..pixels], &mut b[..pixels]);
     Ok(())
 }
 
@@ -967,6 +723,7 @@ pub fn rgb_f32_to_planes_f32(
 /// - [`SizeError::NotPixelAligned`] if `src.len() % 4 != 0` or `src` is empty.
 /// - [`SizeError::PixelCountMismatch`] if any plane is shorter than the pixel
 ///   count.
+#[autoversion(v3, neon, wasm128)]
 pub fn rgba_f32_to_planes_f32(
     src: &[f32],
     r: &mut [f32],
@@ -981,13 +738,12 @@ pub fn rgba_f32_to_planes_f32(
     if r.len() < pixels || g.len() < pixels || b.len() < pixels || a.len() < pixels {
         return Err(SizeError::PixelCountMismatch);
     }
-    let r = &mut r[..pixels];
-    let g = &mut g[..pixels];
-    let b = &mut b[..pixels];
-    let a = &mut a[..pixels];
-    incant!(
-        rgba_f32_to_planes_impl(src, r, g, b, a),
-        [v3, neon, wasm128, scalar]
+    rgba_f32_to_planes_loop_scalar(
+        src,
+        &mut r[..pixels],
+        &mut g[..pixels],
+        &mut b[..pixels],
+        &mut a[..pixels],
     );
     Ok(())
 }
@@ -1001,6 +757,7 @@ pub fn rgba_f32_to_planes_f32(
 /// - [`SizeError::NotPixelAligned`] if any plane is empty or planes have
 ///   different lengths.
 /// - [`SizeError::PixelCountMismatch`] if `dst` is smaller than `3 × r.len()`.
+#[autoversion(v3, neon, wasm128)]
 pub fn planes_f32_to_rgb_f32(
     r: &[f32],
     g: &[f32],
@@ -1014,11 +771,7 @@ pub fn planes_f32_to_rgb_f32(
     if dst.len() < pixels * 3 {
         return Err(SizeError::PixelCountMismatch);
     }
-    let dst = &mut dst[..pixels * 3];
-    incant!(
-        planes_to_rgb_f32_impl(r, g, b, dst),
-        [v3, neon, wasm128, scalar]
-    );
+    planes_to_rgb_f32_loop_scalar(r, g, b, &mut dst[..pixels * 3]);
     Ok(())
 }
 
@@ -1031,6 +784,7 @@ pub fn planes_f32_to_rgb_f32(
 /// - [`SizeError::NotPixelAligned`] if any plane is empty or planes differ
 ///   in length.
 /// - [`SizeError::PixelCountMismatch`] if `dst` is smaller than `4 × r.len()`.
+#[autoversion(v3, neon, wasm128)]
 pub fn planes_f32_to_rgba_f32(
     r: &[f32],
     g: &[f32],
@@ -1045,11 +799,7 @@ pub fn planes_f32_to_rgba_f32(
     if dst.len() < pixels * 4 {
         return Err(SizeError::PixelCountMismatch);
     }
-    let dst = &mut dst[..pixels * 4];
-    incant!(
-        planes_to_rgba_f32_impl(r, g, b, a, dst),
-        [v3, neon, wasm128, scalar]
-    );
+    planes_to_rgba_f32_loop_scalar(r, g, b, a, &mut dst[..pixels * 4]);
     Ok(())
 }
 

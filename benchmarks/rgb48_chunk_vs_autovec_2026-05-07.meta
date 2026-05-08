@@ -1,0 +1,20 @@
+commit:    118f857 (current branch tip)
+host:      AMD Ryzen 9 7950X (Zen 4)
+cmd:       cargo bench --bench deinterleave --features experimental -- --group="rgb48_to_planes_f32"
+date:      2026-05-07 UTC
+
+Question: u16→f32 chunk SIMD — same story as u8?
+
+Conclusion: YES, +22-49% at L1-L3 sizes.
+  | size       | scalar  | autovec | chunk-SIMD | chunk vs autovec |
+  | 256px      |   155ns |   124ns |    82ns    |     +34%         |
+  | 4096px     |  2436ns |  1470ns |  1022ns    |     +30%         |
+  | 65536px    | 37016ns | 24829ns | 12727ns    |     +49%         |
+  | 262144px   |  172.3µ |  125.2µ |   83.6µ    |     +33%         |
+  | 1MP        |  767.7µ |  622.7µ |  484.6µ    |     +22%         |
+  | 4MP+ (DRAM)|  (all tied) |
+
+Action: KEEP `rgb48_chunk8_tokenless_v3` and the rgb48 slice-level
+  chunk dispatcher. Same justification as rgb24 — `_mm_shuffle_epi8`
+  on the deinterleave + 256-bit AVX2 widening (`_mm256_cvtepu16_epi32`)
+  is a real win autovec can't match.
