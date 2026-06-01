@@ -10,6 +10,12 @@ keywords = ["pixel", "swizzle", "bgra", "rgba", "simd"]
 categories = ["graphics", "multimedia::images", "no-std"]
 repository = "https://github.com/imazen/garb"
 readme = "README.md"
+exclude = [
+    ".github/",
+    ".gitignore",
+    "benchmarks/",
+    "tests/",
+]
 
 [dependencies]
 archmage = { version = "0.9.21", features = ["macros"] }
