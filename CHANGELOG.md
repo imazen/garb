@@ -2,9 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+
+- Versioned public-API surface snapshot at `docs/public-api/garb.txt`,
+  regenerated on every `cargo test` run via `tests/public_api_doc.rs`
+  (`ZEN_API_DOC=check` verifies in CI, `=off` skips); `justfile` added with
+  `api-doc` / `api-doc-check` recipes
+
 ### Changed
 
-- Exclude `.github/`, `.gitignore`, `benchmarks/`, and `tests/` from published crate package
+- Exclude `.github/`, `.gitignore`, `benchmarks/`, and `tests/` from published crate package; also exclude `docs/` and `justfile`
 
 ### QUEUED BREAKING CHANGES
 

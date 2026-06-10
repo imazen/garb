@@ -8,6 +8,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CI: "1"
+  # Public-API snapshot regen (tests/public_api_doc.rs) needs nightly rustdoc
+  # + cargo-public-api; only the lint job carries them and runs the check.
+  ZEN_API_DOC: off
 
 jobs:
   # Native test matrix
@@ -62,14 +65,22 @@ jobs:
       - name: Install cross
         run: cargo install cross --locked
       - run: cross test --target i686-unknown-linux-gnu --all-features -- --test-threads=1
+        env:
+          # The container doesn't inherit the workflow env; skip the
+          # public-API snapshot test explicitly inside it.
+          CROSS_CONTAINER_OPTS: "--env ZEN_API_DOC=off"
       - run: cross test --target i686-unknown-linux-gnu --no-default-features -- --test-threads=1
+        env:
+          CROSS_CONTAINER_OPTS: "--env ZEN_API_DOC=off"
 
   # WASM tests via wasmtime
   wasm:
     name: test (wasm32-wasip1)
     runs-on: ubuntu-latest
     env:
-      CARGO_TARGET_WASM32_WASIP1_RUNNER: "wasmtime run --dir . --"
+      # `--env ZEN_API_DOC=off`: wasmtime doesn't forward host env vars, and
+      # the public-API snapshot test can't spawn cargo inside the sandbox.
+      CARGO_TARGET_WASM32_WASIP1_RUNNER: "wasmtime run --env ZEN_API_DOC=off --dir . --"
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -102,6 +113,15 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-features -- -D warnings
       - run: cargo clippy --no-default-features -- -D warnings
+      - uses: dtolnay/rust-toolchain@nightly # rustdoc JSON for cargo-public-api
+      - uses: dtolnay/rust-toolchain@stable # restore stable as default
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-public-api
+      - name: Public-API snapshot is current
+        run: cargo test -p garb --test public_api_doc
+        env:
+          ZEN_API_DOC: check
       - name: Doc build (warnings as errors)
         run: cargo doc --all-features --no-deps
         env:

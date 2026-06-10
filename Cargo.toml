@@ -15,6 +15,8 @@ exclude = [
     ".gitignore",
     "benchmarks/",
     "tests/",
+    "docs/",
+    "justfile",
 ]
 
 [dependencies]
@@ -30,6 +32,8 @@ rgb = { version = "0.8.53", features = ["bytemuck"] }
 imgref = "1.12.0"
 criterion = { version = "0.8.2", default-features = false, features = ["plotters", "html_reports"] }
 zenbench = "0.1.7"
+# tests/public_api_doc.rs parses `cargo metadata` for the feature list.
+serde_json = "1.0.150"
 
 [[bench]]
 name = "swizzle"
