@@ -1,0 +1,16 @@
+# CI-free public-API snapshot runner — the only package depending on
+# zenutils-apidoc. The parent manifest is a single package (no workspace
+# members), so this directory is already outside its build graph; the
+# [workspace] table below keeps it a standalone root. Plain `cargo test`
+# and every CI job (including --all-features ones) never compile the
+# apidoc tree or run rustdoc. Regenerate via `just api-doc`.
+[package]
+name = "garb-apidoc"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+zenutils-apidoc = "0.1.0"
+
+[workspace]

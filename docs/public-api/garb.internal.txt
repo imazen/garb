@@ -1,0 +1,35 @@
+# garb public API — doc(hidden) items and excluded-feature surface
+# excluded features: (none)
+# (regenerated on every `cargo test` by zenutils-apidoc; ZEN_API_DOC=check verifies, =off skips).
+# Encodings: crate-name prefix stripped; auto traits collapse to a
+# count + exceptions; trait impls collapse to one roster line per
+# type (method signatures live at the trait definition); blanket
+# impls omitted; re-export duplicates annotated `[also: path]`.
+# DO NOT EDIT BY HAND — commit regenerated changes with the code.
+
+## summary
+#
+#   free functions                             12
+#   trait roster entries (type × trait)         1
+#
+# per-module pub lines:
+#   deinterleave                     12
+
+## items (12 lines)
+
+pub fn deinterleave::autovec_avx2_rgb24(&[u8], &mut [f32], &mut [f32], &mut [f32]) -> bool
+pub fn deinterleave::autovec_avx2_rgb48(&[u16], &mut [f32], &mut [f32], &mut [f32]) -> bool
+pub fn deinterleave::rgb24_chunk8_to_planes_scalar(&[u8; 24]) -> ([f32; 8], [f32; 8], [f32; 8])
+pub fn deinterleave::rgb24_chunk8_to_planes_tokenless_v3(&[u8; 24]) -> ([f32; 8], [f32; 8], [f32; 8])
+pub fn deinterleave::rgb48_chunk8_to_planes_scalar(&[u16; 24]) -> ([f32; 8], [f32; 8], [f32; 8])
+pub fn deinterleave::rgb48_chunk8_to_planes_tokenless_v3(&[u16; 24]) -> ([f32; 8], [f32; 8], [f32; 8])
+pub fn deinterleave::scalar_only_planes_f32_to_rgb(&[f32], &[f32], &[f32], &mut [f32])
+pub fn deinterleave::scalar_only_planes_f32_to_rgba(&[f32], &[f32], &[f32], &[f32], &mut [f32])
+pub fn deinterleave::scalar_only_rgb24(&[u8], &mut [f32], &mut [f32], &mut [f32])
+pub fn deinterleave::scalar_only_rgb48(&[u16], &mut [f32], &mut [f32], &mut [f32])
+pub fn deinterleave::scalar_only_rgb_f32_to_planes(&[f32], &mut [f32], &mut [f32], &mut [f32])
+pub fn deinterleave::scalar_only_rgba_f32_to_planes(&[f32], &mut [f32], &mut [f32], &mut [f32], &mut [f32])
+
+## trait impls (1 types)
+
+SizeError: TrivialClone

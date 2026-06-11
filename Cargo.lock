@@ -312,7 +312,6 @@ dependencies = [
  "imgref",
  "paste",
  "rgb",
- "serde_json",
  "zenbench",
 ]
 

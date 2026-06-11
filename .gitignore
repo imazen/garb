@@ -1,4 +1,7 @@
 /target/
+# apidoc runner build dir (its Cargo.lock IS committed; /target/ above is
+# anchored so the runner needs its own entry)
+apidoc/target/
 copter-report/
 .workongoing
 .claude/

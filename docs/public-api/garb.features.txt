@@ -1,0 +1,257 @@
+# garb public API — additions from non-default features
+# features: experimental,imgref,rgb,std
+# (regenerated on every `cargo test` by zenutils-apidoc; ZEN_API_DOC=check verifies, =off skips).
+# Encodings: crate-name prefix stripped; auto traits collapse to a
+# count + exceptions; trait impls collapse to one roster line per
+# type (method signatures live at the trait definition); blanket
+# impls omitted; re-export duplicates annotated `[also: path]`.
+# DO NOT EDIT BY HAND — commit regenerated changes with the code.
+
+## summary
+#
+#   pub modules                                 3
+#   pub types (struct/enum/trait/alias)         4
+#   free functions                            211
+#   inherent methods                            4
+#   trait roster entries (type × trait)        51
+#
+# per-module pub lines:
+#   (root)                           15
+#   bytes                           100
+#   deinterleave                     18
+#   imgref                           39
+#   typed_rgb                        50
+
+## items (222 lines)
+
+pub fn bytes::bgr_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt2020(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt2020_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt601(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt601_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt709(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt709_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_identity(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_identity_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt2020(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt2020_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt601(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt601_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt709(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt709_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_identity(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_identity_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_rgb565(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_rgb565_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_rgba4444(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_rgba4444_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_f32_to_u16(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_f32_to_u16_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_f32_to_u8(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_f32_to_u8_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u16_to_f32(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u16_to_f32_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u16_to_u8(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u16_to_u8_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u8_to_f32(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u8_to_f32_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u8_to_u16(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u8_to_u16_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_bgr(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_bgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_gray_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_rgb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_rgb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_bgr(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_bgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_gray_alpha(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_gray_alpha_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_rgb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_rgb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_bgra_u8(&mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_bgra_u8_copy(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_bgra_u8_copy_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_bgra_u8_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_f32(&mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_f32_copy(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_f32_copy_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_f32_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_f32(&mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_f32_copy(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_u8(&mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_u8_copy(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_u8_copy_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_u8_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb565_to_bgra(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb565_to_bgra_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb565_to_rgba(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb565_to_rgba_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt2020(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt2020_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt601(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt601_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt709(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt709_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_identity(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_identity_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba1010102_to_rgba16(&[u8], &mut [u16]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba1010102_to_rgba16_strided(&[u8], &mut [u16], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba16_to_rgba1010102(&[u16], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba16_to_rgba1010102_strided(&[u16], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba4444_to_bgra(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba4444_to_bgra_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba4444_to_rgba(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba4444_to_rgba_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt2020(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt2020_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt601(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt601_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt709(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt709_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_identity(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_identity_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_rgb565(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_rgb565_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_rgba4444(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_rgba4444_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::unpremultiply_alpha_f32(&mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::unpremultiply_alpha_f32_copy(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::unpremultiply_alpha_f32_copy_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::unpremultiply_alpha_f32_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::unpremultiply_alpha_rgba_f32(&mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::unpremultiply_alpha_rgba_f32_copy(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub mod deinterleave
+pub fn deinterleave::planes_f32_to_rgb_f32(&[f32], &[f32], &[f32], &mut [f32]) -> core::result::Result<(), SizeError>
+pub fn deinterleave::planes_f32_to_rgba_f32(&[f32], &[f32], &[f32], &[f32], &mut [f32]) -> core::result::Result<(), SizeError>
+pub fn deinterleave::planes_to_rgb_f32_chunk16_scalar(&[f32; 16], &[f32; 16], &[f32; 16]) -> [f32; 48]
+pub fn deinterleave::planes_to_rgb_f32_chunk4_scalar(&[f32; 4], &[f32; 4], &[f32; 4]) -> [f32; 12]
+pub fn deinterleave::planes_to_rgb_f32_chunk8_scalar(&[f32; 8], &[f32; 8], &[f32; 8]) -> [f32; 24]
+pub fn deinterleave::planes_to_rgba_f32_chunk16_scalar(&[f32; 16], &[f32; 16], &[f32; 16], &[f32; 16]) -> [f32; 64]
+pub fn deinterleave::planes_to_rgba_f32_chunk4_scalar(&[f32; 4], &[f32; 4], &[f32; 4], &[f32; 4]) -> [f32; 16]
+pub fn deinterleave::planes_to_rgba_f32_chunk8_scalar(&[f32; 8], &[f32; 8], &[f32; 8], &[f32; 8]) -> [f32; 32]
+pub fn deinterleave::rgb24_to_planes_f32(&[u8], &mut [f32], &mut [f32], &mut [f32]) -> core::result::Result<(), SizeError>
+pub fn deinterleave::rgb48_to_planes_f32(&[u16], &mut [f32], &mut [f32], &mut [f32]) -> core::result::Result<(), SizeError>
+pub fn deinterleave::rgb_f32_chunk16_to_planes_scalar(&[f32; 48]) -> ([f32; 16], [f32; 16], [f32; 16])
+pub fn deinterleave::rgb_f32_chunk4_to_planes_scalar(&[f32; 12]) -> ([f32; 4], [f32; 4], [f32; 4])
+pub fn deinterleave::rgb_f32_chunk8_to_planes_scalar(&[f32; 24]) -> ([f32; 8], [f32; 8], [f32; 8])
+pub fn deinterleave::rgb_f32_to_planes_f32(&[f32], &mut [f32], &mut [f32], &mut [f32]) -> core::result::Result<(), SizeError>
+pub fn deinterleave::rgba_f32_chunk16_to_planes_scalar(&[f32; 64]) -> ([f32; 16], [f32; 16], [f32; 16], [f32; 16])
+pub fn deinterleave::rgba_f32_chunk4_to_planes_scalar(&[f32; 16]) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4])
+pub fn deinterleave::rgba_f32_chunk8_to_planes_scalar(&[f32; 32]) -> ([f32; 8], [f32; 8], [f32; 8], [f32; 8])
+pub fn deinterleave::rgba_f32_to_planes_f32(&[f32], &mut [f32], &mut [f32], &mut [f32], &mut [f32]) -> core::result::Result<(), SizeError>
+pub mod imgref
+pub fn imgref::convert_bgr_to_bgra(imgref::ImgRef<'_, rgb::formats::bgr::Bgr<u8>>, imgref::ImgRefMut<'_, rgb::formats::bgra::Bgra<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgr_to_gray_bt2020(imgref::ImgRef<'_, rgb::formats::bgr::Bgr<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgr_to_gray_bt601(imgref::ImgRef<'_, rgb::formats::bgr::Bgr<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgr_to_gray_bt709(imgref::ImgRef<'_, rgb::formats::bgr::Bgr<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgr_to_rgba(imgref::ImgRef<'_, rgb::formats::bgr::Bgr<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgba::Rgba<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgra_to_bgr(imgref::ImgRef<'_, rgb::formats::bgra::Bgra<u8>>, imgref::ImgRefMut<'_, rgb::formats::bgr::Bgr<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgra_to_gray_bt2020(imgref::ImgRef<'_, rgb::formats::bgra::Bgra<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgra_to_gray_bt601(imgref::ImgRef<'_, rgb::formats::bgra::Bgra<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgra_to_gray_bt709(imgref::ImgRef<'_, rgb::formats::bgra::Bgra<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgra_to_rgb(imgref::ImgRef<'_, rgb::formats::bgra::Bgra<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgb::Rgb<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_bgra_to_rgba(imgref::ImgRef<'_, rgb::formats::bgra::Bgra<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgba::Rgba<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_alpha_to_bgra(imgref::ImgRef<'_, rgb::formats::gray_alpha::GrayAlpha_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::bgra::Bgra<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_alpha_to_gray(imgref::ImgRef<'_, rgb::formats::gray_alpha::GrayAlpha_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_alpha_to_rgb(imgref::ImgRef<'_, rgb::formats::gray_alpha::GrayAlpha_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgb::Rgb<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_alpha_to_rgba(imgref::ImgRef<'_, rgb::formats::gray_alpha::GrayAlpha_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgba::Rgba<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_to_bgr(imgref::ImgRef<'_, rgb::formats::gray::Gray_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::bgr::Bgr<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_to_bgra(imgref::ImgRef<'_, rgb::formats::gray::Gray_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::bgra::Bgra<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_to_gray_alpha(imgref::ImgRef<'_, rgb::formats::gray::Gray_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray_alpha::GrayAlpha_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_to_rgb(imgref::ImgRef<'_, rgb::formats::gray::Gray_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgb::Rgb<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_gray_to_rgba(imgref::ImgRef<'_, rgb::formats::gray::Gray_v08<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgba::Rgba<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgb_to_bgra(imgref::ImgRef<'_, rgb::formats::rgb::Rgb<u8>>, imgref::ImgRefMut<'_, rgb::formats::bgra::Bgra<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgb_to_gray(imgref::ImgRef<'_, rgb::formats::rgb::Rgb<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgb_to_gray_bt2020(imgref::ImgRef<'_, rgb::formats::rgb::Rgb<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgb_to_gray_bt601(imgref::ImgRef<'_, rgb::formats::rgb::Rgb<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgb_to_gray_bt709(imgref::ImgRef<'_, rgb::formats::rgb::Rgb<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgb_to_gray_identity(imgref::ImgRef<'_, rgb::formats::rgb::Rgb<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgb_to_rgba(imgref::ImgRef<'_, rgb::formats::rgb::Rgb<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgba::Rgba<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgba_to_bgr(imgref::ImgRef<'_, rgb::formats::rgba::Rgba<u8>>, imgref::ImgRefMut<'_, rgb::formats::bgr::Bgr<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgba_to_bgra(imgref::ImgRef<'_, rgb::formats::rgba::Rgba<u8>>, imgref::ImgRefMut<'_, rgb::formats::bgra::Bgra<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgba_to_gray(imgref::ImgRef<'_, rgb::formats::rgba::Rgba<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgba_to_gray_bt2020(imgref::ImgRef<'_, rgb::formats::rgba::Rgba<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgba_to_gray_bt601(imgref::ImgRef<'_, rgb::formats::rgba::Rgba<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgba_to_gray_bt709(imgref::ImgRef<'_, rgb::formats::rgba::Rgba<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgba_to_gray_identity(imgref::ImgRef<'_, rgb::formats::rgba::Rgba<u8>>, imgref::ImgRefMut<'_, rgb::formats::gray::Gray_v08<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::convert_rgba_to_rgb(imgref::ImgRef<'_, rgb::formats::rgba::Rgba<u8>>, imgref::ImgRefMut<'_, rgb::formats::rgb::Rgb<u8>>) -> core::result::Result<(), SizeError>
+pub fn imgref::premultiply_rgba_f32(imgref::ImgRefMut<'_, rgb::formats::rgba::Rgba<f32>>)
+pub fn imgref::swap_bgra_to_rgba(imgref::ImgVec<rgb::formats::bgra::Bgra<u8>>) -> imgref::ImgVec<rgb::formats::rgba::Rgba<u8>>
+pub fn imgref::swap_rgba_to_bgra(imgref::ImgVec<rgb::formats::rgba::Rgba<u8>>) -> imgref::ImgVec<rgb::formats::bgra::Bgra<u8>>
+pub fn imgref::unpremultiply_rgba_f32(imgref::ImgRefMut<'_, rgb::formats::rgba::Rgba<f32>>)
+pub mod typed_rgb
+pub fn typed_rgb::bgr_to_bgra_buf(&[rgb::formats::bgr::Bgr<u8>], &mut [rgb::formats::bgra::Bgra<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgr_to_gray_bt2020_buf(&[rgb::formats::bgr::Bgr<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgr_to_gray_bt601_buf(&[rgb::formats::bgr::Bgr<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgr_to_gray_bt709_buf(&[rgb::formats::bgr::Bgr<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgr_to_gray_buf(&[rgb::formats::bgr::Bgr<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgr_to_gray_identity_buf(&[rgb::formats::bgr::Bgr<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgr_to_rgb_mut(&mut [rgb::formats::bgr::Bgr<u8>]) -> &mut [rgb::formats::rgb::Rgb<u8>]
+pub fn typed_rgb::bgr_to_rgba_buf(&[rgb::formats::bgr::Bgr<u8>], &mut [rgb::formats::rgba::Rgba<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_bgr_buf(&[rgb::formats::bgra::Bgra<u8>], &mut [rgb::formats::bgr::Bgr<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_gray_bt2020_buf(&[rgb::formats::bgra::Bgra<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_gray_bt601_buf(&[rgb::formats::bgra::Bgra<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_gray_bt709_buf(&[rgb::formats::bgra::Bgra<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_gray_buf(&[rgb::formats::bgra::Bgra<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_gray_identity_buf(&[rgb::formats::bgra::Bgra<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_rgb_buf(&[rgb::formats::bgra::Bgra<u8>], &mut [rgb::formats::rgb::Rgb<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_rgba_buf(&[rgb::formats::bgra::Bgra<u8>], &mut [rgb::formats::rgba::Rgba<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::bgra_to_rgba_mut(&mut [rgb::formats::bgra::Bgra<u8>]) -> &mut [rgb::formats::rgba::Rgba<u8>]
+pub fn typed_rgb::fill_alpha_bgra(&mut [rgb::formats::bgra::Bgra<u8>])
+pub fn typed_rgb::fill_alpha_rgba(&mut [rgb::formats::rgba::Rgba<u8>])
+pub fn typed_rgb::gray_alpha_to_bgr_buf(&[rgb::formats::gray_alpha::GrayAlpha_v08<u8>], &mut [rgb::formats::bgr::Bgr<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_alpha_to_bgra_buf(&[rgb::formats::gray_alpha::GrayAlpha_v08<u8>], &mut [rgb::formats::bgra::Bgra<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_alpha_to_gray_buf(&[rgb::formats::gray_alpha::GrayAlpha_v08<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_alpha_to_rgb_buf(&[rgb::formats::gray_alpha::GrayAlpha_v08<u8>], &mut [rgb::formats::rgb::Rgb<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_alpha_to_rgba_buf(&[rgb::formats::gray_alpha::GrayAlpha_v08<u8>], &mut [rgb::formats::rgba::Rgba<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_to_bgr_buf(&[rgb::formats::gray::Gray_v08<u8>], &mut [rgb::formats::bgr::Bgr<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_to_bgra_buf(&[rgb::formats::gray::Gray_v08<u8>], &mut [rgb::formats::bgra::Bgra<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_to_gray_alpha_buf(&[rgb::formats::gray::Gray_v08<u8>], &mut [rgb::formats::gray_alpha::GrayAlpha_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_to_rgb_buf(&[rgb::formats::gray::Gray_v08<u8>], &mut [rgb::formats::rgb::Rgb<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::gray_to_rgba_buf(&[rgb::formats::gray::Gray_v08<u8>], &mut [rgb::formats::rgba::Rgba<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::premultiply_rgba_f32(&mut [rgb::formats::rgba::Rgba<f32>])
+pub fn typed_rgb::premultiply_rgba_f32_buf(&[rgb::formats::rgba::Rgba<f32>], &mut [rgb::formats::rgba::Rgba<f32>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgb_to_bgr_mut(&mut [rgb::formats::rgb::Rgb<u8>]) -> &mut [rgb::formats::bgr::Bgr<u8>]
+pub fn typed_rgb::rgb_to_bgra_buf(&[rgb::formats::rgb::Rgb<u8>], &mut [rgb::formats::bgra::Bgra<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgb_to_gray_bt2020_buf(&[rgb::formats::rgb::Rgb<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgb_to_gray_bt601_buf(&[rgb::formats::rgb::Rgb<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgb_to_gray_bt709_buf(&[rgb::formats::rgb::Rgb<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgb_to_gray_buf(&[rgb::formats::rgb::Rgb<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgb_to_gray_identity_buf(&[rgb::formats::rgb::Rgb<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgb_to_rgba_buf(&[rgb::formats::rgb::Rgb<u8>], &mut [rgb::formats::rgba::Rgba<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgba_to_bgr_buf(&[rgb::formats::rgba::Rgba<u8>], &mut [rgb::formats::bgr::Bgr<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgba_to_bgra_buf(&[rgb::formats::rgba::Rgba<u8>], &mut [rgb::formats::bgra::Bgra<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgba_to_bgra_mut(&mut [rgb::formats::rgba::Rgba<u8>]) -> &mut [rgb::formats::bgra::Bgra<u8>]
+pub fn typed_rgb::rgba_to_gray_bt2020_buf(&[rgb::formats::rgba::Rgba<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgba_to_gray_bt601_buf(&[rgb::formats::rgba::Rgba<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgba_to_gray_bt709_buf(&[rgb::formats::rgba::Rgba<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgba_to_gray_buf(&[rgb::formats::rgba::Rgba<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgba_to_gray_identity_buf(&[rgb::formats::rgba::Rgba<u8>], &mut [rgb::formats::gray::Gray_v08<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::rgba_to_rgb_buf(&[rgb::formats::rgba::Rgba<u8>], &mut [rgb::formats::rgb::Rgb<u8>]) -> core::result::Result<(), SizeError>
+pub fn typed_rgb::unpremultiply_rgba_f32(&mut [rgb::formats::rgba::Rgba<f32>])
+pub fn typed_rgb::unpremultiply_rgba_f32_buf(&[rgb::formats::rgba::Rgba<f32>], &mut [rgb::formats::rgba::Rgba<f32>]) -> core::result::Result<(), SizeError>
+pub trait ConvertImage<Dst>: core::marker::Sized
+pub fn ConvertImage::convert_image(imgref::ImgRef<'_, Self>, imgref::ImgRefMut<'_, Dst>) -> core::result::Result<(), SizeError>
+pub trait ConvertImageInplace<Dst>: core::marker::Sized
+pub fn ConvertImageInplace::convert_image_inplace(imgref::ImgVec<Self>) -> imgref::ImgVec<Dst>
+pub trait ConvertInplace<Dst>: core::marker::Sized
+pub fn ConvertInplace::convert_inplace(&mut [Self]) -> &mut [Dst]
+pub trait ConvertTo<Dst>: core::marker::Sized
+pub fn ConvertTo::convert_to(&[Self], &mut [Dst]) -> core::result::Result<(), SizeError>
+pub fn convert<S: ConvertTo<D>, D>(&[S], &mut [D]) -> core::result::Result<(), SizeError>
+pub fn convert_imgref<S: ConvertImage<D>, D>(imgref::ImgRef<'_, S>, imgref::ImgRefMut<'_, D>) -> core::result::Result<(), SizeError>
+pub fn convert_imgref_inplace<S: ConvertImageInplace<D>, D>(imgref::ImgVec<S>) -> imgref::ImgVec<D>
+pub fn convert_inplace<S: ConvertInplace<D>, D>(&mut [S]) -> &mut [D]
+
+## trait impls (6 types)
+
+rgb::formats::bgr::Bgr<u8>: ConvertImage<rgb::formats::bgra::Bgra<u8>>, ConvertImage<rgb::formats::rgba::Rgba<u8>>, ConvertInplace<rgb::formats::rgb::Rgb<u8>>, ConvertTo<rgb::formats::bgra::Bgra<u8>>, ConvertTo<rgb::formats::gray::Gray_v08<u8>>, ConvertTo<rgb::formats::rgba::Rgba<u8>>
+rgb::formats::bgra::Bgra<u8>: ConvertImage<rgb::formats::bgr::Bgr<u8>>, ConvertImage<rgb::formats::rgb::Rgb<u8>>, ConvertImage<rgb::formats::rgba::Rgba<u8>>, ConvertImageInplace<rgb::formats::rgba::Rgba<u8>>, ConvertInplace<rgb::formats::rgba::Rgba<u8>>, ConvertTo<rgb::formats::bgr::Bgr<u8>>, ConvertTo<rgb::formats::gray::Gray_v08<u8>>, ConvertTo<rgb::formats::rgb::Rgb<u8>>, ConvertTo<rgb::formats::rgba::Rgba<u8>>
+rgb::formats::gray::Gray_v08<u8>: ConvertImage<rgb::formats::bgr::Bgr<u8>>, ConvertImage<rgb::formats::bgra::Bgra<u8>>, ConvertImage<rgb::formats::gray_alpha::GrayAlpha_v08<u8>>, ConvertImage<rgb::formats::rgb::Rgb<u8>>, ConvertImage<rgb::formats::rgba::Rgba<u8>>, ConvertTo<rgb::formats::bgr::Bgr<u8>>, ConvertTo<rgb::formats::bgra::Bgra<u8>>, ConvertTo<rgb::formats::gray_alpha::GrayAlpha_v08<u8>>, ConvertTo<rgb::formats::rgb::Rgb<u8>>, ConvertTo<rgb::formats::rgba::Rgba<u8>>
+rgb::formats::gray_alpha::GrayAlpha_v08<u8>: ConvertImage<rgb::formats::bgra::Bgra<u8>>, ConvertImage<rgb::formats::gray::Gray_v08<u8>>, ConvertImage<rgb::formats::rgb::Rgb<u8>>, ConvertImage<rgb::formats::rgba::Rgba<u8>>, ConvertTo<rgb::formats::bgr::Bgr<u8>>, ConvertTo<rgb::formats::bgra::Bgra<u8>>, ConvertTo<rgb::formats::gray::Gray_v08<u8>>, ConvertTo<rgb::formats::rgb::Rgb<u8>>, ConvertTo<rgb::formats::rgba::Rgba<u8>>
+rgb::formats::rgb::Rgb<u8>: ConvertImage<rgb::formats::bgra::Bgra<u8>>, ConvertImage<rgb::formats::gray::Gray_v08<u8>>, ConvertImage<rgb::formats::rgba::Rgba<u8>>, ConvertInplace<rgb::formats::bgr::Bgr<u8>>, ConvertTo<rgb::formats::bgra::Bgra<u8>>, ConvertTo<rgb::formats::gray::Gray_v08<u8>>, ConvertTo<rgb::formats::rgba::Rgba<u8>>
+rgb::formats::rgba::Rgba<u8>: ConvertImage<rgb::formats::bgr::Bgr<u8>>, ConvertImage<rgb::formats::bgra::Bgra<u8>>, ConvertImage<rgb::formats::gray::Gray_v08<u8>>, ConvertImage<rgb::formats::rgb::Rgb<u8>>, ConvertImageInplace<rgb::formats::bgra::Bgra<u8>>, ConvertInplace<rgb::formats::bgra::Bgra<u8>>, ConvertTo<rgb::formats::bgr::Bgr<u8>>, ConvertTo<rgb::formats::bgra::Bgra<u8>>, ConvertTo<rgb::formats::gray::Gray_v08<u8>>, ConvertTo<rgb::formats::rgb::Rgb<u8>>
