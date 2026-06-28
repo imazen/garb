@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 keywords = ["pixel", "swizzle", "bgra", "rgba", "simd"]
 categories = ["graphics", "multimedia::images", "no-std"]
 repository = "https://github.com/imazen/garb"
-readme = "README.md"
+readme = "README.crates.md"
 exclude = [
     ".github/",
     ".gitignore",

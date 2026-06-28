@@ -12,6 +12,7 @@
 ### Changed
 
 - Exclude `.github/`, `.gitignore`, `benchmarks/`, and `tests/` from published crate package; also exclude `docs/` and `justfile`
+- README overhaul: normalized the badge row, added a Quick start, fixed the `no_std` claim (only `imgref` pulls in `alloc`), refreshed the crosslink footer, and split a badge-free crates.io README (`README.crates.md`, now the `readme` target) from the GitHub `README.md`; added `benchmarks/README.md` with repro/methodology
 
 ### QUEUED BREAKING CHANGES
 

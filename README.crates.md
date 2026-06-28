@@ -1,4 +1,6 @@
-# garb [![CI](https://img.shields.io/github/actions/workflow/status/imazen/garb/ci.yml?style=flat-square&label=CI)](https://github.com/imazen/garb/actions/workflows/ci.yml) [![crates.io](https://img.shields.io/crates/v/garb?style=flat-square)](https://crates.io/crates/garb) [![lib.rs](https://img.shields.io/crates/v/garb?style=flat-square&label=lib.rs&color=blue)](https://lib.rs/crates/garb) [![docs.rs](https://img.shields.io/docsrs/garb?style=flat-square)](https://docs.rs/garb) [![MSRV](https://img.shields.io/badge/MSRV-1.89-blue?style=flat-square)](https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field) [![license](https://img.shields.io/crates/l/garb?style=flat-square)](#license) [![codecov](https://img.shields.io/codecov/c/github/imazen/garb?style=flat-square)](https://codecov.io/gh/imazen/garb)
+<!-- GENERATED FROM README.md by zenutils gen-readme-crates.sh — DO NOT EDIT. -->
+
+# garb
 
 *Dress your pixels for the occasion.*
 
@@ -87,57 +89,6 @@ Hand-written SIMD beats the naive autovectorized `chunks_exact` loop by up to
 numbers; full per-platform tables, methodology, and reproduction commands are in
 [`benchmarks/`](https://github.com/imazen/garb/tree/main/benchmarks).
 
-<!-- crates.io:skip-start -->
-All benchmarks on 1920×1080 buffers. "Naive" is the obvious `chunks_exact`
-loop — what the compiler autovectorizes on its own. Numbers from GitHub
-Actions CI (runtime SIMD dispatch, built without `-C target-cpu=native`); run
-`cargo bench` locally for hardware-specific results.
-
-### x86-64 (AVX2) — Linux, Zen 4
-
-| Operation | garb | naive | speedup |
-|---|---|---|---|
-| RGBA ↔ BGRA (in-place) | 150 µs | 1,078 µs | **7.2x** |
-| RGB ↔ BGR (in-place) | 329 µs | 1,038 µs | **3.2x** |
-| RGB ↔ BGR (copy) | 209 µs | 1,509 µs | **7.2x** |
-| RGBA → RGB (strip alpha) | 255 µs | 1,556 µs | **6.1x** |
-| BGRA → RGB (strip + swap) | 260 µs | 1,556 µs | **6.0x** |
-| RGB → RGBA (expand) | 328 µs | 1,764 µs | **5.4x** |
-| Fill alpha | 138 µs | 329 µs | **2.4x** |
-
-### aarch64 (NEON) — Linux, Ampere Altra
-
-| Operation | garb | naive | speedup |
-|---|---|---|---|
-| RGBA ↔ BGRA (in-place) | 243 µs | 865 µs | **3.6x** |
-| RGB ↔ BGR (in-place) | 369 µs | 857 µs | **2.3x** |
-| Fill alpha | 242 µs | 495 µs | **2.0x** |
-| RGB ↔ BGR (copy) | 221 µs | 219 µs | ~1x |
-| RGBA → RGB (strip alpha) | 279 µs | 278 µs | ~1x |
-| BGRA → RGB (strip + swap) | 277 µs | 278 µs | ~1x |
-| RGB → RGBA (expand) | 316 µs | 313 µs | ~1x |
-
-In-place swaps and fill use hand-written NEON and are 2–3.6x faster on all
-ARM hardware tested (Ampere Altra, Apple Silicon, Snapdragon X). Cross-bpp
-operations (3↔4 channel, 3bpp copy) use LLVM's autovectorizer, which
-generates optimal code for these patterns on AArch64.
-
-### WASM (SIMD128) — wasmtime
-
-| Operation | garb | naive | speedup |
-|---|---|---|---|
-| RGBA ↔ BGRA (in-place) | 230 µs | 1,041 µs | **4.5x** |
-| RGB ↔ BGR (in-place) | 494 µs | 1,027 µs | **2.1x** |
-| RGB ↔ BGR (copy) | 333 µs | 2,753 µs | **8.3x** |
-| RGBA → RGB (strip alpha) | 506 µs | 1,623 µs | **3.2x** |
-| BGRA → RGB (strip + swap) | 659 µs | 2,309 µs | **3.5x** |
-| RGB → RGBA (expand) | 998 µs | 2,271 µs | **2.3x** |
-| Fill alpha | 193 µs | 650 µs | **3.4x** |
-
-Full benchmark results for all six native platforms plus WASM are available
-in the [CI artifacts](https://github.com/imazen/garb/actions/workflows/bench.yml).
-Run `cargo bench` to reproduce locally.
-<!-- crates.io:skip-end -->
 
 ## Usage
 
