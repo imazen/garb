@@ -1,0 +1,52 @@
+# garb cross-bpp at REAL call granularity (single row) — rejection CONFIRMED
+date: 2026-07-28
+host: Apple M4 Pro (12 core), macOS, aarch64
+build: release, NO -C target-cpu=native
+bench: cargo bench --features experimental --bench swizzle -- 'row_'
+
+## Why re-measure
+
+The original rejection (benchmarks/neon_crossbpp_sweep_2026-07-28.meta) used
+whole-image buffers: 64x64, 256x256, 1024x1024, 4096x4096. That is NOT how
+these are called. Consumers call them PER ROW — zenpixels-convert's
+`convert_kernels.rs`:
+
+    garb::bytes::rgb_to_bgra(&src[..width * 3], &mut dst[..width * 4])
+
+inside a row loop, and garb ships 277 strided entry points for exactly that
+pattern. A 1920-px RGB row is 5,760 bytes; the original sweep's smallest case
+was 12,288 bytes and its largest 67 MB — 100 to 10,000x larger than a real call.
+
+This re-check exists because the same mistake INVERTED a verdict in zensim the
+same day: `fused_blur_h_ssim` read 0.70x (NEON losing) at a synthetic
+1024x1024 r=3, and 1.56x (NEON winning) at the instrumented shape the pipeline
+actually uses. Any rejection measured at an unverified shape is suspect until
+re-measured at the real one.
+
+## Result — the rejection HOLDS at real granularity
+
+| op / row width          | NEON     | scalar   | ratio |
+|-------------------------|----------|----------|-------|
+| rgb_to_bgra  /  256     |  17.7ns  |  13.2ns  | 0.75x |
+| rgb_to_bgra  /  640     |  41.5ns  |  30.9ns  | 0.75x |
+| rgb_to_bgra  / 1920     | 120.7ns  |  90.9ns  | 0.75x |
+| rgb_to_bgra  / 3840     | 244.4ns  | 190.2ns  | 0.78x |
+| rgba_to_rgb  /  256     |  27.5ns  |  26.8ns  | 0.98x |
+| rgba_to_rgb  /  640     |  68.8ns  |  67.2ns  | 0.98x |
+| rgba_to_rgb  / 1920     | 207.1ns  | 202.9ns  | 0.98x |
+| rgba_to_rgb  / 3840     | 414.2ns  | 408.2ns  | 0.99x |
+
+`rgb_to_bgra` is 33% SLOWER with the NEON kernel, consistently at all four real
+row widths. `rgba_to_rgb` is a tie. Shipping these would make garb slower on
+every ARM machine for its actual usage pattern.
+
+Unlike zensim's fused_blur, correcting the shape did NOT reverse the verdict —
+it reproduced it at a granularity that is 100-10,000x smaller, which is
+stronger evidence than the original sweep. The kernels stay unshipped and
+remain in `git stash` ("refuted: explicit vld3q/vld4q cross-bpp NEON kernels").
+
+## Bench kept
+
+`bench_crossbpp_row_sweep` in benches/swizzle.rs is committed so future
+cross-bpp work is measured at the granularity consumers actually use, not only
+at whole-image sizes. Both sweeps now exist; read the row one first.

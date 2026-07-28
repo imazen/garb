@@ -1,0 +1,363 @@
+   Compiling garb v0.2.8 (/Users/lilith/work/zen/garb)
+warning: unused import: `experimental::*`
+    --> src/bytes/neon.rs:1148:16
+     |
+1148 | pub(super) use experimental::*;
+     |                ^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `convert_u8_to_u16_impl_neon` is never used
+    --> src/bytes/neon.rs:1036:21
+     |
+1036 |     neon_copy_impl!(convert_u8_to_u16_impl_neon, convert_u8_to_u16_row_neon);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+     = note: this warning originates in the macro `neon_copy_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_u16_to_u8_impl_neon` is never used
+    --> src/bytes/neon.rs:1037:21
+     |
+1037 |     neon_copy_impl!(convert_u16_to_u8_impl_neon, convert_u16_to_u8_row_neon);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_u8_to_f32_impl_neon` is never used
+    --> src/bytes/neon.rs:1038:21
+     |
+1038 |     neon_copy_impl!(convert_u8_to_f32_impl_neon, convert_u8_to_f32_row_neon);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_f32_to_u8_impl_neon` is never used
+    --> src/bytes/neon.rs:1039:21
+     |
+1039 |     neon_copy_impl!(convert_f32_to_u8_impl_neon, convert_f32_to_u8_row_neon);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_u16_to_f32_impl_neon` is never used
+    --> src/bytes/neon.rs:1040:21
+     |
+1040 |     neon_copy_impl!(convert_u16_to_f32_impl_neon, convert_u16_to_f32_row_neon);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_f32_to_u16_impl_neon` is never used
+    --> src/bytes/neon.rs:1041:21
+     |
+1041 |     neon_copy_impl!(convert_f32_to_u16_impl_neon, convert_f32_to_u16_row_neon);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `premul_f32_copy_impl_neon` is never used
+    --> src/bytes/neon.rs:1042:21
+     |
+1042 |     neon_copy_impl!(premul_f32_copy_impl_neon, premul_f32_copy_row_neon);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `unpremul_f32_copy_impl_neon` is never used
+    --> src/bytes/neon.rs:1043:21
+     |
+1043 |     neon_copy_impl!(unpremul_f32_copy_impl_neon, unpremul_f32_copy_row_neon);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `premul_f32_impl_neon` is never used
+    --> src/bytes/neon.rs:1044:24
+     |
+1044 |     neon_inplace_impl!(premul_f32_impl_neon, premul_f32_row_neon);
+     |                        ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_inplace_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `unpremul_f32_impl_neon` is never used
+    --> src/bytes/neon.rs:1045:24
+     |
+1045 |     neon_inplace_impl!(unpremul_f32_impl_neon, unpremul_f32_row_neon);
+     |                        ^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_inplace_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_u8_to_u16_strided_neon` is never used
+    --> src/bytes/neon.rs:1072:9
+     |
+1072 |         convert_u8_to_u16_strided_neon,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_strided` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_u16_to_u8_strided_neon` is never used
+    --> src/bytes/neon.rs:1078:9
+     |
+1078 |         convert_u16_to_u8_strided_neon,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_strided` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_u8_to_f32_strided_neon` is never used
+    --> src/bytes/neon.rs:1084:9
+     |
+1084 |         convert_u8_to_f32_strided_neon,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_strided` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_f32_to_u8_strided_neon` is never used
+    --> src/bytes/neon.rs:1090:9
+     |
+1090 |         convert_f32_to_u8_strided_neon,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_strided` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_u16_to_f32_strided_neon` is never used
+    --> src/bytes/neon.rs:1096:9
+     |
+1096 |         convert_u16_to_f32_strided_neon,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_strided` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `convert_f32_to_u16_strided_neon` is never used
+    --> src/bytes/neon.rs:1102:9
+     |
+1102 |         convert_f32_to_u16_strided_neon,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_strided` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `premul_f32_copy_strided_neon` is never used
+    --> src/bytes/neon.rs:1108:9
+     |
+1108 |         premul_f32_copy_strided_neon,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_strided` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `unpremul_f32_copy_strided_neon` is never used
+    --> src/bytes/neon.rs:1114:9
+     |
+1114 |         unpremul_f32_copy_strided_neon,
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: this warning originates in the macro `neon_copy_strided` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `garb` (lib) generated 19 warnings (run `cargo fix --lib -p garb` to apply 1 suggestion)
+    Finished `bench` profile [optimized] target(s) in 1.78s
+     Running benches/swizzle.rs (target/release/deps/swizzle-29a1c6483466ef84)
+=== SIMD Tier Detection ===
+  CPU: Apple M4 Pro
+  Arm64-v3:                available
+  Arm64-v2:                available
+  NEON:                    available
+  Scalar:                  always available
+===========================
+Gnuplot not found, using plotters backend
+Benchmarking row_rgba_to_rgb/row_256/simd
+Benchmarking row_rgba_to_rgb/row_256/simd: Warming up for 1.0000 s
+Benchmarking row_rgba_to_rgb/row_256/simd: Collecting 100 samples in estimated 2.0001 s (73M iterations)
+Benchmarking row_rgba_to_rgb/row_256/simd: Analyzing
+row_rgba_to_rgb/row_256/simd
+                        time:   [27.433 ns 27.508 ns 27.578 ns]
+                        change: [+3.2939% +3.8369% +4.4338%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) low severe
+  3 (3.00%) low mild
+  1 (1.00%) high mild
+Benchmarking row_rgba_to_rgb/row_256/scalar
+Benchmarking row_rgba_to_rgb/row_256/scalar: Warming up for 1.0000 s
+Benchmarking row_rgba_to_rgb/row_256/scalar: Collecting 100 samples in estimated 2.0000 s (75M iterations)
+Benchmarking row_rgba_to_rgb/row_256/scalar: Analyzing
+row_rgba_to_rgb/row_256/scalar
+                        time:   [26.760 ns 26.823 ns 26.884 ns]
+                        change: [+0.1034% +0.3880% +0.6946%] (p = 0.01 < 0.05)
+                        Change within noise threshold.
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low severe
+  4 (4.00%) low mild
+  1 (1.00%) high mild
+
+Benchmarking row_rgb_to_bgra/row_256/simd
+Benchmarking row_rgb_to_bgra/row_256/simd: Warming up for 1.0000 s
+Benchmarking row_rgb_to_bgra/row_256/simd: Collecting 100 samples in estimated 2.0000 s (113M iterations)
+Benchmarking row_rgb_to_bgra/row_256/simd: Analyzing
+row_rgb_to_bgra/row_256/simd
+                        time:   [17.621 ns 17.674 ns 17.724 ns]
+                        change: [+36.456% +36.941% +37.454%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low severe
+  4 (4.00%) low mild
+Benchmarking row_rgb_to_bgra/row_256/scalar
+Benchmarking row_rgb_to_bgra/row_256/scalar: Warming up for 1.0000 s
+Benchmarking row_rgb_to_bgra/row_256/scalar: Collecting 100 samples in estimated 2.0000 s (152M iterations)
+Benchmarking row_rgb_to_bgra/row_256/scalar: Analyzing
+row_rgb_to_bgra/row_256/scalar
+                        time:   [13.186 ns 13.210 ns 13.232 ns]
+                        change: [+1.9043% +2.2103% +2.5512%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 8 outliers among 100 measurements (8.00%)
+  2 (2.00%) low severe
+  5 (5.00%) low mild
+  1 (1.00%) high mild
+
+Benchmarking row_rgba_to_rgb/row_640/simd
+Benchmarking row_rgba_to_rgb/row_640/simd: Warming up for 1.0000 s
+Benchmarking row_rgba_to_rgb/row_640/simd: Collecting 100 samples in estimated 2.0002 s (29M iterations)
+Benchmarking row_rgba_to_rgb/row_640/simd: Analyzing
+row_rgba_to_rgb/row_640/simd
+                        time:   [68.647 ns 68.797 ns 68.937 ns]
+                        change: [+2.1256% +2.4679% +2.7675%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 8 outliers among 100 measurements (8.00%)
+  3 (3.00%) low severe
+  5 (5.00%) low mild
+Benchmarking row_rgba_to_rgb/row_640/scalar
+Benchmarking row_rgba_to_rgb/row_640/scalar: Warming up for 1.0000 s
+Benchmarking row_rgba_to_rgb/row_640/scalar: Collecting 100 samples in estimated 2.0003 s (30M iterations)
+Benchmarking row_rgba_to_rgb/row_640/scalar: Analyzing
+row_rgba_to_rgb/row_640/scalar
+                        time:   [67.124 ns 67.247 ns 67.359 ns]
+                        change: [+0.3222% +0.5950% +0.8882%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 11 outliers among 100 measurements (11.00%)
+  7 (7.00%) low severe
+  2 (2.00%) low mild
+  2 (2.00%) high mild
+
+Benchmarking row_rgb_to_bgra/row_640/simd
+Benchmarking row_rgb_to_bgra/row_640/simd: Warming up for 1.0000 s
+Benchmarking row_rgb_to_bgra/row_640/simd: Collecting 100 samples in estimated 2.0001 s (48M iterations)
+Benchmarking row_rgb_to_bgra/row_640/simd: Analyzing
+row_rgb_to_bgra/row_640/simd
+                        time:   [41.390 ns 41.473 ns 41.550 ns]
+                        change: [+34.934% +35.396% +35.885%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 17 outliers among 100 measurements (17.00%)
+  8 (8.00%) low severe
+  6 (6.00%) low mild
+  3 (3.00%) high mild
+Benchmarking row_rgb_to_bgra/row_640/scalar
+Benchmarking row_rgb_to_bgra/row_640/scalar: Warming up for 1.0000 s
+Benchmarking row_rgb_to_bgra/row_640/scalar: Collecting 100 samples in estimated 2.0001 s (65M iterations)
+Benchmarking row_rgb_to_bgra/row_640/scalar: Analyzing
+row_rgb_to_bgra/row_640/scalar
+                        time:   [30.852 ns 30.924 ns 30.991 ns]
+                        change: [+0.3335% +0.6181% +0.8999%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 9 outliers among 100 measurements (9.00%)
+  5 (5.00%) low severe
+  4 (4.00%) low mild
+
+Benchmarking row_rgba_to_rgb/row_1920/simd
+Benchmarking row_rgba_to_rgb/row_1920/simd: Warming up for 1.0000 s
+Benchmarking row_rgba_to_rgb/row_1920/simd: Collecting 100 samples in estimated 2.0001 s (9.7M iterations)
+Benchmarking row_rgba_to_rgb/row_1920/simd: Analyzing
+row_rgba_to_rgb/row_1920/simd
+                        time:   [206.70 ns 207.09 ns 207.46 ns]
+                        change: [+2.1412% +2.4112% +2.6555%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 9 outliers among 100 measurements (9.00%)
+  1 (1.00%) low severe
+  6 (6.00%) low mild
+  2 (2.00%) high mild
+Benchmarking row_rgba_to_rgb/row_1920/scalar
+Benchmarking row_rgba_to_rgb/row_1920/scalar: Warming up for 1.0000 s
+Benchmarking row_rgba_to_rgb/row_1920/scalar: Collecting 100 samples in estimated 2.0000 s (9.9M iterations)
+Benchmarking row_rgba_to_rgb/row_1920/scalar: Analyzing
+row_rgba_to_rgb/row_1920/scalar
+                        time:   [202.50 ns 202.88 ns 203.22 ns]
+                        change: [+0.0862% +0.3445% +0.6515%] (p = 0.01 < 0.05)
+                        Change within noise threshold.
+Found 8 outliers among 100 measurements (8.00%)
+  1 (1.00%) low severe
+  6 (6.00%) low mild
+  1 (1.00%) high severe
+
+Benchmarking row_rgb_to_bgra/row_1920/simd
+Benchmarking row_rgb_to_bgra/row_1920/simd: Warming up for 1.0000 s
+Benchmarking row_rgb_to_bgra/row_1920/simd: Collecting 100 samples in estimated 2.0005 s (16M iterations)
+Benchmarking row_rgb_to_bgra/row_1920/simd: Analyzing
+row_rgb_to_bgra/row_1920/simd
+                        time:   [120.43 ns 120.66 ns 120.87 ns]
+                        change: [+32.990% +33.645% +34.172%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 16 outliers among 100 measurements (16.00%)
+  6 (6.00%) low severe
+  8 (8.00%) low mild
+  2 (2.00%) high mild
+Benchmarking row_rgb_to_bgra/row_1920/scalar
+Benchmarking row_rgb_to_bgra/row_1920/scalar: Warming up for 1.0000 s
+Benchmarking row_rgb_to_bgra/row_1920/scalar: Collecting 100 samples in estimated 2.0004 s (22M iterations)
+Benchmarking row_rgb_to_bgra/row_1920/scalar: Analyzing
+row_rgb_to_bgra/row_1920/scalar
+                        time:   [90.506 ns 90.861 ns 91.258 ns]
+                        change: [−0.4229% +0.3052% +0.9816%] (p = 0.41 > 0.05)
+                        No change in performance detected.
+Found 22 outliers among 100 measurements (22.00%)
+  9 (9.00%) low severe
+  5 (5.00%) low mild
+  2 (2.00%) high mild
+  6 (6.00%) high severe
+
+Benchmarking row_rgba_to_rgb/row_3840/simd
+Benchmarking row_rgba_to_rgb/row_3840/simd: Warming up for 1.0000 s
+Benchmarking row_rgba_to_rgb/row_3840/simd: Collecting 100 samples in estimated 2.0000 s (4.8M iterations)
+Benchmarking row_rgba_to_rgb/row_3840/simd: Analyzing
+row_rgba_to_rgb/row_3840/simd
+                        time:   [413.37 ns 414.17 ns 414.90 ns]
+                        change: [+1.1954% +1.4860% +1.7558%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 9 outliers among 100 measurements (9.00%)
+  4 (4.00%) low severe
+  4 (4.00%) low mild
+  1 (1.00%) high mild
+Benchmarking row_rgba_to_rgb/row_3840/scalar
+Benchmarking row_rgba_to_rgb/row_3840/scalar: Warming up for 1.0000 s
+Benchmarking row_rgba_to_rgb/row_3840/scalar: Collecting 100 samples in estimated 2.0004 s (4.9M iterations)
+Benchmarking row_rgba_to_rgb/row_3840/scalar: Analyzing
+row_rgba_to_rgb/row_3840/scalar
+                        time:   [407.40 ns 408.23 ns 409.01 ns]
+                        change: [+0.1985% +0.5507% +0.9134%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 12 outliers among 100 measurements (12.00%)
+  3 (3.00%) low severe
+  6 (6.00%) low mild
+  3 (3.00%) high mild
+
+Benchmarking row_rgb_to_bgra/row_3840/simd
+Benchmarking row_rgb_to_bgra/row_3840/simd: Warming up for 1.0000 s
+Benchmarking row_rgb_to_bgra/row_3840/simd: Collecting 100 samples in estimated 2.0001 s (8.2M iterations)
+Benchmarking row_rgb_to_bgra/row_3840/simd: Analyzing
+row_rgb_to_bgra/row_3840/simd
+                        time:   [243.83 ns 244.44 ns 245.05 ns]
+                        change: [+27.493% +28.541% +29.591%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 19 outliers among 100 measurements (19.00%)
+  5 (5.00%) low severe
+  5 (5.00%) low mild
+  5 (5.00%) high mild
+  4 (4.00%) high severe
+Benchmarking row_rgb_to_bgra/row_3840/scalar
+Benchmarking row_rgb_to_bgra/row_3840/scalar: Warming up for 1.0000 s
+Benchmarking row_rgb_to_bgra/row_3840/scalar: Collecting 100 samples in estimated 2.0001 s (11M iterations)
+Benchmarking row_rgb_to_bgra/row_3840/scalar: Analyzing
+row_rgb_to_bgra/row_3840/scalar
+                        time:   [188.10 ns 190.17 ns 192.44 ns]
+                        change: [−1.3787% −0.1751% +1.1421%] (p = 0.78 > 0.05)
+                        No change in performance detected.
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) high mild
+  4 (4.00%) high severe
+

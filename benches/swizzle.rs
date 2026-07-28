@@ -246,6 +246,55 @@ const SWEEP_PIXELS: &[(&str, usize)] = &[
     ("large_4096x4096", 4096 * 4096),
 ];
 
+/// Cross-bpp A/B at REAL call granularity: a single row.
+///
+/// Consumers call these per row, not per image — e.g. zenpixels-convert's
+/// `convert_kernels.rs` does `garb::bytes::rgb_to_bgra(&src[..width * 3],
+/// &mut dst[..width * 4])` inside a row loop, and the crate ships 277 strided
+/// entry points for exactly that pattern. The whole-image sweep below
+/// (64x64 .. 4096x4096) therefore measures buffers 100-1000x larger than any
+/// real call, and per-call overhead is invisible in it.
+///
+/// This distinction is not hypothetical: in zensim the same mistake inverted a
+/// kernel's verdict completely (0.70x at a synthetic shape vs 1.56x at the
+/// instrumented one). Widths here are real image widths.
+fn bench_crossbpp_row_sweep(c: &mut Criterion) {
+    for &(label, width) in &[
+        ("row_256", 256usize),
+        ("row_640", 640),
+        ("row_1920", 1920),
+        ("row_3840", 3840),
+    ] {
+        let mut g = c.benchmark_group(std::format!("row_rgba_to_rgb/{label}"));
+        let src: Vec<u8> = (0..width * 4).map(|i| (i % 251) as u8).collect();
+        g.bench_function("simd", |b| {
+            let mut dst = vec![0u8; width * 3];
+            b.iter(|| garb::bytes::rgba_to_rgb(&src, &mut dst).unwrap());
+        });
+        disable_all_simd();
+        g.bench_function("scalar", |b| {
+            let mut dst = vec![0u8; width * 3];
+            b.iter(|| garb::bytes::rgba_to_rgb(&src, &mut dst).unwrap());
+        });
+        enable_all_simd();
+        g.finish();
+
+        let mut g = c.benchmark_group(std::format!("row_rgb_to_bgra/{label}"));
+        let src: Vec<u8> = (0..width * 3).map(|i| (i % 251) as u8).collect();
+        g.bench_function("simd", |b| {
+            let mut dst = vec![0u8; width * 4];
+            b.iter(|| garb::bytes::rgb_to_bgra(&src, &mut dst).unwrap());
+        });
+        disable_all_simd();
+        g.bench_function("scalar", |b| {
+            let mut dst = vec![0u8; width * 4];
+            b.iter(|| garb::bytes::rgb_to_bgra(&src, &mut dst).unwrap());
+        });
+        enable_all_simd();
+        g.finish();
+    }
+}
+
 fn bench_crossbpp_sweep(c: &mut Criterion) {
     for &(label, px) in SWEEP_PIXELS {
         // 4bpp -> 3bpp (rgba_to_rgb)
@@ -771,6 +820,7 @@ fn main() {
     bench_3to4_expand(&mut criterion);
     bench_fill_alpha(&mut criterion);
     bench_crossbpp_sweep(&mut criterion);
+    bench_crossbpp_row_sweep(&mut criterion);
     #[cfg(feature = "experimental")]
     {
         bench_depth_u8_to_f32(&mut criterion);
