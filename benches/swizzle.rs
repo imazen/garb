@@ -280,6 +280,22 @@ fn bench_crossbpp_sweep(c: &mut Criterion) {
         enable_all_simd();
         g.finish();
 
+        // luma (rgba_to_gray_bt709) — arithmetic per pixel, unlike the swizzles
+        let mut g = c.benchmark_group(std::format!("sweep_rgba_to_gray/{label}"));
+        g.throughput(Throughput::Bytes((px * 4) as u64));
+        let src: Vec<u8> = (0..px * 4).map(|i| (i % 251) as u8).collect();
+        g.bench_function("simd", |b| {
+            let mut dst = vec![0u8; px];
+            b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
+        });
+        disable_all_simd();
+        g.bench_function("scalar", |b| {
+            let mut dst = vec![0u8; px];
+            b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
+        });
+        enable_all_simd();
+        g.finish();
+
         // 3bpp copy+swap (rgb_to_bgr)
         let mut g = c.benchmark_group(std::format!("sweep_rgb_to_bgr/{label}"));
         g.throughput(Throughput::Bytes((px * 3) as u64));

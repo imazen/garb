@@ -1,0 +1,103 @@
+   Compiling garb v0.2.8 (/Users/lilith/work/zen/garb)
+    Finished `bench` profile [optimized] target(s) in 0.89s
+     Running benches/swizzle.rs (target/release/deps/swizzle-29a1c6483466ef84)
+=== SIMD Tier Detection ===
+  CPU: Apple M4 Pro
+  Arm64-v3:                available
+  Arm64-v2:                available
+  NEON:                    available
+  Scalar:                  always available
+===========================
+Gnuplot not found, using plotters backend
+Benchmarking sweep_rgba_to_gray/tiny_64x64/simd
+Benchmarking sweep_rgba_to_gray/tiny_64x64/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_gray/tiny_64x64/simd: Collecting 100 samples in estimated 2.0009 s (4.4M iterations)
+Benchmarking sweep_rgba_to_gray/tiny_64x64/simd: Analyzing
+sweep_rgba_to_gray/tiny_64x64/simd
+                        time:   [451.84 ns 453.03 ns 454.13 ns]
+                        thrpt:  [33.600 GiB/s 33.681 GiB/s 33.770 GiB/s]
+Found 16 outliers among 100 measurements (16.00%)
+  5 (5.00%) low severe
+  8 (8.00%) low mild
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+Benchmarking sweep_rgba_to_gray/tiny_64x64/scalar
+Benchmarking sweep_rgba_to_gray/tiny_64x64/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_gray/tiny_64x64/scalar: Collecting 100 samples in estimated 2.0001 s (4.4M iterations)
+Benchmarking sweep_rgba_to_gray/tiny_64x64/scalar: Analyzing
+sweep_rgba_to_gray/tiny_64x64/scalar
+                        time:   [451.46 ns 452.56 ns 453.55 ns]
+                        thrpt:  [33.643 GiB/s 33.716 GiB/s 33.799 GiB/s]
+Found 11 outliers among 100 measurements (11.00%)
+  7 (7.00%) low severe
+  4 (4.00%) low mild
+
+Benchmarking sweep_rgba_to_gray/small_256x256/simd
+Benchmarking sweep_rgba_to_gray/small_256x256/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_gray/small_256x256/simd: Collecting 100 samples in estimated 2.0271 s (278k iterations)
+Benchmarking sweep_rgba_to_gray/small_256x256/simd: Analyzing
+sweep_rgba_to_gray/small_256x256/simd
+                        time:   [7.2892 µs 7.3050 µs 7.3189 µs]
+                        thrpt:  [33.357 GiB/s 33.421 GiB/s 33.493 GiB/s]
+Found 12 outliers among 100 measurements (12.00%)
+  3 (3.00%) low severe
+  7 (7.00%) low mild
+  2 (2.00%) high mild
+Benchmarking sweep_rgba_to_gray/small_256x256/scalar
+Benchmarking sweep_rgba_to_gray/small_256x256/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_gray/small_256x256/scalar: Collecting 100 samples in estimated 2.0296 s (278k iterations)
+Benchmarking sweep_rgba_to_gray/small_256x256/scalar: Analyzing
+sweep_rgba_to_gray/small_256x256/scalar
+                        time:   [7.2907 µs 7.3064 µs 7.3204 µs]
+                        thrpt:  [33.351 GiB/s 33.415 GiB/s 33.487 GiB/s]
+Found 13 outliers among 100 measurements (13.00%)
+  4 (4.00%) low severe
+  4 (4.00%) low mild
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking sweep_rgba_to_gray/medium_1024x1024/simd
+Benchmarking sweep_rgba_to_gray/medium_1024x1024/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_gray/medium_1024x1024/simd: Collecting 100 samples in estimated 2.3687 s (20k iterations)
+Benchmarking sweep_rgba_to_gray/medium_1024x1024/simd: Analyzing
+sweep_rgba_to_gray/medium_1024x1024/simd
+                        time:   [117.09 µs 117.29 µs 117.50 µs]
+                        thrpt:  [33.246 GiB/s 33.303 GiB/s 33.361 GiB/s]
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) low severe
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+Benchmarking sweep_rgba_to_gray/medium_1024x1024/scalar
+Benchmarking sweep_rgba_to_gray/medium_1024x1024/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_gray/medium_1024x1024/scalar: Collecting 100 samples in estimated 2.3658 s (20k iterations)
+Benchmarking sweep_rgba_to_gray/medium_1024x1024/scalar: Analyzing
+sweep_rgba_to_gray/medium_1024x1024/scalar
+                        time:   [117.09 µs 117.31 µs 117.52 µs]
+                        thrpt:  [33.238 GiB/s 33.298 GiB/s 33.362 GiB/s]
+Found 9 outliers among 100 measurements (9.00%)
+  2 (2.00%) low severe
+  6 (6.00%) low mild
+  1 (1.00%) high severe
+
+Benchmarking sweep_rgba_to_gray/large_4096x4096/simd
+Benchmarking sweep_rgba_to_gray/large_4096x4096/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_gray/large_4096x4096/simd: Collecting 100 samples in estimated 2.0801 s (1100 iterations)
+Benchmarking sweep_rgba_to_gray/large_4096x4096/simd: Analyzing
+sweep_rgba_to_gray/large_4096x4096/simd
+                        time:   [1.8918 ms 1.8948 ms 1.8976 ms]
+                        thrpt:  [32.937 GiB/s 32.985 GiB/s 33.037 GiB/s]
+Found 10 outliers among 100 measurements (10.00%)
+  4 (4.00%) low severe
+  5 (5.00%) low mild
+  1 (1.00%) high mild
+Benchmarking sweep_rgba_to_gray/large_4096x4096/scalar
+Benchmarking sweep_rgba_to_gray/large_4096x4096/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_gray/large_4096x4096/scalar: Collecting 100 samples in estimated 2.0792 s (1100 iterations)
+Benchmarking sweep_rgba_to_gray/large_4096x4096/scalar: Analyzing
+sweep_rgba_to_gray/large_4096x4096/scalar
+                        time:   [1.8903 ms 1.8934 ms 1.8962 ms]
+                        thrpt:  [32.961 GiB/s 33.010 GiB/s 33.063 GiB/s]
+Found 11 outliers among 100 measurements (11.00%)
+  2 (2.00%) low severe
+  9 (9.00%) low mild
+

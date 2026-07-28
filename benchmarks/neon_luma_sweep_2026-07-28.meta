@@ -1,0 +1,55 @@
+# garb NEON luma (RGB->gray) experiment — NEUTRAL, kernels NOT shipped
+date:    2026-07-28
+host:    Apple M4 Pro (12 core), macOS, aarch64
+command: cargo bench --features experimental --bench swizzle -- 'sweep_rgba_to_gray'
+sizes:   64x64 / 256x256 / 1024x1024 / 4096x4096
+
+## What was tried
+
+rgb/bgr/rgba/bgra -> gray for all three matrices (bt709, bt601, bt2020),
+contiguous and strided: vld3q_u8 / vld4q_u8 to deinterleave 16 pixels, then
+vmulq_n_u16 + two vmlaq_n_u16 + vshrn_n_u16 for the weighted sum. Bit-exact
+with scalar (u16 arithmetic, (r*wr + g*wg + b*wb + 128) >> 8; max accumulator
+255*256 + 128 = 65408, so u16 cannot overflow). All 8 dispatch sites wired,
+232 tests green across 25 archmage token permutations.
+
+## Result — NEON vs scalar (median)
+
+| size        | NEON      | scalar    | delta |
+|-------------|-----------|-----------|-------|
+| 64x64       |  453.03ns |  452.56ns |  +0.1%|
+| 256x256     |   7.305us |   7.306us |   0.0%|
+| 1024x1024   | 117.29us  | 117.31us  |   0.0%|
+| 4096x4096   |   1.8948ms|   1.8934ms|  +0.1%|
+
+Exactly neutral at every size. LLVM autovectorises the scalar luma loop
+(a simple map over chunks_exact with u16 math) into essentially the same code.
+
+## Dispatch was VERIFIED, not assumed
+
+Numbers this identical are exactly what "the SIMD path never ran" looks like,
+so it was checked rather than trusted: making `luma_combine` return
+`vdupq_n_u8(7)` caused the probe to print 7 and failed 4 luma tests
+(luma_roundtrip_identity, permutation_rgb_to_gray_bt709,
+permutation_bgra_to_gray_bt709, permutation_rgba_to_gray_bt2020). The NEON
+path is genuinely dispatched; the tie is real.
+
+(A first probe that only perturbed the rounding bias 128->129 changed nothing,
+because >>8 truncation absorbs it. A neutral-looking result from a weak probe
+is not evidence — the probe has to actually be able to fail.)
+
+## Decision: NOT shipped
+
+Zero measured gain for ~200 lines of hand-written NEON is not worth the
+maintenance and bit-exactness burden. Reverted, kept recoverable in git stash
+and in this record.
+
+## Worth revisiting on other ARM cores
+
+This is a tie on Apple's very wide out-of-order cores with strong LLVM
+autovectorisation. Cores where autovec is weaker or absent — Ampere/Graviton,
+and especially in-order Cortex-A5x — could plausibly favour the explicit
+kernel. That is a hypothesis, NOT a measurement: do not re-add these kernels
+without running this same sweep on that hardware. The bench group
+(`sweep_rgba_to_gray` in benches/swizzle.rs) is committed so the comparison is
+one command away.
