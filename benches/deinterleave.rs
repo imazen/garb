@@ -16,6 +16,16 @@ use zenbench::prelude::*;
 #[cfg(target_arch = "x86_64")]
 use archmage::X64V3Token;
 
+// The dispatch-cadence group measures how cheap the #[arcane] boundary is when
+// callers split work into many small chunks. That question is arch-independent,
+// so it runs against whatever the native top tier is: AVX2 on x86_64, NEON on
+// aarch64. Previously it named X64V3Token unconditionally, which meant this
+// bench did not compile on aarch64 at all.
+#[cfg(target_arch = "aarch64")]
+use archmage::NeonToken as CadenceToken;
+#[cfg(target_arch = "x86_64")]
+use archmage::X64V3Token as CadenceToken;
+
 fn make_u8(pixels: usize) -> Vec<u8> {
     (0..pixels * 3)
         .map(|i| (i.wrapping_mul(31) & 0xFF) as u8)
@@ -348,39 +358,52 @@ fn bench_rgba_f32(suite: &mut Suite) {
 // the dispatch boundary differs. This tells us how cheap the per-call
 // dispatch really is when callers split work into many small pieces.
 
-#[archmage::arcane]
-fn rgb_f32_outer_avx2(
-    _t: X64V3Token,
-    src: &[f32],
-    r: &mut [f32],
-    g: &mut [f32],
-    b: &mut [f32],
-    chunk_pixels: usize,
-) {
-    let total_pixels = src.len() / 3;
-    let n_chunks = total_pixels / chunk_pixels;
-    for ci in 0..n_chunks {
-        let bs = ci * chunk_pixels * 3;
-        let ps = ci * chunk_pixels;
-        garb::deinterleave::scalar_only_rgb_f32_to_planes(
-            &src[bs..bs + chunk_pixels * 3],
-            &mut r[ps..ps + chunk_pixels],
-            &mut g[ps..ps + chunk_pixels],
-            &mut b[ps..ps + chunk_pixels],
-        );
-    }
-    // tail: any pixels not covered by the chunked loop
-    let tail_start = n_chunks * chunk_pixels;
-    if tail_start < total_pixels {
-        let tail_len = total_pixels - tail_start;
-        garb::deinterleave::scalar_only_rgb_f32_to_planes(
-            &src[tail_start * 3..(tail_start + tail_len) * 3],
-            &mut r[tail_start..tail_start + tail_len],
-            &mut g[tail_start..tail_start + tail_len],
-            &mut b[tail_start..tail_start + tail_len],
-        );
-    }
+// The body is identical across arches; only the token type differs, and
+// `#[arcane]` needs the concrete token type (a type alias is not accepted).
+macro_rules! define_rgb_f32_outer_simd {
+    ($token:ident) => {
+        #[archmage::arcane]
+        fn rgb_f32_outer_simd(
+            _t: $token,
+            src: &[f32],
+            r: &mut [f32],
+            g: &mut [f32],
+            b: &mut [f32],
+            chunk_pixels: usize,
+        ) {
+            let total_pixels = src.len() / 3;
+            let n_chunks = total_pixels / chunk_pixels;
+            for ci in 0..n_chunks {
+                let bs = ci * chunk_pixels * 3;
+                let ps = ci * chunk_pixels;
+                garb::deinterleave::scalar_only_rgb_f32_to_planes(
+                    &src[bs..bs + chunk_pixels * 3],
+                    &mut r[ps..ps + chunk_pixels],
+                    &mut g[ps..ps + chunk_pixels],
+                    &mut b[ps..ps + chunk_pixels],
+                );
+            }
+            // tail: any pixels not covered by the chunked loop
+            let tail_start = n_chunks * chunk_pixels;
+            if tail_start < total_pixels {
+                let tail_len = total_pixels - tail_start;
+                garb::deinterleave::scalar_only_rgb_f32_to_planes(
+                    &src[tail_start * 3..(tail_start + tail_len) * 3],
+                    &mut r[tail_start..tail_start + tail_len],
+                    &mut g[tail_start..tail_start + tail_len],
+                    &mut b[tail_start..tail_start + tail_len],
+                );
+            }
+        }
+    };
 }
+
+#[cfg(target_arch = "x86_64")]
+define_rgb_f32_outer_simd!(X64V3Token);
+#[cfg(target_arch = "aarch64")]
+use archmage::NeonToken;
+#[cfg(target_arch = "aarch64")]
+define_rgb_f32_outer_simd!(NeonToken);
 
 fn rgb_f32_outer_dispatched(
     src: &[f32],
@@ -415,13 +438,12 @@ fn rgb_f32_outer_dispatched(
     }
 }
 
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 fn bench_dispatch_cadence(suite: &mut Suite) {
-    let token = X64V3Token::summon();
-    if token.is_none() {
-        eprintln!("[dispatch_cadence] AVX2 unavailable — skipping group");
+    let Some(token) = CadenceToken::summon() else {
+        eprintln!("[dispatch_cadence] native SIMD tier unavailable — skipping group");
         return;
-    }
-    let token = token.unwrap();
+    };
 
     suite.group("rgb_f32 dispatch cadence (64K total)", |g| {
         let total_pixels = 65_536_usize;
@@ -453,7 +475,7 @@ fn bench_dispatch_cadence(suite: &mut Suite) {
                     (src, r, gp, bp)
                 })
                 .run(move |(src, mut r, mut gp, mut bp)| {
-                    rgb_f32_outer_avx2(token, &src, &mut r, &mut gp, &mut bp, chunk);
+                    rgb_f32_outer_simd(token, &src, &mut r, &mut gp, &mut bp, chunk);
                     (src, r, gp, bp)
                 })
             });

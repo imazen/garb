@@ -1,0 +1,263 @@
+   Compiling garb v0.2.8 (/Users/lilith/work/zen/garb)
+    Finished `bench` profile [optimized] target(s) in 0.81s
+     Running benches/swizzle.rs (target/release/deps/swizzle-47813c0c62a9ecd3)
+=== SIMD Tier Detection ===
+  CPU: Apple M4 Pro
+  Arm64-v3:                available
+  Arm64-v2:                available
+  NEON:                    available
+  Scalar:                  always available
+===========================
+Gnuplot not found, using plotters backend
+Benchmarking sweep_rgba_to_rgb/tiny_64x64/simd
+Benchmarking sweep_rgba_to_rgb/tiny_64x64/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_rgb/tiny_64x64/simd: Collecting 100 samples in estimated 2.0013 s (4.6M iterations)
+Benchmarking sweep_rgba_to_rgb/tiny_64x64/simd: Analyzing
+sweep_rgba_to_rgb/tiny_64x64/simd
+                        time:   [432.59 ns 434.21 ns 435.71 ns]
+                        thrpt:  [35.021 GiB/s 35.142 GiB/s 35.273 GiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) low severe
+  3 (3.00%) low mild
+  1 (1.00%) high severe
+Benchmarking sweep_rgba_to_rgb/tiny_64x64/scalar
+Benchmarking sweep_rgba_to_rgb/tiny_64x64/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_rgb/tiny_64x64/scalar: Collecting 100 samples in estimated 2.0004 s (4.7M iterations)
+Benchmarking sweep_rgba_to_rgb/tiny_64x64/scalar: Analyzing
+sweep_rgba_to_rgb/tiny_64x64/scalar
+                        time:   [420.78 ns 421.92 ns 423.02 ns]
+                        thrpt:  [36.071 GiB/s 36.165 GiB/s 36.263 GiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  6 (6.00%) low mild
+
+Benchmarking sweep_rgb_to_rgba/tiny_64x64/simd
+Benchmarking sweep_rgb_to_rgba/tiny_64x64/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_rgba/tiny_64x64/simd: Collecting 100 samples in estimated 2.0005 s (7.8M iterations)
+Benchmarking sweep_rgb_to_rgba/tiny_64x64/simd: Analyzing
+sweep_rgb_to_rgba/tiny_64x64/simd
+                        time:   [254.83 ns 256.31 ns 258.03 ns]
+                        thrpt:  [59.137 GiB/s 59.532 GiB/s 59.879 GiB/s]
+Found 8 outliers among 100 measurements (8.00%)
+  2 (2.00%) low mild
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+Benchmarking sweep_rgb_to_rgba/tiny_64x64/scalar
+Benchmarking sweep_rgb_to_rgba/tiny_64x64/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_rgba/tiny_64x64/scalar: Collecting 100 samples in estimated 2.0009 s (9.8M iterations)
+Benchmarking sweep_rgb_to_rgba/tiny_64x64/scalar: Analyzing
+sweep_rgb_to_rgba/tiny_64x64/scalar
+                        time:   [198.37 ns 201.66 ns 205.04 ns]
+                        thrpt:  [74.419 GiB/s 75.665 GiB/s 76.922 GiB/s]
+Found 5 outliers among 100 measurements (5.00%)
+  5 (5.00%) high mild
+
+Benchmarking sweep_rgb_to_bgr/tiny_64x64/simd
+Benchmarking sweep_rgb_to_bgr/tiny_64x64/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_bgr/tiny_64x64/simd: Collecting 100 samples in estimated 2.0005 s (13M iterations)
+Benchmarking sweep_rgb_to_bgr/tiny_64x64/simd: Analyzing
+sweep_rgb_to_bgr/tiny_64x64/simd
+                        time:   [151.28 ns 152.54 ns 153.90 ns]
+                        thrpt:  [74.360 GiB/s 75.024 GiB/s 75.647 GiB/s]
+Found 16 outliers among 100 measurements (16.00%)
+  2 (2.00%) low severe
+  3 (3.00%) low mild
+  4 (4.00%) high mild
+  7 (7.00%) high severe
+Benchmarking sweep_rgb_to_bgr/tiny_64x64/scalar
+Benchmarking sweep_rgb_to_bgr/tiny_64x64/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_bgr/tiny_64x64/scalar: Collecting 100 samples in estimated 2.0004 s (12M iterations)
+Benchmarking sweep_rgb_to_bgr/tiny_64x64/scalar: Analyzing
+sweep_rgb_to_bgr/tiny_64x64/scalar
+                        time:   [165.25 ns 167.20 ns 169.35 ns]
+                        thrpt:  [67.578 GiB/s 68.446 GiB/s 69.253 GiB/s]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking sweep_rgba_to_rgb/small_256x256/simd
+Benchmarking sweep_rgba_to_rgb/small_256x256/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_rgb/small_256x256/simd: Collecting 100 samples in estimated 2.0323 s (288k iterations)
+Benchmarking sweep_rgba_to_rgb/small_256x256/simd: Analyzing
+sweep_rgba_to_rgb/small_256x256/simd
+                        time:   [7.0443 µs 7.0654 µs 7.0846 µs]
+                        thrpt:  [34.461 GiB/s 34.554 GiB/s 34.658 GiB/s]
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) low mild
+Benchmarking sweep_rgba_to_rgb/small_256x256/scalar
+Benchmarking sweep_rgba_to_rgb/small_256x256/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_rgb/small_256x256/scalar: Collecting 100 samples in estimated 2.0042 s (288k iterations)
+Benchmarking sweep_rgba_to_rgb/small_256x256/scalar: Analyzing
+sweep_rgba_to_rgb/small_256x256/scalar
+                        time:   [6.9439 µs 6.9609 µs 6.9767 µs]
+                        thrpt:  [34.994 GiB/s 35.073 GiB/s 35.159 GiB/s]
+Found 12 outliers among 100 measurements (12.00%)
+  4 (4.00%) low severe
+  7 (7.00%) low mild
+  1 (1.00%) high mild
+
+Benchmarking sweep_rgb_to_rgba/small_256x256/simd
+Benchmarking sweep_rgb_to_rgba/small_256x256/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_rgba/small_256x256/simd: Collecting 100 samples in estimated 2.0160 s (500k iterations)
+Benchmarking sweep_rgb_to_rgba/small_256x256/simd: Analyzing
+sweep_rgb_to_rgba/small_256x256/simd
+                        time:   [4.0361 µs 4.0456 µs 4.0544 µs]
+                        thrpt:  [60.217 GiB/s 60.347 GiB/s 60.489 GiB/s]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) low mild
+Benchmarking sweep_rgb_to_rgba/small_256x256/scalar
+Benchmarking sweep_rgb_to_rgba/small_256x256/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_rgba/small_256x256/scalar: Collecting 100 samples in estimated 2.0149 s (550k iterations)
+Benchmarking sweep_rgb_to_rgba/small_256x256/scalar: Analyzing
+sweep_rgb_to_rgba/small_256x256/scalar
+                        time:   [3.0555 µs 3.0642 µs 3.0723 µs]
+                        thrpt:  [79.465 GiB/s 79.676 GiB/s 79.901 GiB/s]
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low severe
+  3 (3.00%) low mild
+
+Benchmarking sweep_rgb_to_bgr/small_256x256/simd
+Benchmarking sweep_rgb_to_bgr/small_256x256/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_bgr/small_256x256/simd: Collecting 100 samples in estimated 2.0132 s (631k iterations)
+Benchmarking sweep_rgb_to_bgr/small_256x256/simd: Analyzing
+sweep_rgb_to_bgr/small_256x256/simd
+                        time:   [2.7818 µs 2.8800 µs 2.9890 µs]
+                        thrpt:  [61.260 GiB/s 63.578 GiB/s 65.823 GiB/s]
+Found 17 outliers among 100 measurements (17.00%)
+  17 (17.00%) low severe
+Benchmarking sweep_rgb_to_bgr/small_256x256/scalar
+Benchmarking sweep_rgb_to_bgr/small_256x256/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_bgr/small_256x256/scalar: Collecting 100 samples in estimated 2.0035 s (626k iterations)
+Benchmarking sweep_rgb_to_bgr/small_256x256/scalar: Analyzing
+sweep_rgb_to_bgr/small_256x256/scalar
+                        time:   [2.8123 µs 2.8939 µs 2.9884 µs]
+                        thrpt:  [61.272 GiB/s 63.272 GiB/s 65.108 GiB/s]
+Found 21 outliers among 100 measurements (21.00%)
+  19 (19.00%) low severe
+  1 (1.00%) low mild
+  1 (1.00%) high mild
+
+Benchmarking sweep_rgba_to_rgb/medium_1024x1024/simd
+Benchmarking sweep_rgba_to_rgb/medium_1024x1024/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_rgb/medium_1024x1024/simd: Collecting 100 samples in estimated 2.2940 s (20k iterations)
+Benchmarking sweep_rgba_to_rgb/medium_1024x1024/simd: Analyzing
+sweep_rgba_to_rgb/medium_1024x1024/simd
+                        time:   [113.43 µs 113.68 µs 113.90 µs]
+                        thrpt:  [34.295 GiB/s 34.363 GiB/s 34.437 GiB/s]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) low severe
+  2 (2.00%) low mild
+Benchmarking sweep_rgba_to_rgb/medium_1024x1024/scalar
+Benchmarking sweep_rgba_to_rgb/medium_1024x1024/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_rgb/medium_1024x1024/scalar: Collecting 100 samples in estimated 2.2488 s (20k iterations)
+Benchmarking sweep_rgba_to_rgb/medium_1024x1024/scalar: Analyzing
+sweep_rgba_to_rgb/medium_1024x1024/scalar
+                        time:   [111.36 µs 111.61 µs 111.83 µs]
+                        thrpt:  [34.932 GiB/s 34.999 GiB/s 35.077 GiB/s]
+Found 9 outliers among 100 measurements (9.00%)
+  4 (4.00%) low severe
+  5 (5.00%) low mild
+
+Benchmarking sweep_rgb_to_rgba/medium_1024x1024/simd
+Benchmarking sweep_rgb_to_rgba/medium_1024x1024/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_rgba/medium_1024x1024/simd: Collecting 100 samples in estimated 2.2923 s (35k iterations)
+Benchmarking sweep_rgb_to_rgba/medium_1024x1024/simd: Analyzing
+sweep_rgb_to_rgba/medium_1024x1024/simd
+                        time:   [64.568 µs 64.692 µs 64.808 µs]
+                        thrpt:  [60.274 GiB/s 60.382 GiB/s 60.499 GiB/s]
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low severe
+  3 (3.00%) low mild
+Benchmarking sweep_rgb_to_rgba/medium_1024x1024/scalar
+Benchmarking sweep_rgb_to_rgba/medium_1024x1024/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_rgba/medium_1024x1024/scalar: Collecting 100 samples in estimated 2.1772 s (40k iterations)
+Benchmarking sweep_rgb_to_rgba/medium_1024x1024/scalar: Analyzing
+sweep_rgb_to_rgba/medium_1024x1024/scalar
+                        time:   [54.635 µs 55.288 µs 55.798 µs]
+                        thrpt:  [70.006 GiB/s 70.653 GiB/s 71.498 GiB/s]
+
+Benchmarking sweep_rgb_to_bgr/medium_1024x1024/simd
+Benchmarking sweep_rgb_to_bgr/medium_1024x1024/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_bgr/medium_1024x1024/simd: Collecting 100 samples in estimated 2.0925 s (40k iterations)
+Benchmarking sweep_rgb_to_bgr/medium_1024x1024/simd: Analyzing
+sweep_rgb_to_bgr/medium_1024x1024/simd
+                        time:   [46.809 µs 48.247 µs 49.785 µs]
+                        thrpt:  [58.847 GiB/s 60.723 GiB/s 62.588 GiB/s]
+Found 15 outliers among 100 measurements (15.00%)
+  13 (13.00%) low severe
+  2 (2.00%) low mild
+Benchmarking sweep_rgb_to_bgr/medium_1024x1024/scalar
+Benchmarking sweep_rgb_to_bgr/medium_1024x1024/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_bgr/medium_1024x1024/scalar: Collecting 100 samples in estimated 2.1638 s (50k iterations)
+Benchmarking sweep_rgb_to_bgr/medium_1024x1024/scalar: Analyzing
+sweep_rgb_to_bgr/medium_1024x1024/scalar
+                        time:   [41.275 µs 41.330 µs 41.380 µs]
+                        thrpt:  [70.799 GiB/s 70.885 GiB/s 70.979 GiB/s]
+Found 18 outliers among 100 measurements (18.00%)
+  9 (9.00%) low severe
+  5 (5.00%) low mild
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking sweep_rgba_to_rgb/large_4096x4096/simd
+Benchmarking sweep_rgba_to_rgb/large_4096x4096/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_rgb/large_4096x4096/simd: Collecting 100 samples in estimated 2.0187 s (1100 iterations)
+Benchmarking sweep_rgba_to_rgb/large_4096x4096/simd: Analyzing
+sweep_rgba_to_rgb/large_4096x4096/simd
+                        time:   [1.8314 ms 1.8339 ms 1.8363 ms]
+                        thrpt:  [34.036 GiB/s 34.080 GiB/s 34.126 GiB/s]
+Found 16 outliers among 100 measurements (16.00%)
+  10 (10.00%) low severe
+  4 (4.00%) low mild
+  2 (2.00%) high severe
+Benchmarking sweep_rgba_to_rgb/large_4096x4096/scalar
+Benchmarking sweep_rgba_to_rgb/large_4096x4096/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgba_to_rgb/large_4096x4096/scalar: Collecting 100 samples in estimated 2.1579 s (1200 iterations)
+Benchmarking sweep_rgba_to_rgb/large_4096x4096/scalar: Analyzing
+sweep_rgba_to_rgb/large_4096x4096/scalar
+                        time:   [1.8009 ms 1.8036 ms 1.8061 ms]
+                        thrpt:  [34.604 GiB/s 34.653 GiB/s 34.704 GiB/s]
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) low mild
+
+Benchmarking sweep_rgb_to_rgba/large_4096x4096/simd
+Benchmarking sweep_rgb_to_rgba/large_4096x4096/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_rgba/large_4096x4096/simd: Collecting 100 samples in estimated 2.0890 s (2000 iterations)
+Benchmarking sweep_rgb_to_rgba/large_4096x4096/simd: Analyzing
+sweep_rgb_to_rgba/large_4096x4096/simd
+                        time:   [1.0427 ms 1.0436 ms 1.0445 ms]
+                        thrpt:  [59.839 GiB/s 59.888 GiB/s 59.939 GiB/s]
+Found 9 outliers among 100 measurements (9.00%)
+  1 (1.00%) low severe
+  5 (5.00%) low mild
+  3 (3.00%) high mild
+Benchmarking sweep_rgb_to_rgba/large_4096x4096/scalar
+Benchmarking sweep_rgb_to_rgba/large_4096x4096/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_rgba/large_4096x4096/scalar: Collecting 100 samples in estimated 2.0448 s (2100 iterations)
+Benchmarking sweep_rgb_to_rgba/large_4096x4096/scalar: Analyzing
+sweep_rgb_to_rgba/large_4096x4096/scalar
+                        time:   [971.66 µs 973.31 µs 974.86 µs]
+                        thrpt:  [64.112 GiB/s 64.214 GiB/s 64.323 GiB/s]
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) low severe
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+
+Benchmarking sweep_rgb_to_bgr/large_4096x4096/simd
+Benchmarking sweep_rgb_to_bgr/large_4096x4096/simd: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_bgr/large_4096x4096/simd: Collecting 100 samples in estimated 2.0439 s (2400 iterations)
+Benchmarking sweep_rgb_to_bgr/large_4096x4096/simd: Analyzing
+sweep_rgb_to_bgr/large_4096x4096/simd
+                        time:   [849.80 µs 850.79 µs 851.77 µs]
+                        thrpt:  [55.033 GiB/s 55.096 GiB/s 55.160 GiB/s]
+Found 9 outliers among 100 measurements (9.00%)
+  5 (5.00%) low mild
+  4 (4.00%) high mild
+Benchmarking sweep_rgb_to_bgr/large_4096x4096/scalar
+Benchmarking sweep_rgb_to_bgr/large_4096x4096/scalar: Warming up for 1.0000 s
+Benchmarking sweep_rgb_to_bgr/large_4096x4096/scalar: Collecting 100 samples in estimated 2.0415 s (2400 iterations)
+Benchmarking sweep_rgb_to_bgr/large_4096x4096/scalar: Analyzing
+sweep_rgb_to_bgr/large_4096x4096/scalar
+                        time:   [850.82 µs 851.60 µs 852.43 µs]
+                        thrpt:  [54.990 GiB/s 55.043 GiB/s 55.094 GiB/s]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+

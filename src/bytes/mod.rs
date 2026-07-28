@@ -924,7 +924,7 @@ mod experimental_api {
             return Err(SizeError::NotPixelAligned);
         }
         check_copy(src.len(), 1, dst.len(), 2)?;
-        incant!(convert_u8_to_u16_impl(src, dst), [v3, scalar]);
+        incant!(convert_u8_to_u16_impl(src, dst), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -934,7 +934,7 @@ mod experimental_api {
     /// `dst` must have at least `src.len() / 2` bytes.
     pub fn convert_u16_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 1)?;
-        incant!(convert_u16_to_u8_impl(src, dst), [v3, scalar]);
+        incant!(convert_u16_to_u8_impl(src, dst), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -946,7 +946,7 @@ mod experimental_api {
             return Err(SizeError::NotPixelAligned);
         }
         check_copy(src.len(), 1, dst.len(), 4)?;
-        incant!(convert_u8_to_f32_impl(src, dst), [v3, scalar]);
+        incant!(convert_u8_to_f32_impl(src, dst), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -956,7 +956,7 @@ mod experimental_api {
     /// `dst` must have at least `src.len() / 4` bytes.
     pub fn convert_f32_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 4, dst.len(), 1)?;
-        incant!(convert_f32_to_u8_impl(src, dst), [v3, scalar]);
+        incant!(convert_f32_to_u8_impl(src, dst), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -966,7 +966,7 @@ mod experimental_api {
     /// `dst` must have at least `src.len() * 2` bytes (u16→f32 doubles byte count).
     pub fn convert_u16_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 4)?;
-        incant!(convert_u16_to_f32_impl(src, dst), [v3, scalar]);
+        incant!(convert_u16_to_f32_impl(src, dst), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -976,7 +976,7 @@ mod experimental_api {
     /// `dst` must have at least `src.len() / 2` bytes (f32→u16 halves byte count).
     pub fn convert_f32_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 4, dst.len(), 2)?;
-        incant!(convert_f32_to_u16_impl(src, dst), [v3, scalar]);
+        incant!(convert_f32_to_u16_impl(src, dst), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -1239,7 +1239,7 @@ mod experimental_api {
         check_strided(dst.len(), width, height, dst_stride, 2)?;
         incant!(
             convert_u8_to_u16_strided(src, dst, width, height, src_stride, dst_stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }
@@ -1257,7 +1257,7 @@ mod experimental_api {
         check_strided(dst.len(), width, height, dst_stride, 1)?;
         incant!(
             convert_u16_to_u8_strided(src, dst, width, height, src_stride, dst_stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }
@@ -1275,7 +1275,7 @@ mod experimental_api {
         check_strided(dst.len(), width, height, dst_stride, 4)?;
         incant!(
             convert_u8_to_f32_strided(src, dst, width, height, src_stride, dst_stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }
@@ -1293,7 +1293,7 @@ mod experimental_api {
         check_strided(dst.len(), width, height, dst_stride, 1)?;
         incant!(
             convert_f32_to_u8_strided(src, dst, width, height, src_stride, dst_stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }
@@ -1311,7 +1311,7 @@ mod experimental_api {
         check_strided(dst.len(), width, height, dst_stride, 4)?;
         incant!(
             convert_u16_to_f32_strided(src, dst, width, height, src_stride, dst_stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }
@@ -1329,7 +1329,7 @@ mod experimental_api {
         check_strided(dst.len(), width, height, dst_stride, 2)?;
         incant!(
             convert_f32_to_u16_strided(src, dst, width, height, src_stride, dst_stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }
@@ -1343,7 +1343,7 @@ mod experimental_api {
     /// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
     pub fn premultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
         check_inplace(buf.len(), 16)?;
-        incant!(premul_f32_impl(buf), [v3, scalar]);
+        incant!(premul_f32_impl(buf), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -1352,7 +1352,7 @@ mod experimental_api {
     /// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
     pub fn premultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 16, dst.len(), 16)?;
-        incant!(premul_f32_copy_impl(src, dst), [v3, scalar]);
+        incant!(premul_f32_copy_impl(src, dst), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -1362,7 +1362,7 @@ mod experimental_api {
     /// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
     pub fn unpremultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
         check_inplace(buf.len(), 16)?;
-        incant!(unpremul_f32_impl(buf), [v3, scalar]);
+        incant!(unpremul_f32_impl(buf), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -1372,7 +1372,7 @@ mod experimental_api {
     /// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
     pub fn unpremultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 16, dst.len(), 16)?;
-        incant!(unpremul_f32_copy_impl(src, dst), [v3, scalar]);
+        incant!(unpremul_f32_copy_impl(src, dst), [v3, neon, scalar]);
         Ok(())
     }
 
@@ -1413,7 +1413,10 @@ mod experimental_api {
         stride: usize,
     ) -> Result<(), SizeError> {
         check_strided(buf.len(), width, height, stride, 16)?;
-        incant!(premul_f32_strided(buf, width, height, stride), [v3, scalar]);
+        incant!(
+            premul_f32_strided(buf, width, height, stride),
+            [v3, neon, scalar]
+        );
         Ok(())
     }
 
@@ -1430,7 +1433,7 @@ mod experimental_api {
         check_strided(dst.len(), width, height, dst_stride, 16)?;
         incant!(
             premul_f32_copy_strided(src, dst, width, height, src_stride, dst_stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }
@@ -1449,7 +1452,7 @@ mod experimental_api {
         check_strided(buf.len(), width, height, stride, 16)?;
         incant!(
             unpremul_f32_strided(buf, width, height, stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }
@@ -1469,7 +1472,7 @@ mod experimental_api {
         check_strided(dst.len(), width, height, dst_stride, 16)?;
         incant!(
             unpremul_f32_copy_strided(src, dst, width, height, src_stride, dst_stride),
-            [v3, scalar]
+            [v3, neon, scalar]
         );
         Ok(())
     }

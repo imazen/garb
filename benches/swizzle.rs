@@ -232,6 +232,72 @@ fn bench_copy(
     });
 }
 
+/// Cross-bpp (3↔4 channel) SIMD-vs-scalar A/B across a tiny→large size sweep.
+///
+/// One size is not enough to decide whether an explicit SIMD kernel is worth
+/// shipping: at 1920x1080 these ops are single-core memory-bandwidth-bound and
+/// every implementation converges, while a cache-resident 64x64 or 256x256
+/// buffer is compute-bound and separates them. Sweeping both ends is what
+/// tells you whether a kernel earns its place.
+const SWEEP_PIXELS: &[(&str, usize)] = &[
+    ("tiny_64x64", 64 * 64),
+    ("small_256x256", 256 * 256),
+    ("medium_1024x1024", 1024 * 1024),
+    ("large_4096x4096", 4096 * 4096),
+];
+
+fn bench_crossbpp_sweep(c: &mut Criterion) {
+    for &(label, px) in SWEEP_PIXELS {
+        // 4bpp -> 3bpp (rgba_to_rgb)
+        let mut g = c.benchmark_group(std::format!("sweep_rgba_to_rgb/{label}"));
+        g.throughput(Throughput::Bytes((px * 4) as u64));
+        let src: Vec<u8> = (0..px * 4).map(|i| (i % 251) as u8).collect();
+        g.bench_function("simd", |b| {
+            let mut dst = vec![0u8; px * 3];
+            b.iter(|| garb::bytes::rgba_to_rgb(&src, &mut dst).unwrap());
+        });
+        disable_all_simd();
+        g.bench_function("scalar", |b| {
+            let mut dst = vec![0u8; px * 3];
+            b.iter(|| garb::bytes::rgba_to_rgb(&src, &mut dst).unwrap());
+        });
+        enable_all_simd();
+        g.finish();
+
+        // 3bpp -> 4bpp (rgb_to_rgba)
+        let mut g = c.benchmark_group(std::format!("sweep_rgb_to_rgba/{label}"));
+        g.throughput(Throughput::Bytes((px * 4) as u64));
+        let src: Vec<u8> = (0..px * 3).map(|i| (i % 251) as u8).collect();
+        g.bench_function("simd", |b| {
+            let mut dst = vec![0u8; px * 4];
+            b.iter(|| garb::bytes::rgb_to_rgba(&src, &mut dst).unwrap());
+        });
+        disable_all_simd();
+        g.bench_function("scalar", |b| {
+            let mut dst = vec![0u8; px * 4];
+            b.iter(|| garb::bytes::rgb_to_rgba(&src, &mut dst).unwrap());
+        });
+        enable_all_simd();
+        g.finish();
+
+        // 3bpp copy+swap (rgb_to_bgr)
+        let mut g = c.benchmark_group(std::format!("sweep_rgb_to_bgr/{label}"));
+        g.throughput(Throughput::Bytes((px * 3) as u64));
+        let src: Vec<u8> = (0..px * 3).map(|i| (i % 251) as u8).collect();
+        g.bench_function("simd", |b| {
+            let mut dst = vec![0u8; px * 3];
+            b.iter(|| garb::bytes::rgb_to_bgr(&src, &mut dst).unwrap());
+        });
+        disable_all_simd();
+        g.bench_function("scalar", |b| {
+            let mut dst = vec![0u8; px * 3];
+            b.iter(|| garb::bytes::rgb_to_bgr(&src, &mut dst).unwrap());
+        });
+        enable_all_simd();
+        g.finish();
+    }
+}
+
 // === Benchmark groups ===
 
 fn bench_4bpp_inplace_swap(c: &mut Criterion) {
@@ -688,6 +754,7 @@ fn main() {
     bench_4to3_strip_swap(&mut criterion);
     bench_3to4_expand(&mut criterion);
     bench_fill_alpha(&mut criterion);
+    bench_crossbpp_sweep(&mut criterion);
     #[cfg(feature = "experimental")]
     {
         bench_depth_u8_to_f32(&mut criterion);

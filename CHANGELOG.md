@@ -4,15 +4,54 @@
 
 ### Added
 
+- ARM NEON kernels for the experimental depth-conversion and premultiply ops,
+  which previously had no NEON path and ran scalar on every aarch64 target
+  (Apple Silicon, Graviton, Snapdragon). Measured on Apple M4 Pro at 1920x1080,
+  NEON vs the same entry point with SIMD disabled: `convert_u8_to_f32` 1.28x,
+  `convert_f32_to_u8` 1.49x, `premultiply_alpha_f32` 1.31x,
+  `unpremultiply_alpha_f32` 1.14x. Covers `convert_{u8,u16,f32}` in all six
+  directions plus premul/unpremul (in-place and copy), contiguous and strided.
+  Full record: `benchmarks/neon_depth_premul_2026-07-28.{log,meta}`
+- `bench_crossbpp_sweep` in `benches/swizzle.rs`: SIMD-vs-scalar A/B for the
+  cross-bpp swizzles across 64x64 / 256x256 / 1024x1024 / 4096x4096. The suite
+  previously measured only 1920x1080, which is the memory-bandwidth-bound end
+  where every implementation converges and no kernel can be told apart
+- `permutation_quantize_edge_values` test: verifies f32→u8/u16 quantization for
+  negatives, values above 1.0, ±0.0, ±inf and NaN at every SIMD tier. The
+  existing depth tests are u8→f32→u8 roundtrips and never fed out-of-range or
+  non-finite input, which is exactly where a SIMD clamp can diverge from
+  `f32::clamp` plus a saturating `as` cast
 - Versioned public-API surface snapshot at `docs/public-api/garb.txt`,
   regenerated on every `cargo test` run via `tests/public_api_doc.rs`
   (`ZEN_API_DOC=check` verifies in CI, `=off` skips); `justfile` added with
   `api-doc` / `api-doc-check` recipes
 
+### Fixed
+
+- `benches/deinterleave.rs` did not compile on aarch64: the dispatch-cadence
+  group named `X64V3Token` unconditionally while importing it only under
+  `cfg(target_arch = "x86_64")`. The group is now arch-generic (AVX2 on x86_64,
+  NEON on aarch64), so it runs on ARM for the first time
+
 ### Changed
 
 - Exclude `.github/`, `.gitignore`, `benchmarks/`, and `tests/` from published crate package; also exclude `docs/` and `justfile`
 - README overhaul: normalized the badge row, added a Quick start, fixed the `no_std` claim (only `imgref` pulls in `alloc`), refreshed the crosslink footer, and split a badge-free crates.io README (`README.crates.md`, now the `readme` target) from the GitHub `README.md`; added `benchmarks/README.md` with repro/methodology
+
+### Known issues
+
+- **Pre-existing scalar-vs-SIMD f32 discrepancy in `convert_u8_to_f32` /
+  `convert_u16_to_f32`** (not introduced by the NEON work, but inherited by it,
+  so recording it here). The scalar tier divides (`v / 255.0`); the AVX2 tier
+  has always reciprocal-multiplied (`_mm256_set1_ps(1.0 / 255.0)`), and the new
+  NEON tier matches AVX2. These are not bit-identical: an exhaustive check over
+  the whole input domain shows 126 of 256 `u8` inputs and 512 of 65536 `u16`
+  inputs yield a different f32 bit pattern. The current tests cannot see it
+  because they are `u8→f32→u8` roundtrips and the difference vanishes on the
+  way back. Using true division in the NEON kernel would be bit-exact with
+  scalar but measured ~53% slower than the scalar path — worse than shipping no
+  NEON kernel at all. Needs a decision on which tier is authoritative; if scalar
+  is, the AVX2 tier has the same bug and both should switch to division.
 
 ### QUEUED BREAKING CHANGES
 

@@ -1,0 +1,24 @@
+# garb cross-bpp NEON structure-load experiment — REFUTED, kernels NOT shipped
+date:        2026-07-28
+host:        Apple M4 Pro (12 core), macOS, aarch64
+command:     cargo bench --bench swizzle -- --warm-up-time 1 --measurement-time 2 'sweep_'
+sizes:       64x64 / 256x256 / 1024x1024 / 4096x4096
+
+Explicit vld4q_u8->vst3q_u8 and vld3q_u8->vst4q_u8 kernels were written for all
+nine cross-bpp swizzles, verified correct across 25 archmage token permutations,
+then measured against the autovectorized scalar path. They LOST at every size:
+
+  rgba_to_rgb (4->3):  +2.9% / +1.5% / +1.9% / +1.7% slower
+  rgb_to_rgba (3->4): +27%  / +32%  / +17%  / +7%   slower
+  rgb_to_bgr  (3bpp):  -9%  /  tie  / +17%  /  tie
+
+The kernels were therefore NOT shipped; those ops still dispatch to scalar. This
+confirms the pre-existing comment at the top of src/bytes/neon.rs rather than
+overriding it. Apple cores crack vld4q/vst3q into several uops with limited
+structure load/store throughput; the autovectorized form uses plain vld1q + tbl
+shuffles that dual-issue better. At 1920x1080 these ops are additionally
+single-core memory-bandwidth-bound (~67 GB/s), so all variants converge there.
+
+The size sweep itself was added to benches/swizzle.rs (bench_crossbpp_sweep) and
+is kept: the suite previously measured a single 1920x1080 size, which is the
+memory-bound end where every implementation looks identical.

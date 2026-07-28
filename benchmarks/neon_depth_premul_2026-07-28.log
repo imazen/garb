@@ -1,0 +1,190 @@
+   Compiling garb v0.2.8 (/Users/lilith/work/zen/garb)
+    Finished `bench` profile [optimized] target(s) in 1.50s
+     Running benches/swizzle.rs (target/release/deps/swizzle-29a1c6483466ef84)
+=== SIMD Tier Detection ===
+  CPU: Apple M4 Pro
+  Arm64-v3:                available
+  Arm64-v2:                available
+  NEON:                    available
+  Scalar:                  always available
+===========================
+Gnuplot not found, using plotters backend
+Benchmarking depth_u8_to_f32/garb
+Benchmarking depth_u8_to_f32/garb: Warming up for 1.0000 s
+Benchmarking depth_u8_to_f32/garb: Collecting 100 samples in estimated 5.2090 s (10k iterations)
+Benchmarking depth_u8_to_f32/garb: Analyzing
+depth_u8_to_f32/garb    time:   [516.32 µs 517.27 µs 518.22 µs]
+                        thrpt:  [14.906 GiB/s 14.934 GiB/s 14.961 GiB/s]
+                 change:
+                        time:   [−1.4738% −1.1743% −0.8670%] (p = 0.00 < 0.05)
+                        thrpt:  [+0.8746% +1.1883% +1.4958%]
+                        Change within noise threshold.
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) low severe
+  2 (2.00%) low mild
+Benchmarking depth_u8_to_f32/garb_scalar
+Benchmarking depth_u8_to_f32/garb_scalar: Warming up for 1.0000 s
+Benchmarking depth_u8_to_f32/garb_scalar: Collecting 100 samples in estimated 6.6704 s (10k iterations)
+Benchmarking depth_u8_to_f32/garb_scalar: Analyzing
+depth_u8_to_f32/garb_scalar
+                        time:   [661.60 µs 662.50 µs 663.47 µs]
+                        thrpt:  [11.643 GiB/s 11.660 GiB/s 11.676 GiB/s]
+                 change:
+                        time:   [−2.2920% −1.9942% −1.7107%] (p = 0.00 < 0.05)
+                        thrpt:  [+1.7405% +2.0348% +2.3458%]
+                        Performance has improved.
+Found 9 outliers among 100 measurements (9.00%)
+  1 (1.00%) low mild
+  6 (6.00%) high mild
+  2 (2.00%) high severe
+Benchmarking depth_u8_to_f32/naive
+Benchmarking depth_u8_to_f32/naive: Warming up for 1.0000 s
+Benchmarking depth_u8_to_f32/naive: Collecting 100 samples in estimated 6.6812 s (10k iterations)
+Benchmarking depth_u8_to_f32/naive: Analyzing
+depth_u8_to_f32/naive   time:   [664.41 µs 665.46 µs 666.49 µs]
+                        thrpt:  [11.590 GiB/s 11.608 GiB/s 11.626 GiB/s]
+                 change:
+                        time:   [−2.0448% −1.7773% −1.4970%] (p = 0.00 < 0.05)
+                        thrpt:  [+1.5197% +1.8095% +2.0875%]
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking depth_f32_to_u8/garb
+Benchmarking depth_f32_to_u8/garb: Warming up for 1.0000 s
+Benchmarking depth_f32_to_u8/garb: Collecting 100 samples in estimated 7.4158 s (10k iterations)
+Benchmarking depth_f32_to_u8/garb: Analyzing
+depth_f32_to_u8/garb    time:   [735.66 µs 736.51 µs 737.31 µs]
+                        thrpt:  [41.908 GiB/s 41.953 GiB/s 42.002 GiB/s]
+                 change:
+                        time:   [−0.1101% +0.1192% +0.3609%] (p = 0.34 > 0.05)
+                        thrpt:  [−0.3596% −0.1191% +0.1102%]
+                        No change in performance detected.
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) low severe
+  5 (5.00%) low mild
+  1 (1.00%) high mild
+Benchmarking depth_f32_to_u8/garb_scalar
+Benchmarking depth_f32_to_u8/garb_scalar: Warming up for 1.0000 s
+
+Warning: Unable to complete 100 samples in 4.0s. You may wish to increase target time to 5.5s, enable flat sampling, or reduce sample count to 60.
+Benchmarking depth_f32_to_u8/garb_scalar: Collecting 100 samples in estimated 5.5167 s (5050 iterations)
+Benchmarking depth_f32_to_u8/garb_scalar: Analyzing
+depth_f32_to_u8/garb_scalar
+                        time:   [1.0944 ms 1.0961 ms 1.0978 ms]
+                        thrpt:  [28.145 GiB/s 28.190 GiB/s 28.235 GiB/s]
+                 change:
+                        time:   [+0.0064% +0.2713% +0.5317%] (p = 0.05 < 0.05)
+                        thrpt:  [−0.5289% −0.2706% −0.0064%]
+                        Change within noise threshold.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low severe
+  3 (3.00%) low mild
+Benchmarking depth_f32_to_u8/naive
+Benchmarking depth_f32_to_u8/naive: Warming up for 1.0000 s
+
+Warning: Unable to complete 100 samples in 4.0s. You may wish to increase target time to 5.6s, enable flat sampling, or reduce sample count to 50.
+Benchmarking depth_f32_to_u8/naive: Collecting 100 samples in estimated 5.5648 s (5050 iterations)
+Benchmarking depth_f32_to_u8/naive: Analyzing
+depth_f32_to_u8/naive   time:   [1.0995 ms 1.1012 ms 1.1028 ms]
+                        thrpt:  [28.020 GiB/s 28.060 GiB/s 28.102 GiB/s]
+                 change:
+                        time:   [+0.1258% +0.3841% +0.6482%] (p = 0.00 < 0.05)
+                        thrpt:  [−0.6441% −0.3826% −0.1256%]
+                        Change within noise threshold.
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low severe
+  5 (5.00%) low mild
+
+Benchmarking premul_f32_inplace/garb
+Benchmarking premul_f32_inplace/garb: Warming up for 1.0000 s
+Benchmarking premul_f32_inplace/garb: Collecting 100 samples in estimated 5.1517 s (10k iterations)
+Benchmarking premul_f32_inplace/garb: Analyzing
+premul_f32_inplace/garb time:   [512.70 µs 513.21 µs 513.73 µs]
+                        thrpt:  [60.147 GiB/s 60.208 GiB/s 60.268 GiB/s]
+                 change:
+                        time:   [+0.1598% +0.3792% +0.5736%] (p = 0.00 < 0.05)
+                        thrpt:  [−0.5703% −0.3778% −0.1595%]
+                        Change within noise threshold.
+Found 7 outliers among 100 measurements (7.00%)
+  2 (2.00%) low severe
+  5 (5.00%) low mild
+Benchmarking premul_f32_inplace/garb_scalar
+Benchmarking premul_f32_inplace/garb_scalar: Warming up for 1.0000 s
+Benchmarking premul_f32_inplace/garb_scalar: Collecting 100 samples in estimated 6.8001 s (10k iterations)
+Benchmarking premul_f32_inplace/garb_scalar: Analyzing
+premul_f32_inplace/garb_scalar
+                        time:   [674.09 µs 674.47 µs 674.86 µs]
+                        thrpt:  [45.786 GiB/s 45.812 GiB/s 45.838 GiB/s]
+                 change:
+                        time:   [−0.1681% −0.0314% +0.1052%] (p = 0.66 > 0.05)
+                        thrpt:  [−0.1051% +0.0314% +0.1684%]
+                        No change in performance detected.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) low mild
+Benchmarking premul_f32_inplace/naive
+Benchmarking premul_f32_inplace/naive: Warming up for 1.0000 s
+Benchmarking premul_f32_inplace/naive: Collecting 100 samples in estimated 6.9625 s (10k iterations)
+Benchmarking premul_f32_inplace/naive: Analyzing
+premul_f32_inplace/naive
+                        time:   [690.89 µs 691.18 µs 691.46 µs]
+                        thrpt:  [44.687 GiB/s 44.705 GiB/s 44.724 GiB/s]
+                 change:
+                        time:   [+0.0474% +0.1787% +0.2910%] (p = 0.00 < 0.05)
+                        thrpt:  [−0.2901% −0.1784% −0.0474%]
+                        Change within noise threshold.
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low severe
+  2 (2.00%) low mild
+  3 (3.00%) high mild
+
+Benchmarking unpremul_f32_inplace/garb
+Benchmarking unpremul_f32_inplace/garb: Warming up for 1.0000 s
+
+Warning: Unable to complete 100 samples in 4.0s. You may wish to increase target time to 4.4s, enable flat sampling, or reduce sample count to 60.
+Benchmarking unpremul_f32_inplace/garb: Collecting 100 samples in estimated 4.4423 s (5050 iterations)
+Benchmarking unpremul_f32_inplace/garb: Analyzing
+unpremul_f32_inplace/garb
+                        time:   [880.26 µs 881.12 µs 881.96 µs]
+                        thrpt:  [35.034 GiB/s 35.068 GiB/s 35.102 GiB/s]
+                 change:
+                        time:   [−0.1436% +0.0403% +0.2335%] (p = 0.68 > 0.05)
+                        thrpt:  [−0.2329% −0.0403% +0.1438%]
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  5 (5.00%) low mild
+Benchmarking unpremul_f32_inplace/garb_scalar
+Benchmarking unpremul_f32_inplace/garb_scalar: Warming up for 1.0000 s
+
+Warning: Unable to complete 100 samples in 4.0s. You may wish to increase target time to 5.1s, enable flat sampling, or reduce sample count to 60.
+Benchmarking unpremul_f32_inplace/garb_scalar: Collecting 100 samples in estimated 5.0569 s (5050 iterations)
+Benchmarking unpremul_f32_inplace/garb_scalar: Analyzing
+unpremul_f32_inplace/garb_scalar
+                        time:   [1.0016 ms 1.0025 ms 1.0033 ms]
+                        thrpt:  [30.798 GiB/s 30.823 GiB/s 30.849 GiB/s]
+                 change:
+                        time:   [+0.1113% +0.2199% +0.3303%] (p = 0.00 < 0.05)
+                        thrpt:  [−0.3293% −0.2194% −0.1112%]
+                        Change within noise threshold.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) low mild
+Benchmarking unpremul_f32_inplace/naive
+Benchmarking unpremul_f32_inplace/naive: Warming up for 1.0000 s
+
+Warning: Unable to complete 100 samples in 4.0s. You may wish to increase target time to 4.9s, enable flat sampling, or reduce sample count to 60.
+Benchmarking unpremul_f32_inplace/naive: Collecting 100 samples in estimated 4.8595 s (5050 iterations)
+Benchmarking unpremul_f32_inplace/naive: Analyzing
+unpremul_f32_inplace/naive
+                        time:   [962.78 µs 963.54 µs 964.28 µs]
+                        thrpt:  [32.044 GiB/s 32.068 GiB/s 32.094 GiB/s]
+                 change:
+                        time:   [−0.1045% +0.0224% +0.1503%] (p = 0.73 > 0.05)
+                        thrpt:  [−0.1501% −0.0223% +0.1046%]
+                        No change in performance detected.
+Found 20 outliers among 100 measurements (20.00%)
+  5 (5.00%) low severe
+  7 (7.00%) low mild
+  7 (7.00%) high mild
+  1 (1.00%) high severe
+

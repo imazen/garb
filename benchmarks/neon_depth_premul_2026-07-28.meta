@@ -1,0 +1,44 @@
+# garb NEON depth-conversion + premultiply kernels — measurement record
+date:        2026-07-28
+host:        Apple M4 Pro (12 core), macOS, aarch64
+commit:      see `git log` for the commit adding src/bytes/neon.rs experimental module
+rustc:       stable, release profile, NO -C target-cpu=native (runtime dispatch is what ships)
+command:     cargo bench --features experimental --bench swizzle -- \
+               --warm-up-time 1 --measurement-time 4 '(depth_|premul_f32)'
+buffer:      1920x1080
+method:      same-binary A/B. "garb" = NEON tier dispatched; "garb_scalar" = same
+             entry point with archmage::dangerously_disable_tokens_except_wasm(true).
+
+## Result — NEON vs scalar (median)
+
+| kernel                 | NEON      | scalar     | speedup |
+|------------------------|-----------|------------|---------|
+| depth_u8_to_f32        |  517.27us |  662.50us  | 1.28x   |
+| depth_f32_to_u8        |  736.51us | 1096.10us  | 1.49x   |
+| premul_f32_inplace     |  513.21us |  674.47us  | 1.31x   |
+| unpremul_f32_inplace   |  881.12us | 1002.50us  | 1.14x   |
+
+## Notes on how these were arrived at (two kernels initially LOST)
+
+- unpremul first measured +83% SLOWER: the naive form issues one vdivq_f32 per
+  pixel against a splatted alpha, i.e. 4x redundant divides. Restructured to
+  transpose 4 pixels into r/g/b/a planes so ONE vdivq_f32 serves four pixels;
+  that swing was -46%, turning the loss into a 1.14x win.
+- depth_u8_to_f32 first measured +52% SLOWER. Two causes: (1) binding the
+  widened vectors in a `[uint32x4_t; 4]` array spilled them to the stack;
+  (2) vdivq_f32 throughput on Apple cores is low enough that the kernel stopped
+  being memory-bound. Fixed by straight-line code plus reciprocal-multiply.
+
+## PRECISION CAVEAT (pre-existing, inherited deliberately)
+
+convert_u8_to_f32 / convert_u16_to_f32 use reciprocal-multiply
+(`v * (1.0/255.0)`), matching what the AVX2 tier has always done
+(`_mm256_set1_ps(1.0 / 255.0)` in src/bytes/avx2.rs). The scalar tier uses true
+division (`v / 255.0`). These are NOT bit-identical: an exhaustive check over
+the full input domain shows 126/256 u8 inputs and 512/65536 u16 inputs produce
+a different f32 bit pattern. The existing tests do not catch this because they
+are u8->f32->u8 roundtrips, and the difference vanishes on the way back.
+Using vdivq_f32 instead would be bit-exact with scalar but measured ~53% SLOWER
+than the scalar path, i.e. strictly worse than shipping no NEON kernel at all.
+This is a pre-existing scalar-vs-SIMD discrepancy in garb, not one introduced
+here; flagged for a decision on which tier is authoritative.

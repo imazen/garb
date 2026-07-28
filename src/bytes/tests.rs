@@ -1452,6 +1452,51 @@ mod experimental_tests {
         std::eprintln!("depth_u8_u16: {report}");
     }
 
+    /// f32→int quantization must match `clamp(0,1) * SCALE + 0.5` cast-truncated
+    /// for out-of-range and non-finite inputs, at every SIMD tier.
+    ///
+    /// The roundtrip tests only feed values that came from `u8`/`u16`, so they
+    /// never exercise negatives, values above 1.0, infinities or NaN — which is
+    /// exactly where a SIMD clamp can diverge from Rust's `f32::clamp` plus
+    /// saturating `as` cast (ARM `FMAX` propagates NaN where `FMAXNM` would not,
+    /// and `FCVTZU` flushes NaN to 0 like Rust's saturating cast).
+    #[test]
+    fn permutation_quantize_edge_values() {
+        let edges: [f32; 12] = [
+            -1.0,
+            -0.0,
+            0.0,
+            f32::MIN,
+            1.0,
+            1.5,
+            255.0,
+            f32::MAX,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::NAN,
+            0.5,
+        ];
+        let report = for_each_token_permutation(policy(), |perm| {
+            let src: Vec<u8> = edges.iter().flat_map(|v| v.to_ne_bytes()).collect();
+
+            let mut dst8 = vec![0u8; edges.len()];
+            convert_f32_to_u8(&src, &mut dst8).unwrap();
+            for (i, &v) in edges.iter().enumerate() {
+                let expected = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                assert_eq!(dst8[i], expected, "f32→u8 v={v} i={i} tier={perm}");
+            }
+
+            let mut dst16 = vec![0u8; edges.len() * 2];
+            convert_f32_to_u16(&src, &mut dst16).unwrap();
+            let got16: &[u16] = bytemuck::cast_slice(&dst16);
+            for (i, &v) in edges.iter().enumerate() {
+                let expected = (v.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+                assert_eq!(got16[i], expected, "f32→u16 v={v} i={i} tier={perm}");
+            }
+        });
+        std::eprintln!("quantize_edge_values: {report}");
+    }
+
     #[test]
     fn permutation_depth_u8_f32() {
         let report = for_each_token_permutation(policy(), |perm| {
