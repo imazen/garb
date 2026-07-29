@@ -10,6 +10,26 @@ use super::swap_br_u32;
 // vld3q/vld4q/vst3q/vst4q structure loads on all tested aarch64 platforms
 // (Ampere, Apple Silicon, Snapdragon). Those ops dispatch directly to scalar.
 //
+// RE-VERIFIED 2026-07-29 on Apple Silicon, and the REASON is memory bandwidth,
+// not instruction throughput — which is worth stating, because the in-place
+// kernels below use exactly these structure ops and win big, so the rule looks
+// self-contradictory without it. Measured (benches/kernel_tiers.rs, 1 MP,
+// neon vs forced scalar):
+//
+//   rgb_to_bgr_inplace   47.2 -> 302.1 us   6.40x   (in-place, half the traffic)
+//   rgba_to_bgra         70.6 -> 267.1 us   3.78x   (u32 swizzle, no structure ops)
+//   rgb_to_bgr  (copy)   52.9 -> 52.9 us    1.00x
+//   rgb_to_rgba          60.9 -> 60.9 us    1.00x
+//   rgba_to_rgb         115.4 -> 115.1 us   1.00x
+//
+// A real vld3q/vst3q arm was written for the copy variant `copy_swap_bgr` and
+// measured 0.99x — live and correct (poisoning it fails
+// `permutation_copy_swap_bgr`), just not faster. At ~55 GB/s combined read+write
+// the copy kernels are bandwidth-bound, so no instruction-level change can help;
+// the in-place twin wins because it moves half the bytes. The arm was reverted
+// rather than shipped for zero gain. Do not re-attempt without first showing the
+// op is not bandwidth-bound.
+//
 // RE-VERIFIED 2026-07-28 on Apple M4 Pro (macOS, rustc release, no
 // target-cpu=native). Explicit vld4q_u8→vst3q_u8 / vld3q_u8→vst4q_u8 kernels
 // were implemented for all nine cross-bpp ops and measured against the

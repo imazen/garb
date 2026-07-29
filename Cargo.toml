@@ -49,3 +49,6 @@ experimental = ["dep:paste"]
 rgb = ["dep:rgb"]
 imgref = ["dep:imgref", "rgb"]
 
+[[bench]]
+name = "kernel_tiers"
+harness = false
