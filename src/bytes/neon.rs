@@ -48,6 +48,26 @@ use super::swap_br_u32;
 // Do not re-add explicit structure-load kernels here without re-running that
 // sweep on the target hardware first.
 //
+// EXTENDED 2026-08-01 to the gray family. The six gray ops (gray_to_rgb,
+// gray_alpha_to_rgb, gray_to_gray_alpha, gray_alpha_to_gray,
+// rgb_to_gray_identity, rgba_to_gray_identity) dispatch [scalar] only and were
+// in no benchmark, so they looked like the same "no arm exists" gap that turned
+// out to be real in zenblend. They are not. `rgb_to_gray_identity` is the
+// strongest candidate in the family — a PURE deinterleave (take every 3rd byte)
+// where vld3q_u8 does the whole job in hardware and 2/3 of the loaded data is
+// discarded, so the write side is a third of the read side. That is a genuinely
+// different shape from the 3->4 / 4->3 / 3bpp ops measured above, which is why
+// it was worth testing rather than assuming.
+//
+// Measured anyway: neon 89.0us vs scalar 87.9us on 1 MP = 0.99x. No gain. The
+// rule above therefore covers reductions and pure-deinterleave shapes too, not
+// only the same-or-growing-width copies it was originally derived from. The
+// kernel was reverted; the bench entry stays (benches/kernel_tiers.rs) so the
+// family is no longer unmeasured.
+//
+// Note these six are behind `feature = "experimental"` and are not in a default
+// build, which is a second reason not to carry a kernel for them.
+//
 // This does NOT apply to elementwise ops (depth conversion, premul/unpremul),
 // which use vmovl/vcvtq/vmulq rather than structure loads — see below.
 // ===========================================================================
@@ -1166,3 +1186,4 @@ mod experimental {
 
 #[cfg(feature = "experimental")]
 pub(super) use experimental::*;
+

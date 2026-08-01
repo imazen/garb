@@ -79,4 +79,23 @@ fn bench(suite: &mut Suite) {
     set_simd(true);
 }
 
-zenbench::main!(bench);
+
+/// The gray family: six ops that dispatch `[scalar]` only — no v3, no neon,
+/// no wasm — and were in NO benchmark. Not part of the cross-bpp set the
+/// module header measured (that covered 4<->3 and 3bpp swaps); these are
+/// 1->3, 2->3, 1->2, 2->1, 3->1 and 4->1.
+fn bench_gray_family(suite: &mut Suite) {
+    const N: usize = 1 << 20;
+    let rgb: &'static [u8] = Box::leak((0..N * 3).map(|i| (i % 251) as u8).collect::<Vec<_>>().into_boxed_slice());
+    suite.compare("rgb_to_gray_identity", |g| {
+        g.throughput(Throughput::Bytes((N * 3) as u64));
+        for (arm, simd) in [(TIER_NAME, true), ("scalar", false)] {
+            g.bench(arm, move |b| {
+                b.with_input(move || { set_simd(simd); vec![0u8; N] })
+                    .run(move |mut d| { let _ = garb::bytes::rgb_to_gray_identity(rgb, &mut d); d })
+            });
+        }
+    });
+}
+
+zenbench::main!(bench_gray_family, bench);
