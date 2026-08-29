@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `bytemuck` 1.25.0 → 1.25.2 and `imgref` 1.12.0 → 1.12.3, plus a full transitive
+  lockfile refresh. **Verified byte-identical:** every one of garb's 44 two-buffer
+  converters and 18 in-place converters was driven over a 54-point pixel-count grid
+  straddling 4/8/16/32/64-lane block boundaries and their tails — 3,286 cases,
+  4,357,308 bytes of output, SHA-256
+  `8174b2c272c57c29fc4548b868a6b8188fd9ed5efd01d51577005999c0d305d7` on the old
+  dependency set (bytemuck 1.25.0 / imgref 1.12.0 / archmage 0.9.21) and on the new
+  one (bytemuck 1.25.2 / imgref 1.12.3 / archmage 0.9.21). The same hash also holds
+  at archmage 0.9.28. Test suite unchanged at 3 suites / 232 passed / 0 failed.
+- `archmage` 0.9.21, `archmage-macros` 0.9.21 and `zenbench` 0.1.7 were pinned back
+  in `Cargo.lock` after the refresh moved them to 0.9.28/0.9.28/0.1.9 — zen-family
+  crates do not move as a side effect of a third-party update.
+
 ### Added
 
 - ARM NEON kernels for the experimental depth-conversion and premultiply ops,
