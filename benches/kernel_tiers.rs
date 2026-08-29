@@ -15,7 +15,11 @@ type TierToken = archmage::NeonToken;
 type TierToken = archmage::X64V3Token;
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-const TIER_NAME: &str = if cfg!(target_arch = "aarch64") { "neon" } else { "v3(avx2)" };
+const TIER_NAME: &str = if cfg!(target_arch = "aarch64") {
+    "neon"
+} else {
+    "v3(avx2)"
+};
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 fn set_simd(on: bool) -> bool {
@@ -23,7 +27,9 @@ fn set_simd(on: bool) -> bool {
     TierToken::dangerously_disable_token_process_wide(!on).is_ok()
 }
 #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
-fn set_simd(_on: bool) -> bool { false }
+fn set_simd(_on: bool) -> bool {
+    false
+}
 
 const PX: usize = 1 << 20; // 1 MP
 
@@ -35,12 +41,24 @@ fn bench(suite: &mut Suite) {
     set_simd(true);
     eprintln!("[kernel_tiers] comparing {TIER_NAME} vs forced scalar");
 
-    let src3: &'static [u8] =
-        Box::leak((0..PX * 3).map(|i| (i % 251) as u8).collect::<Vec<_>>().into_boxed_slice());
-    let src4: &'static [u8] =
-        Box::leak((0..PX * 4).map(|i| (i % 251) as u8).collect::<Vec<_>>().into_boxed_slice());
-    let src1: &'static [u8] =
-        Box::leak((0..PX).map(|i| (i % 251) as u8).collect::<Vec<_>>().into_boxed_slice());
+    let src3: &'static [u8] = Box::leak(
+        (0..PX * 3)
+            .map(|i| (i % 251) as u8)
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+    );
+    let src4: &'static [u8] = Box::leak(
+        (0..PX * 4)
+            .map(|i| (i % 251) as u8)
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+    );
+    let src1: &'static [u8] = Box::leak(
+        (0..PX)
+            .map(|i| (i % 251) as u8)
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+    );
 
     macro_rules! ab {
         ($name:expr, $bytes:expr, $out:expr, $call:expr) => {
@@ -48,8 +66,14 @@ fn bench(suite: &mut Suite) {
                 g.throughput(Throughput::Bytes($bytes as u64));
                 for (arm, simd) in [(TIER_NAME, true), ("scalar", false)] {
                     g.bench(arm, move |b| {
-                        b.with_input(move || { set_simd(simd); vec![0u8; $out] })
-                            .run(move |mut d| { let _ = $call(&mut d); d })
+                        b.with_input(move || {
+                            set_simd(simd);
+                            vec![0u8; $out]
+                        })
+                        .run(move |mut d| {
+                            let _ = $call(&mut d);
+                            d
+                        })
                     });
                 }
             });
@@ -59,19 +83,35 @@ fn bench(suite: &mut Suite) {
     // Shape-distinct families. 3->4 expand and 4->3 contract are the two most
     // common conversions in an image pipeline and are exactly the shapes
     // vld3/vst4 exist for.
-    ab!("rgb_to_rgba", PX * 3, PX * 4, |d: &mut Vec<u8>| garb::bytes::rgb_to_rgba(src3, d));
-    ab!("rgba_to_rgb", PX * 4, PX * 3, |d: &mut Vec<u8>| garb::bytes::rgba_to_rgb(src4, d));
-    ab!("rgb_to_bgr", PX * 3, PX * 3, |d: &mut Vec<u8>| garb::bytes::rgb_to_bgr(src3, d));
-    ab!("rgba_to_bgra", PX * 4, PX * 4, |d: &mut Vec<u8>| garb::bytes::rgba_to_bgra(src4, d));
-    ab!("gray_to_rgba", PX, PX * 4, |d: &mut Vec<u8>| garb::bytes::gray_to_rgba(src1, d));
+    ab!("rgb_to_rgba", PX * 3, PX * 4, |d: &mut Vec<u8>| {
+        garb::bytes::rgb_to_rgba(src3, d)
+    });
+    ab!("rgba_to_rgb", PX * 4, PX * 3, |d: &mut Vec<u8>| {
+        garb::bytes::rgba_to_rgb(src4, d)
+    });
+    ab!("rgb_to_bgr", PX * 3, PX * 3, |d: &mut Vec<u8>| {
+        garb::bytes::rgb_to_bgr(src3, d)
+    });
+    ab!("rgba_to_bgra", PX * 4, PX * 4, |d: &mut Vec<u8>| {
+        garb::bytes::rgba_to_bgra(src4, d)
+    });
+    ab!("gray_to_rgba", PX, PX * 4, |d: &mut Vec<u8>| {
+        garb::bytes::gray_to_rgba(src1, d)
+    });
 
     // In-place swizzle (already has a neon arm) as a control.
     suite.compare("rgb_to_bgr_inplace", |g| {
         g.throughput(Throughput::Bytes((PX * 3) as u64));
         for (arm, simd) in [(TIER_NAME, true), ("scalar", false)] {
             g.bench(arm, move |b| {
-                b.with_input(move || { set_simd(simd); src3.to_vec() })
-                    .run(move |mut d| { let _ = garb::bytes::rgb_to_bgr_inplace(&mut d); d })
+                b.with_input(move || {
+                    set_simd(simd);
+                    src3.to_vec()
+                })
+                .run(move |mut d| {
+                    let _ = garb::bytes::rgb_to_bgr_inplace(&mut d);
+                    d
+                })
             });
         }
     });
@@ -79,20 +119,30 @@ fn bench(suite: &mut Suite) {
     set_simd(true);
 }
 
-
 /// The gray family: six ops that dispatch `[scalar]` only — no v3, no neon,
 /// no wasm — and were in NO benchmark. Not part of the cross-bpp set the
 /// module header measured (that covered 4<->3 and 3bpp swaps); these are
 /// 1->3, 2->3, 1->2, 2->1, 3->1 and 4->1.
 fn bench_gray_family(suite: &mut Suite) {
     const N: usize = 1 << 20;
-    let rgb: &'static [u8] = Box::leak((0..N * 3).map(|i| (i % 251) as u8).collect::<Vec<_>>().into_boxed_slice());
+    let rgb: &'static [u8] = Box::leak(
+        (0..N * 3)
+            .map(|i| (i % 251) as u8)
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+    );
     suite.compare("rgb_to_gray_identity", |g| {
         g.throughput(Throughput::Bytes((N * 3) as u64));
         for (arm, simd) in [(TIER_NAME, true), ("scalar", false)] {
             g.bench(arm, move |b| {
-                b.with_input(move || { set_simd(simd); vec![0u8; N] })
-                    .run(move |mut d| { let _ = garb::bytes::rgb_to_gray_identity(rgb, &mut d); d })
+                b.with_input(move || {
+                    set_simd(simd);
+                    vec![0u8; N]
+                })
+                .run(move |mut d| {
+                    let _ = garb::bytes::rgb_to_gray_identity(rgb, &mut d);
+                    d
+                })
             });
         }
     });
