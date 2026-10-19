@@ -27,8 +27,6 @@ jobs:
             name: Linux aarch64
           - os: macos-latest
             name: macOS aarch64
-          - os: macos-26-intel
-            name: macOS x86_64
           - os: windows-latest
             name: Windows x86_64
           - os: windows-11-arm
@@ -36,12 +34,12 @@ jobs:
     name: bench (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run benchmarks
-        run: cargo bench --bench swizzle -- --noplot 2>&1 | tee bench-output.txt
-      - uses: actions/upload-artifact@v4
+        run: cargo bench --features experimental --bench swizzle -- --noplot 2>&1 | tee bench-output.txt
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: bench-${{ matrix.name }}
@@ -55,57 +53,25 @@ jobs:
     env:
       CARGO_TARGET_WASM32_WASIP1_RUNNER: "wasmtime run --dir . --"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1
       - name: Install wasmtime
         run: |
           curl https://wasmtime.dev/install.sh -sSf | bash
-          echo "$HOME/.wasmtime/bin" >> $GITHUB_PATH
+          echo "$HOME/.wasmtime/bin" >> "$GITHUB_PATH"
       - uses: Swatinem/rust-cache@v2
         with:
           key: wasm-simd128
       - name: Run benchmarks (WASM SIMD128)
         env:
           RUSTFLAGS: "-C target-feature=+simd128"
-        run: cargo bench --bench swizzle --target wasm32-wasip1 -- --noplot 2>&1 | tee bench-output.txt
-      - uses: actions/upload-artifact@v4
+        run: cargo bench --features experimental --bench swizzle --target wasm32-wasip1 -- --noplot 2>&1 | tee bench-output.txt
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: bench-WASM SIMD128
-          path: bench-output.txt
-
-  # Diagnostic: test whether target-cpu=native helps aarch64 by allowing
-  # #[target_feature(enable = "neon")] functions to inline (features already
-  # globally enabled, so the attribute boundary becomes a no-op).
-  bench-native-cpu:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04-arm
-            name: Linux aarch64 native
-          - os: macos-latest
-            name: macOS aarch64 native
-          - os: windows-11-arm
-            name: Windows aarch64 native
-    name: bench (${{ matrix.name }})
-    runs-on: ${{ matrix.os }}
-    env:
-      RUSTFLAGS: "-C target-cpu=native"
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: native-cpu
-      - name: Run benchmarks (target-cpu=native)
-        run: cargo bench --bench swizzle -- --noplot 2>&1 | tee bench-output.txt
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: bench-${{ matrix.name }}
           path: bench-output.txt
 
   # Diagnostic: test with cross-compiled aarch64 under QEMU on x86_64
@@ -113,7 +79,7 @@ jobs:
     name: bench (QEMU aarch64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
@@ -129,8 +95,8 @@ jobs:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER: qemu-aarch64-static -L /usr/aarch64-linux-gnu
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: |
-          cargo bench --bench swizzle --target aarch64-unknown-linux-gnu -- --noplot 2>&1 | tee bench-output.txt
-      - uses: actions/upload-artifact@v4
+          cargo bench --features experimental --bench swizzle --target aarch64-unknown-linux-gnu -- --noplot 2>&1 | tee bench-output.txt
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: bench-QEMU aarch64

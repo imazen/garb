@@ -126,19 +126,24 @@ fn enable_all_simd() {
 // === Naive scalar baselines ===
 
 fn naive_rgba_bgra_inplace(buf: &mut [u8]) {
-    for px in buf.chunks_exact_mut(4) {
+    for px in buf.as_chunks_mut::<4>().0.iter_mut() {
         px.swap(0, 2);
     }
 }
 
 fn naive_rgb_bgr_inplace(buf: &mut [u8]) {
-    for px in buf.chunks_exact_mut(3) {
+    for px in buf.as_chunks_mut::<3>().0.iter_mut() {
         px.swap(0, 2);
     }
 }
 
 fn naive_rgb_bgr_copy(src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -146,7 +151,12 @@ fn naive_rgb_bgr_copy(src: &[u8], dst: &mut [u8]) {
 }
 
 fn naive_rgba_to_rgb(src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
@@ -154,7 +164,12 @@ fn naive_rgba_to_rgb(src: &[u8], dst: &mut [u8]) {
 }
 
 fn naive_bgra_to_rgb(src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -162,7 +177,12 @@ fn naive_bgra_to_rgb(src: &[u8], dst: &mut [u8]) {
 }
 
 fn naive_rgb_to_rgba(src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
@@ -171,7 +191,7 @@ fn naive_rgb_to_rgba(src: &[u8], dst: &mut [u8]) {
 }
 
 fn naive_fill_alpha(buf: &mut [u8]) {
-    for px in buf.chunks_exact_mut(4) {
+    for px in buf.as_chunks_mut::<4>().0.iter_mut() {
         px[3] = 255;
     }
 }
@@ -329,21 +349,24 @@ fn bench_crossbpp_sweep(c: &mut Criterion) {
         enable_all_simd();
         g.finish();
 
-        // luma (rgba_to_gray_bt709) — arithmetic per pixel, unlike the swizzles
-        let mut g = c.benchmark_group(std::format!("sweep_rgba_to_gray/{label}"));
-        g.throughput(Throughput::Bytes((px * 4) as u64));
-        let src: Vec<u8> = (0..px * 4).map(|i| (i % 251) as u8).collect();
-        g.bench_function("simd", |b| {
-            let mut dst = vec![0u8; px];
-            b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
-        });
-        disable_all_simd();
-        g.bench_function("scalar", |b| {
-            let mut dst = vec![0u8; px];
-            b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
-        });
-        enable_all_simd();
-        g.finish();
+        #[cfg(feature = "experimental")]
+        {
+            // luma (rgba_to_gray_bt709) — arithmetic per pixel, unlike the swizzles
+            let mut g = c.benchmark_group(std::format!("sweep_rgba_to_gray/{label}"));
+            g.throughput(Throughput::Bytes((px * 4) as u64));
+            let src: Vec<u8> = (0..px * 4).map(|i| (i % 251) as u8).collect();
+            g.bench_function("simd", |b| {
+                let mut dst = vec![0u8; px];
+                b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
+            });
+            disable_all_simd();
+            g.bench_function("scalar", |b| {
+                let mut dst = vec![0u8; px];
+                b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
+            });
+            enable_all_simd();
+            g.finish();
+        }
 
         // 3bpp copy+swap (rgb_to_bgr)
         let mut g = c.benchmark_group(std::format!("sweep_rgb_to_bgr/{label}"));
@@ -490,7 +513,7 @@ fn naive_f32_to_u8(src: &[u8], dst: &mut [u8]) {
 
 #[cfg(feature = "experimental")]
 fn naive_rgba_to_gray_bt709(src: &[u8], dst: &mut [u8]) {
-    for (px, d) in src.chunks_exact(4).zip(dst.iter_mut()) {
+    for (px, d) in src.as_chunks::<4>().0.iter().zip(dst.iter_mut()) {
         *d = ((px[0] as u16 * 54 + px[1] as u16 * 183 + px[2] as u16 * 19 + 128) >> 8) as u8;
     }
 }
@@ -498,7 +521,7 @@ fn naive_rgba_to_gray_bt709(src: &[u8], dst: &mut [u8]) {
 #[cfg(feature = "experimental")]
 fn naive_premul_f32(buf: &mut [u8]) {
     let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
-    for px in floats.chunks_exact_mut(4) {
+    for px in floats.as_chunks_mut::<4>().0.iter_mut() {
         let a = px[3];
         px[0] *= a;
         px[1] *= a;
@@ -509,7 +532,7 @@ fn naive_premul_f32(buf: &mut [u8]) {
 #[cfg(feature = "experimental")]
 fn naive_unpremul_f32(buf: &mut [u8]) {
     let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
-    for px in floats.chunks_exact_mut(4) {
+    for px in floats.as_chunks_mut::<4>().0.iter_mut() {
         let a = px[3];
         if a == 0.0 {
             px[0] = 0.0;
@@ -623,7 +646,12 @@ fn bench_unpremul_f32(c: &mut Criterion) {
 
 #[cfg(feature = "experimental")]
 fn naive_rgb565_to_rgba(src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u16::from_le_bytes([s[0], s[1]]);
         let r5 = (v >> 11) & 0x1F;
         let g6 = (v >> 5) & 0x3F;
@@ -637,7 +665,12 @@ fn naive_rgb565_to_rgba(src: &[u8], dst: &mut [u8]) {
 
 #[cfg(feature = "experimental")]
 fn naive_rgba4444_to_rgba(src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u16::from_le_bytes([s[0], s[1]]);
         let r4 = (v >> 12) & 0xF;
         let g4 = (v >> 8) & 0xF;
