@@ -20,3 +20,6 @@ beta-check:
     cargo fmt --check
     cargo clippy --locked --lib -- -D warnings
     cargo test --locked --lib
+
+beta-library-check:
+    cargo test --locked --all-features --lib

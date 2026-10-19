@@ -7,13 +7,18 @@ use super::swap_br_u32;
 // ===========================================================================
 
 pub(super) fn swap_bgr_row_scalar(_token: ScalarToken, row: &mut [u8]) {
-    for px in row.chunks_exact_mut(3) {
+    for px in row.as_chunks_mut::<3>().0 {
         px.swap(0, 2);
     }
 }
 
 pub(super) fn copy_swap_bgr_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -21,7 +26,12 @@ pub(super) fn copy_swap_bgr_row_scalar(_token: ScalarToken, src: &[u8], dst: &mu
 }
 
 pub(super) fn rgba_to_rgb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
@@ -29,7 +39,12 @@ pub(super) fn rgba_to_rgb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut 
 }
 
 pub(super) fn bgra_to_rgb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -37,27 +52,37 @@ pub(super) fn bgra_to_rgb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut 
 }
 
 pub(super) fn swap_br_row_scalar(_token: ScalarToken, row: &mut [u8]) {
-    for px in row.chunks_exact_mut(4) {
+    for px in row.as_chunks_mut::<4>().0 {
         let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
         px.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
 }
 
 pub(super) fn copy_swap_br_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
         d.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
 }
 
 pub(super) fn fill_alpha_row_scalar(_token: ScalarToken, row: &mut [u8]) {
-    for px in row.chunks_exact_mut(4) {
+    for px in row.as_chunks_mut::<4>().0 {
         px[3] = 0xFF;
     }
 }
 
 pub(super) fn rgb_to_bgra_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -66,7 +91,12 @@ pub(super) fn rgb_to_bgra_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut 
 }
 
 pub(super) fn rgb_to_rgba_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
@@ -75,7 +105,7 @@ pub(super) fn rgb_to_rgba_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut 
 }
 
 pub(super) fn gray_to_4bpp_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (&v, d) in src.iter().zip(dst.chunks_exact_mut(4)) {
+    for (&v, d) in src.iter().zip(dst.as_chunks_mut::<4>().0.iter_mut()) {
         d[0] = v;
         d[1] = v;
         d[2] = v;
@@ -84,7 +114,12 @@ pub(super) fn gray_to_4bpp_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut
 }
 
 pub(super) fn gray_alpha_to_4bpp_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (ga, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+    for (ga, d) in src
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = ga[0];
         d[1] = ga[0];
         d[2] = ga[0];
@@ -98,7 +133,7 @@ pub(super) fn gray_alpha_to_4bpp_row_scalar(_token: ScalarToken, src: &[u8], dst
 
 /// Rotate each 4-byte pixel left by 1: [a,b,c,d]→[b,c,d,a]. ARGB→RGBA, ABGR→BGRA.
 pub(super) fn rotate_left_row_scalar(_token: ScalarToken, row: &mut [u8]) {
-    for px in row.chunks_exact_mut(4) {
+    for px in row.as_chunks_mut::<4>().0 {
         let a = px[0];
         px[0] = px[1];
         px[1] = px[2];
@@ -109,7 +144,7 @@ pub(super) fn rotate_left_row_scalar(_token: ScalarToken, row: &mut [u8]) {
 
 /// Rotate each 4-byte pixel right by 1: [a,b,c,d]→[d,a,b,c]. RGBA→ARGB, BGRA→ABGR.
 pub(super) fn rotate_right_row_scalar(_token: ScalarToken, row: &mut [u8]) {
-    for px in row.chunks_exact_mut(4) {
+    for px in row.as_chunks_mut::<4>().0 {
         let d = px[3];
         px[3] = px[2];
         px[2] = px[1];
@@ -120,14 +155,19 @@ pub(super) fn rotate_right_row_scalar(_token: ScalarToken, row: &mut [u8]) {
 
 /// Reverse each 4-byte pixel: [a,b,c,d]→[d,c,b,a]. ARGB↔BGRA, ABGR↔RGBA.
 pub(super) fn reverse_4bpp_row_scalar(_token: ScalarToken, row: &mut [u8]) {
-    for px in row.chunks_exact_mut(4) {
+    for px in row.as_chunks_mut::<4>().0 {
         let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
         px.copy_from_slice(&v.swap_bytes().to_ne_bytes());
     }
 }
 
 pub(super) fn copy_rotate_left_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[1];
         d[1] = s[2];
         d[2] = s[3];
@@ -136,7 +176,12 @@ pub(super) fn copy_rotate_left_row_scalar(_token: ScalarToken, src: &[u8], dst: 
 }
 
 pub(super) fn copy_rotate_right_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[0];
         d[2] = s[1];
@@ -145,7 +190,12 @@ pub(super) fn copy_rotate_right_row_scalar(_token: ScalarToken, src: &[u8], dst:
 }
 
 pub(super) fn copy_reverse_4bpp_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[2];
         d[2] = s[1];
@@ -155,14 +205,19 @@ pub(super) fn copy_reverse_4bpp_row_scalar(_token: ScalarToken, src: &[u8], dst:
 
 /// Set byte 0 to 0xFF in each 4-byte pixel (XRGB/XBGR → ARGB/ABGR).
 pub(super) fn fill_alpha_first_row_scalar(_token: ScalarToken, row: &mut [u8]) {
-    for px in row.chunks_exact_mut(4) {
+    for px in row.as_chunks_mut::<4>().0 {
         px[0] = 0xFF;
     }
 }
 
 /// RGB → ARGB: [R,G,B] → [0xFF,R,G,B].
 pub(super) fn rgb_to_argb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = 0xFF;
         d[1] = s[0];
         d[2] = s[1];
@@ -172,7 +227,12 @@ pub(super) fn rgb_to_argb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut 
 
 /// RGB → ABGR: [R,G,B] → [0xFF,B,G,R]. Same as BGR → ARGB.
 pub(super) fn rgb_to_abgr_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(3).zip(dst.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = 0xFF;
         d[1] = s[2];
         d[2] = s[1];
@@ -182,7 +242,12 @@ pub(super) fn rgb_to_abgr_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut 
 
 /// ARGB → RGB: [A,R,G,B] → [R,G,B]. Same as ABGR → BGR.
 pub(super) fn argb_to_rgb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[1];
         d[1] = s[2];
         d[2] = s[3];
@@ -191,7 +256,12 @@ pub(super) fn argb_to_rgb_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut 
 
 /// ARGB → BGR: [A,R,G,B] → [B,G,R]. Same as ABGR → RGB.
 pub(super) fn argb_to_bgr_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[2];
         d[2] = s[1];
@@ -200,7 +270,7 @@ pub(super) fn argb_to_bgr_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut 
 
 /// Gray → ARGB: G → [0xFF,G,G,G].
 pub(super) fn gray_to_4bpp_alpha_first_row_scalar(_token: ScalarToken, src: &[u8], dst: &mut [u8]) {
-    for (&v, d) in src.iter().zip(dst.chunks_exact_mut(4)) {
+    for (&v, d) in src.iter().zip(dst.as_chunks_mut::<4>().0.iter_mut()) {
         d[0] = 0xFF;
         d[1] = v;
         d[2] = v;
@@ -214,7 +284,12 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_row_scalar(
     src: &[u8],
     dst: &mut [u8],
 ) {
-    for (ga, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+    for (ga, d) in src
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = ga[1];
         d[1] = ga[0];
         d[2] = ga[0];
@@ -629,7 +704,7 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (s, d) in src.iter().zip(dst.chunks_exact_mut(2)) {
+        for (s, d) in src.iter().zip(dst.as_chunks_mut::<2>().0.iter_mut()) {
             d.copy_from_slice(&((*s as u16) * 257).to_ne_bytes());
         }
     }
@@ -638,7 +713,7 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (s, d) in src.chunks_exact(2).zip(dst.iter_mut()) {
+        for (s, d) in src.as_chunks::<2>().0.iter().zip(dst.iter_mut()) {
             let v = u16::from_ne_bytes([s[0], s[1]]);
             *d = ((v as u32 * 255 + 32768) >> 16) as u8;
         }
@@ -648,7 +723,7 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (s, d) in src.iter().zip(dst.chunks_exact_mut(4)) {
+        for (s, d) in src.iter().zip(dst.as_chunks_mut::<4>().0.iter_mut()) {
             d.copy_from_slice(&(*s as f32 / 255.0).to_ne_bytes());
         }
     }
@@ -657,7 +732,7 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (s, d) in src.chunks_exact(4).zip(dst.iter_mut()) {
+        for (s, d) in src.as_chunks::<4>().0.iter().zip(dst.iter_mut()) {
             let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
             *d = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         }
@@ -667,7 +742,12 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (s, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(4)) {
+        for (s, d) in src
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+        {
             let v = u16::from_ne_bytes([s[0], s[1]]);
             d.copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
         }
@@ -677,7 +757,12 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(2)) {
+        for (s, d) in src
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst.as_chunks_mut::<2>().0.iter_mut())
+        {
             let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
             d.copy_from_slice(&((v.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16).to_ne_bytes());
         }
@@ -788,7 +873,7 @@ mod experimental {
     // -----------------------------------------------------------------------
 
     pub(in crate::bytes) fn gray_to_rgb_row_scalar(_t: ScalarToken, src: &[u8], dst: &mut [u8]) {
-        for (&g, d) in src.iter().zip(dst.chunks_exact_mut(3)) {
+        for (&g, d) in src.iter().zip(dst.as_chunks_mut::<3>().0.iter_mut()) {
             d[0] = g;
             d[1] = g;
             d[2] = g;
@@ -799,7 +884,12 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (ga, d) in src.chunks_exact(2).zip(dst.chunks_exact_mut(3)) {
+        for (ga, d) in src
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(dst.as_chunks_mut::<3>().0.iter_mut())
+        {
             d[0] = ga[0];
             d[1] = ga[0];
             d[2] = ga[0];
@@ -810,7 +900,7 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (&g, d) in src.iter().zip(dst.chunks_exact_mut(2)) {
+        for (&g, d) in src.iter().zip(dst.as_chunks_mut::<2>().0.iter_mut()) {
             d[0] = g;
             d[1] = 0xFF;
         }
@@ -820,7 +910,7 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (ga, d) in src.chunks_exact(2).zip(dst.iter_mut()) {
+        for (ga, d) in src.as_chunks::<2>().0.iter().zip(dst.iter_mut()) {
             *d = ga[0];
         }
     }
@@ -829,7 +919,7 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (px, d) in src.chunks_exact(3).zip(dst.iter_mut()) {
+        for (px, d) in src.as_chunks::<3>().0.iter().zip(dst.iter_mut()) {
             *d = px[0];
         }
     }
@@ -838,7 +928,7 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (px, d) in src.chunks_exact(4).zip(dst.iter_mut()) {
+        for (px, d) in src.as_chunks::<4>().0.iter().zip(dst.iter_mut()) {
             *d = px[0];
         }
     }
@@ -957,14 +1047,14 @@ mod experimental {
 
     #[inline(always)]
     fn luma_3bpp_row(src: &[u8], dst: &mut [u8], w_r: u16, w_g: u16, w_b: u16) {
-        for (px, d) in src.chunks_exact(3).zip(dst.iter_mut()) {
+        for (px, d) in src.as_chunks::<3>().0.iter().zip(dst.iter_mut()) {
             *d = ((px[0] as u16 * w_r + px[1] as u16 * w_g + px[2] as u16 * w_b + 128) >> 8) as u8;
         }
     }
 
     #[inline(always)]
     fn luma_4bpp_row(src: &[u8], dst: &mut [u8], w_r: u16, w_g: u16, w_b: u16) {
-        for (px, d) in src.chunks_exact(4).zip(dst.iter_mut()) {
+        for (px, d) in src.as_chunks::<4>().0.iter().zip(dst.iter_mut()) {
             *d = ((px[0] as u16 * w_r + px[1] as u16 * w_g + px[2] as u16 * w_b + 128) >> 8) as u8;
         }
     }
@@ -1008,7 +1098,7 @@ mod experimental {
     // -----------------------------------------------------------------------
 
     pub(in crate::bytes) fn premul_f32_row_scalar(_t: ScalarToken, buf: &mut [u8]) {
-        for px in buf.chunks_exact_mut(16) {
+        for px in buf.as_chunks_mut::<16>().0.iter_mut() {
             let r = f32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
             let g = f32::from_ne_bytes([px[4], px[5], px[6], px[7]]);
             let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
@@ -1023,7 +1113,12 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (s, d) in src.chunks_exact(16).zip(dst.chunks_exact_mut(16)) {
+        for (s, d) in src
+            .as_chunks::<16>()
+            .0
+            .iter()
+            .zip(dst.as_chunks_mut::<16>().0.iter_mut())
+        {
             let r = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
             let g = f32::from_ne_bytes([s[4], s[5], s[6], s[7]]);
             let b = f32::from_ne_bytes([s[8], s[9], s[10], s[11]]);
@@ -1035,7 +1130,7 @@ mod experimental {
         }
     }
     pub(in crate::bytes) fn unpremul_f32_row_scalar(_t: ScalarToken, buf: &mut [u8]) {
-        for px in buf.chunks_exact_mut(16) {
+        for px in buf.as_chunks_mut::<16>().0.iter_mut() {
             let r = f32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
             let g = f32::from_ne_bytes([px[4], px[5], px[6], px[7]]);
             let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
@@ -1055,7 +1150,12 @@ mod experimental {
         src: &[u8],
         dst: &mut [u8],
     ) {
-        for (s, d) in src.chunks_exact(16).zip(dst.chunks_exact_mut(16)) {
+        for (s, d) in src
+            .as_chunks::<16>()
+            .0
+            .iter()
+            .zip(dst.as_chunks_mut::<16>().0.iter_mut())
+        {
             let r = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
             let g = f32::from_ne_bytes([s[4], s[5], s[6], s[7]]);
             let b = f32::from_ne_bytes([s[8], s[9], s[10], s[11]]);
@@ -1157,7 +1257,7 @@ mod experimental {
 
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn premul_u8_impl(buf: &mut [u8]) {
-        for px in buf.chunks_exact_mut(4) {
+        for px in buf.as_chunks_mut::<4>().0.iter_mut() {
             let a = px[3];
             px[0] = premul_u8(px[0], a);
             px[1] = premul_u8(px[1], a);
@@ -1167,7 +1267,12 @@ mod experimental {
 
     #[autoversion(v3, neon, wasm128)]
     pub(in crate::bytes) fn premul_u8_copy_impl(src: &[u8], dst: &mut [u8]) {
-        for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+        for (s, d) in src
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+        {
             let a = s[3];
             d[0] = premul_u8(s[0], a);
             d[1] = premul_u8(s[1], a);
@@ -1184,7 +1289,7 @@ mod experimental {
         stride: usize,
     ) {
         for y in 0..h {
-            for px in buf[y * stride..][..w * 4].chunks_exact_mut(4) {
+            for px in buf[y * stride..][..w * 4].as_chunks_mut::<4>().0.iter_mut() {
                 let a = px[3];
                 px[0] = premul_u8(px[0], a);
                 px[1] = premul_u8(px[1], a);
@@ -1204,8 +1309,10 @@ mod experimental {
     ) {
         for y in 0..h {
             for (s, d) in src[y * ss..][..w * 4]
-                .chunks_exact(4)
-                .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(dst[y * ds..][..w * 4].as_chunks_mut::<4>().0.iter_mut())
             {
                 let a = s[3];
                 d[0] = premul_u8(s[0], a);
