@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Admit archmage 0.9.31-beta.1 while retaining the stable floor (`5d32c69f`). Byte conversion loops use equivalent array-chunk iterators; formatting, strict library lint and default library tests pass (`309647b6`).
+
+### Changed
+
 - `bytemuck` 1.25.0 → 1.25.2 and `imgref` 1.12.0 → 1.12.3, plus a full transitive
   lockfile refresh. **Verified byte-identical:** every one of garb's 44 two-buffer
   converters and 18 in-place converters was driven over a 54-point pixel-count grid
