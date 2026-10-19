@@ -86,7 +86,7 @@ pub(super) fn swap_br_row_neon(_token: NeonToken, row: &mut [u8]) {
         vst1q_u8(out, shuffled);
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
         px.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
@@ -106,7 +106,12 @@ pub(super) fn copy_swap_br_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8
         vst1q_u8(d, shuffled);
         i += 16;
     }
-    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+    for (s, d) in src[i..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
         d.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
@@ -125,7 +130,7 @@ pub(super) fn fill_alpha_row_neon(_token: NeonToken, row: &mut [u8]) {
         vst1q_u8(out, vorrq_u8(v, alpha));
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
         px.copy_from_slice(&(v | 0xFF00_0000).to_ne_bytes());
     }
@@ -160,7 +165,10 @@ pub(super) fn gray_to_4bpp_row_neon(_token: NeonToken, src: &[u8], dst: &mut [u8
         is += 16;
         id += 64;
     }
-    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
+    for (&v, d) in src[is..]
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         let g = v as u32;
         d.copy_from_slice(&(g | (g << 8) | (g << 16) | 0xFF00_0000).to_ne_bytes());
     }
@@ -186,7 +194,12 @@ pub(super) fn gray_alpha_to_4bpp_row_neon(_token: NeonToken, src: &[u8], dst: &m
         is += 16;
         id += 32;
     }
-    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
+    for (ga, d) in src[is..]
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         let g = ga[0] as u32;
         d.copy_from_slice(&(g | (g << 8) | (g << 16) | ((ga[1] as u32) << 24)).to_ne_bytes());
     }
@@ -206,7 +219,7 @@ pub(super) fn swap_bgr_row_neon(_token: NeonToken, row: &mut [u8]) {
         vst3q_u8(d, uint8x16x3_t(c2, c1, c0));
         i += 48;
     }
-    for px in row[i..].chunks_exact_mut(3) {
+    for px in row[i..].as_chunks_mut::<3>().0.iter_mut() {
         px.swap(0, 2);
     }
 }
@@ -229,7 +242,7 @@ pub(super) fn rotate_left_row_neon(_token: NeonToken, row: &mut [u8]) {
         vst1q_u8(out, shuffled);
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let a = px[0];
         px[0] = px[1];
         px[1] = px[2];
@@ -252,7 +265,12 @@ pub(super) fn copy_rotate_left_row_neon(_token: NeonToken, src: &[u8], dst: &mut
         vst1q_u8(d, shuffled);
         i += 16;
     }
-    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+    for (s, d) in src[i..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[1];
         d[1] = s[2];
         d[2] = s[3];
@@ -274,7 +292,7 @@ pub(super) fn rotate_right_row_neon(_token: NeonToken, row: &mut [u8]) {
         vst1q_u8(out, shuffled);
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let d = px[3];
         px[3] = px[2];
         px[2] = px[1];
@@ -297,7 +315,12 @@ pub(super) fn copy_rotate_right_row_neon(_token: NeonToken, src: &[u8], dst: &mu
         vst1q_u8(d, shuffled);
         i += 16;
     }
-    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+    for (s, d) in src[i..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[0];
         d[2] = s[1];
@@ -319,7 +342,7 @@ pub(super) fn reverse_4bpp_row_neon(_token: NeonToken, row: &mut [u8]) {
         vst1q_u8(out, shuffled);
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
         px.copy_from_slice(&v.swap_bytes().to_ne_bytes());
     }
@@ -339,7 +362,12 @@ pub(super) fn copy_reverse_4bpp_row_neon(_token: NeonToken, src: &[u8], dst: &mu
         vst1q_u8(d, shuffled);
         i += 16;
     }
-    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+    for (s, d) in src[i..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[2];
         d[2] = s[1];
@@ -360,7 +388,7 @@ pub(super) fn fill_alpha_first_row_neon(_token: NeonToken, row: &mut [u8]) {
         vst1q_u8(out, vorrq_u8(v, alpha));
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         px[0] = 0xFF;
     }
 }
@@ -394,7 +422,10 @@ pub(super) fn gray_to_4bpp_alpha_first_row_neon(_token: NeonToken, src: &[u8], d
         is += 16;
         id += 64;
     }
-    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
+    for (&v, d) in src[is..]
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = 0xFF;
         d[1] = v;
         d[2] = v;
@@ -426,7 +457,12 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_row_neon(
         is += 16;
         id += 32;
     }
-    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
+    for (ga, d) in src[is..]
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = ga[1];
         d[1] = ga[0];
         d[2] = ga[0];
@@ -940,7 +976,7 @@ mod experimental {
     #[rite]
     pub(in crate::bytes) fn premul_f32_row_neon(_t: NeonToken, buf: &mut [u8]) {
         let keep_a = alpha_lane_mask(_t);
-        for px in buf.chunks_exact_mut(16) {
+        for px in buf.as_chunks_mut::<16>().0.iter_mut() {
             let px: &mut [u8; 16] = px.try_into().unwrap();
             store_f32x4(_t, px, premul_px(_t, load_f32x4(_t, px), keep_a));
         }
@@ -949,7 +985,12 @@ mod experimental {
     #[rite]
     pub(in crate::bytes) fn premul_f32_copy_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
         let keep_a = alpha_lane_mask(_t);
-        for (s, d) in src.chunks_exact(16).zip(dst.chunks_exact_mut(16)) {
+        for (s, d) in src
+            .as_chunks::<16>()
+            .0
+            .iter()
+            .zip(dst.as_chunks_mut::<16>().0.iter_mut())
+        {
             let s: &[u8; 16] = s.try_into().unwrap();
             let d: &mut [u8; 16] = d.try_into().unwrap();
             store_f32x4(_t, d, premul_px(_t, load_f32x4(_t, s), keep_a));
@@ -1020,7 +1061,7 @@ mod experimental {
             store_f32x4(_t, (&mut buf[i + 48..i + 64]).try_into().unwrap(), q3);
             i += 64;
         }
-        for px in buf[i..].chunks_exact_mut(16) {
+        for px in buf[i..].as_chunks_mut::<16>().0.iter_mut() {
             let px: &mut [u8; 16] = px.try_into().unwrap();
             store_f32x4(_t, px, unpremul_px(_t, load_f32x4(_t, px), keep_a));
         }
@@ -1045,7 +1086,12 @@ mod experimental {
             store_f32x4(_t, (&mut dst[i + 48..i + 64]).try_into().unwrap(), q3);
             i += 64;
         }
-        for (s, d) in src[i..].chunks_exact(16).zip(dst[i..].chunks_exact_mut(16)) {
+        for (s, d) in src[i..]
+            .as_chunks::<16>()
+            .0
+            .iter()
+            .zip(dst[i..].as_chunks_mut::<16>().0.iter_mut())
+        {
             let s: &[u8; 16] = s.try_into().unwrap();
             let d: &mut [u8; 16] = d.try_into().unwrap();
             store_f32x4(_t, d, unpremul_px(_t, load_f32x4(_t, s), keep_a));

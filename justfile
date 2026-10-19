@@ -23,3 +23,12 @@ beta-check:
 
 beta-library-check:
     cargo test --locked --all-features --lib
+
+# Cover optional packed/float formats in the current strict lint gate.
+beta-all-formats-check:
+    cargo fmt --check
+    cargo check --locked --benches
+    cargo check --locked --benches --features experimental
+    cargo clippy --locked --all-features --lib -- -D warnings
+    cargo test --locked --all-features --lib
+    cargo clippy --locked --no-default-features --lib -- -D warnings

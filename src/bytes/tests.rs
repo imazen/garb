@@ -34,7 +34,7 @@ fn make_2bpp(n_pixels: usize) -> Vec<u8> {
 
 fn ref_swap_br(data: &[u8]) -> Vec<u8> {
     let mut out = data.to_vec();
-    for px in out.chunks_exact_mut(4) {
+    for px in out.as_chunks_mut::<4>().0.iter_mut() {
         px.swap(0, 2);
     }
     out
@@ -42,7 +42,12 @@ fn ref_swap_br(data: &[u8]) -> Vec<u8> {
 
 fn ref_copy_swap_br(src: &[u8]) -> Vec<u8> {
     let mut out = vec![0u8; src.len()];
-    for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -53,7 +58,7 @@ fn ref_copy_swap_br(src: &[u8]) -> Vec<u8> {
 
 fn ref_fill_alpha(data: &[u8]) -> Vec<u8> {
     let mut out = data.to_vec();
-    for px in out.chunks_exact_mut(4) {
+    for px in out.as_chunks_mut::<4>().0.iter_mut() {
         px[3] = 255;
     }
     out
@@ -62,7 +67,12 @@ fn ref_fill_alpha(data: &[u8]) -> Vec<u8> {
 fn ref_rgb_to_bgra(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 3;
     let mut out = vec![0u8; n * 4];
-    for (s, d) in src.chunks_exact(3).zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -74,7 +84,12 @@ fn ref_rgb_to_bgra(src: &[u8]) -> Vec<u8> {
 fn ref_rgb_to_rgba(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 3;
     let mut out = vec![0u8; n * 4];
-    for (s, d) in src.chunks_exact(3).zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
@@ -85,7 +100,7 @@ fn ref_rgb_to_rgba(src: &[u8]) -> Vec<u8> {
 
 fn ref_gray_to_4bpp(src: &[u8]) -> Vec<u8> {
     let mut out = vec![0u8; src.len() * 4];
-    for (s, d) in src.iter().zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src.iter().zip(out.as_chunks_mut::<4>().0.iter_mut()) {
         d[0] = *s;
         d[1] = *s;
         d[2] = *s;
@@ -97,7 +112,12 @@ fn ref_gray_to_4bpp(src: &[u8]) -> Vec<u8> {
 fn ref_gray_alpha_to_4bpp(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 2;
     let mut out = vec![0u8; n * 4];
-    for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[0];
         d[1] = s[0];
         d[2] = s[0];
@@ -481,7 +501,7 @@ fn permutation_strided_gray_and_gray_alpha() {
 
 fn ref_swap_bgr(data: &[u8]) -> Vec<u8> {
     let mut out = data.to_vec();
-    for px in out.chunks_exact_mut(3) {
+    for px in out.as_chunks_mut::<3>().0.iter_mut() {
         px.swap(0, 2);
     }
     out
@@ -490,7 +510,12 @@ fn ref_swap_bgr(data: &[u8]) -> Vec<u8> {
 fn ref_rgba_to_rgb(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 4;
     let mut out = vec![0u8; n * 3];
-    for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
@@ -501,7 +526,12 @@ fn ref_rgba_to_rgb(src: &[u8]) -> Vec<u8> {
 fn ref_bgra_to_rgb(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 4;
     let mut out = vec![0u8; n * 3];
-    for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -636,7 +666,7 @@ fn permutation_strided_3bpp_and_strip() {
 
 fn ref_rotate_left(data: &[u8]) -> Vec<u8> {
     let mut out = data.to_vec();
-    for px in out.chunks_exact_mut(4) {
+    for px in out.as_chunks_mut::<4>().0.iter_mut() {
         let a = px[0];
         px[0] = px[1];
         px[1] = px[2];
@@ -648,7 +678,7 @@ fn ref_rotate_left(data: &[u8]) -> Vec<u8> {
 
 fn ref_rotate_right(data: &[u8]) -> Vec<u8> {
     let mut out = data.to_vec();
-    for px in out.chunks_exact_mut(4) {
+    for px in out.as_chunks_mut::<4>().0.iter_mut() {
         let d = px[3];
         px[3] = px[2];
         px[2] = px[1];
@@ -660,7 +690,7 @@ fn ref_rotate_right(data: &[u8]) -> Vec<u8> {
 
 fn ref_reverse_4bpp(data: &[u8]) -> Vec<u8> {
     let mut out = data.to_vec();
-    for px in out.chunks_exact_mut(4) {
+    for px in out.as_chunks_mut::<4>().0.iter_mut() {
         px.reverse();
     }
     out
@@ -668,7 +698,7 @@ fn ref_reverse_4bpp(data: &[u8]) -> Vec<u8> {
 
 fn ref_fill_alpha_first(data: &[u8]) -> Vec<u8> {
     let mut out = data.to_vec();
-    for px in out.chunks_exact_mut(4) {
+    for px in out.as_chunks_mut::<4>().0.iter_mut() {
         px[0] = 255;
     }
     out
@@ -677,7 +707,12 @@ fn ref_fill_alpha_first(data: &[u8]) -> Vec<u8> {
 fn ref_rgb_to_argb(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 3;
     let mut out = vec![0u8; n * 4];
-    for (s, d) in src.chunks_exact(3).zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = 255;
         d[1] = s[0];
         d[2] = s[1];
@@ -689,7 +724,12 @@ fn ref_rgb_to_argb(src: &[u8]) -> Vec<u8> {
 fn ref_rgb_to_abgr(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 3;
     let mut out = vec![0u8; n * 4];
-    for (s, d) in src.chunks_exact(3).zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = 255;
         d[1] = s[2];
         d[2] = s[1];
@@ -701,7 +741,12 @@ fn ref_rgb_to_abgr(src: &[u8]) -> Vec<u8> {
 fn ref_argb_to_rgb(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 4;
     let mut out = vec![0u8; n * 3];
-    for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[1];
         d[1] = s[2];
         d[2] = s[3];
@@ -712,7 +757,12 @@ fn ref_argb_to_rgb(src: &[u8]) -> Vec<u8> {
 fn ref_argb_to_bgr(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 4;
     let mut out = vec![0u8; n * 3];
-    for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(3)) {
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[2];
         d[2] = s[1];
@@ -722,7 +772,7 @@ fn ref_argb_to_bgr(src: &[u8]) -> Vec<u8> {
 
 fn ref_gray_to_argb(src: &[u8]) -> Vec<u8> {
     let mut out = vec![0u8; src.len() * 4];
-    for (s, d) in src.iter().zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src.iter().zip(out.as_chunks_mut::<4>().0.iter_mut()) {
         d[0] = 255;
         d[1] = *s;
         d[2] = *s;
@@ -734,7 +784,12 @@ fn ref_gray_to_argb(src: &[u8]) -> Vec<u8> {
 fn ref_gray_alpha_to_argb(src: &[u8]) -> Vec<u8> {
     let n = src.len() / 2;
     let mut out = vec![0u8; n * 4];
-    for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+    for (s, d) in src
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(out.as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[1];
         d[1] = s[0];
         d[2] = s[0];
@@ -1227,7 +1282,9 @@ mod experimental_tests {
     // -----------------------------------------------------------------------
 
     fn ref_luma_3bpp(src: &[u8], w_r: u16, w_g: u16, w_b: u16) -> Vec<u8> {
-        src.chunks_exact(3)
+        src.as_chunks::<3>()
+            .0
+            .iter()
             .map(|px| {
                 ((px[0] as u16 * w_r + px[1] as u16 * w_g + px[2] as u16 * w_b + 128) >> 8) as u8
             })
@@ -1235,7 +1292,9 @@ mod experimental_tests {
     }
 
     fn ref_luma_4bpp(src: &[u8], w_r: u16, w_g: u16, w_b: u16) -> Vec<u8> {
-        src.chunks_exact(4)
+        src.as_chunks::<4>()
+            .0
+            .iter()
             .map(|px| {
                 ((px[0] as u16 * w_r + px[1] as u16 * w_g + px[2] as u16 * w_b + 128) >> 8) as u8
             })
@@ -1788,7 +1847,9 @@ mod experimental_premul_tests {
     fn read_f32_rgba(buf: &[u8]) -> Vec<[f32; 4]> {
         let floats: &[f32] = bytemuck::cast_slice(buf);
         floats
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| [c[0], c[1], c[2], c[3]])
             .collect()
     }
@@ -2199,7 +2260,13 @@ mod premul_u8_tests {
                 // In-place
                 let mut buf = src.clone();
                 premultiply_alpha_rgba_u8(&mut buf).unwrap();
-                for (i, (s, d)) in src.chunks_exact(4).zip(buf.chunks_exact(4)).enumerate() {
+                for (i, (s, d)) in src
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .zip(buf.as_chunks::<4>().0.iter())
+                    .enumerate()
+                {
                     let a = s[3];
                     assert_eq!(d[0], ref_premul(s[0], a), "n={n} i={i} R tier={perm}");
                     assert_eq!(d[1], ref_premul(s[1], a), "n={n} i={i} G tier={perm}");
@@ -2275,7 +2342,12 @@ mod packed_format_tests {
     fn ref_rgb565_to_rgba(src: &[u8]) -> Vec<u8> {
         let n = src.len() / 2;
         let mut out = vec![0u8; n * 4];
-        for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+        for (s, d) in src
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(out.as_chunks_mut::<4>().0.iter_mut())
+        {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r5 = ((v >> 11) & 0x1F) as u8;
             let g6 = ((v >> 5) & 0x3F) as u8;
@@ -2292,7 +2364,12 @@ mod packed_format_tests {
     fn ref_rgb565_to_bgra(src: &[u8]) -> Vec<u8> {
         let n = src.len() / 2;
         let mut out = vec![0u8; n * 4];
-        for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+        for (s, d) in src
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(out.as_chunks_mut::<4>().0.iter_mut())
+        {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r5 = ((v >> 11) & 0x1F) as u8;
             let g6 = ((v >> 5) & 0x3F) as u8;
@@ -2309,7 +2386,12 @@ mod packed_format_tests {
     fn ref_rgba4444_to_rgba(src: &[u8]) -> Vec<u8> {
         let n = src.len() / 2;
         let mut out = vec![0u8; n * 4];
-        for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+        for (s, d) in src
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(out.as_chunks_mut::<4>().0.iter_mut())
+        {
             let v = u16::from_le_bytes([s[0], s[1]]);
             d[0] = expand4(((v >> 12) & 0xF) as u8);
             d[1] = expand4(((v >> 8) & 0xF) as u8);
@@ -2323,7 +2405,12 @@ mod packed_format_tests {
     fn ref_rgba4444_to_bgra(src: &[u8]) -> Vec<u8> {
         let n = src.len() / 2;
         let mut out = vec![0u8; n * 4];
-        for (s, d) in src.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
+        for (s, d) in src
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(out.as_chunks_mut::<4>().0.iter_mut())
+        {
             let v = u16::from_le_bytes([s[0], s[1]]);
             d[0] = expand4(((v >> 4) & 0xF) as u8); // B
             d[1] = expand4(((v >> 8) & 0xF) as u8); // G
@@ -2689,7 +2776,12 @@ mod packed_format_tests {
     fn ref_rgba_to_rgb565(src: &[u8]) -> Vec<u8> {
         let n = src.len() / 4;
         let mut out = vec![0u8; n * 2];
-        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(2)) {
+        for (s, d) in src
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(out.as_chunks_mut::<2>().0.iter_mut())
+        {
             let r5 = compress5(s[0]) as u16;
             let g6 = compress6(s[1]) as u16;
             let b5 = compress5(s[2]) as u16;
@@ -2702,7 +2794,12 @@ mod packed_format_tests {
     fn ref_bgra_to_rgb565(src: &[u8]) -> Vec<u8> {
         let n = src.len() / 4;
         let mut out = vec![0u8; n * 2];
-        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(2)) {
+        for (s, d) in src
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(out.as_chunks_mut::<2>().0.iter_mut())
+        {
             let r5 = compress5(s[2]) as u16;
             let g6 = compress6(s[1]) as u16;
             let b5 = compress5(s[0]) as u16;
@@ -2715,7 +2812,12 @@ mod packed_format_tests {
     fn ref_rgba_to_rgba4444(src: &[u8]) -> Vec<u8> {
         let n = src.len() / 4;
         let mut out = vec![0u8; n * 2];
-        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(2)) {
+        for (s, d) in src
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(out.as_chunks_mut::<2>().0.iter_mut())
+        {
             let r4 = compress4(s[0]) as u16;
             let g4 = compress4(s[1]) as u16;
             let b4 = compress4(s[2]) as u16;
@@ -2729,7 +2831,12 @@ mod packed_format_tests {
     fn ref_bgra_to_rgba4444(src: &[u8]) -> Vec<u8> {
         let n = src.len() / 4;
         let mut out = vec![0u8; n * 2];
-        for (s, d) in src.chunks_exact(4).zip(out.chunks_exact_mut(2)) {
+        for (s, d) in src
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(out.as_chunks_mut::<2>().0.iter_mut())
+        {
             let r4 = compress4(s[2]) as u16;
             let g4 = compress4(s[1]) as u16;
             let b4 = compress4(s[0]) as u16;
@@ -2914,7 +3021,7 @@ mod packed_format_tests {
         // BGRA→RGB565 should give same result as swapping R/B then RGBA→RGB565
         let bgra = make_4bpp(64);
         let mut rgba = bgra.clone();
-        for px in rgba.chunks_exact_mut(4) {
+        for px in rgba.as_chunks_mut::<4>().0.iter_mut() {
             px.swap(0, 2);
         }
         let mut dst_from_bgra = vec![0u8; 64 * 2];

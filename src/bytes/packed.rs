@@ -27,7 +27,7 @@ use crate::SizeError;
 // These functions expect **little-endian** u16 values in the byte slice.
 // If your data is big-endian (e.g. from a network protocol or a big-endian
 // file format), swap each pair of bytes before calling these functions.
-// A simple pre-pass: `for pair in src.chunks_exact_mut(2) { pair.swap(0, 1); }`
+// A simple pre-pass: `for pair in src.as_chunks_mut::<2>().0.iter_mut() { pair.swap(0, 1); }`
 //
 // ## Expansion rounding
 //
@@ -38,7 +38,12 @@ use crate::SizeError;
 // Packed format contiguous dispatchers (autoversion generates per-tier variants)
 #[autoversion(v3, neon, wasm128)]
 fn rgb565_to_rgba_impl(s: &[u8], d: &mut [u8]) {
-    for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
+    for (s, d) in s
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(d.as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u16::from_le_bytes([s[0], s[1]]);
         let r5 = (v >> 11) & 0x1F;
         let g6 = (v >> 5) & 0x3F;
@@ -51,7 +56,12 @@ fn rgb565_to_rgba_impl(s: &[u8], d: &mut [u8]) {
 }
 #[autoversion(v3, neon, wasm128)]
 fn rgb565_to_bgra_impl(s: &[u8], d: &mut [u8]) {
-    for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
+    for (s, d) in s
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(d.as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u16::from_le_bytes([s[0], s[1]]);
         let r5 = (v >> 11) & 0x1F;
         let g6 = (v >> 5) & 0x3F;
@@ -64,7 +74,12 @@ fn rgb565_to_bgra_impl(s: &[u8], d: &mut [u8]) {
 }
 #[autoversion(v3, neon, wasm128)]
 fn rgba4444_to_rgba_impl(s: &[u8], d: &mut [u8]) {
-    for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
+    for (s, d) in s
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(d.as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u16::from_le_bytes([s[0], s[1]]);
         let r4 = (v >> 12) & 0xF;
         let g4 = (v >> 8) & 0xF;
@@ -78,7 +93,12 @@ fn rgba4444_to_rgba_impl(s: &[u8], d: &mut [u8]) {
 }
 #[autoversion(v3, neon, wasm128)]
 fn rgba4444_to_bgra_impl(s: &[u8], d: &mut [u8]) {
-    for (s, d) in s.chunks_exact(2).zip(d.chunks_exact_mut(4)) {
+    for (s, d) in s
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(d.as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u16::from_le_bytes([s[0], s[1]]);
         let r4 = (v >> 12) & 0xF;
         let g4 = (v >> 8) & 0xF;
@@ -103,8 +123,10 @@ fn rgb565_to_rgba_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 2]
-            .chunks_exact(2)
-            .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 4].as_chunks_mut::<4>().0.iter_mut())
         {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r5 = (v >> 11) & 0x1F;
@@ -128,8 +150,10 @@ fn rgb565_to_bgra_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 2]
-            .chunks_exact(2)
-            .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 4].as_chunks_mut::<4>().0.iter_mut())
         {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r5 = (v >> 11) & 0x1F;
@@ -153,8 +177,10 @@ fn rgba4444_to_rgba_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 2]
-            .chunks_exact(2)
-            .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 4].as_chunks_mut::<4>().0.iter_mut())
         {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r4 = (v >> 12) & 0xF;
@@ -179,8 +205,10 @@ fn rgba4444_to_bgra_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 2]
-            .chunks_exact(2)
-            .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 4].as_chunks_mut::<4>().0.iter_mut())
         {
             let v = u16::from_le_bytes([s[0], s[1]]);
             let r4 = (v >> 12) & 0xF;
@@ -218,7 +246,12 @@ fn rgba4444_to_bgra_strided_impl(
 /// RGBA (4bpp) → RGB565 (LE u16, 2bpp). Alpha dropped.
 #[autoversion(v3, neon, wasm128)]
 fn rgba_to_rgb565_impl(s: &[u8], d: &mut [u8]) {
-    for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
+    for (s, d) in s
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(d.as_chunks_mut::<2>().0.iter_mut())
+    {
         let r5 = (s[0] as u16 * 31 + 128) >> 8;
         let g6 = (s[1] as u16 * 63 + 128) >> 8;
         let b5 = (s[2] as u16 * 31 + 128) >> 8;
@@ -229,7 +262,12 @@ fn rgba_to_rgb565_impl(s: &[u8], d: &mut [u8]) {
 /// BGRA (4bpp) → RGB565 (LE u16, 2bpp). Alpha dropped.
 #[autoversion(v3, neon, wasm128)]
 fn bgra_to_rgb565_impl(s: &[u8], d: &mut [u8]) {
-    for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
+    for (s, d) in s
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(d.as_chunks_mut::<2>().0.iter_mut())
+    {
         let r5 = (s[2] as u16 * 31 + 128) >> 8;
         let g6 = (s[1] as u16 * 63 + 128) >> 8;
         let b5 = (s[0] as u16 * 31 + 128) >> 8;
@@ -240,7 +278,12 @@ fn bgra_to_rgb565_impl(s: &[u8], d: &mut [u8]) {
 /// RGBA (4bpp) → RGBA4444 (LE u16, 2bpp).
 #[autoversion(v3, neon, wasm128)]
 fn rgba_to_rgba4444_impl(s: &[u8], d: &mut [u8]) {
-    for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
+    for (s, d) in s
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(d.as_chunks_mut::<2>().0.iter_mut())
+    {
         let r4 = (s[0] as u16 * 15 + 128) >> 8;
         let g4 = (s[1] as u16 * 15 + 128) >> 8;
         let b4 = (s[2] as u16 * 15 + 128) >> 8;
@@ -252,7 +295,12 @@ fn rgba_to_rgba4444_impl(s: &[u8], d: &mut [u8]) {
 /// BGRA (4bpp) → RGBA4444 (LE u16, 2bpp).
 #[autoversion(v3, neon, wasm128)]
 fn bgra_to_rgba4444_impl(s: &[u8], d: &mut [u8]) {
-    for (s, d) in s.chunks_exact(4).zip(d.chunks_exact_mut(2)) {
+    for (s, d) in s
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(d.as_chunks_mut::<2>().0.iter_mut())
+    {
         let r4 = (s[2] as u16 * 15 + 128) >> 8;
         let g4 = (s[1] as u16 * 15 + 128) >> 8;
         let b4 = (s[0] as u16 * 15 + 128) >> 8;
@@ -274,8 +322,10 @@ fn rgba_to_rgb565_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 4]
-            .chunks_exact(4)
-            .zip(dst[y * ds..][..w * 2].chunks_exact_mut(2))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 2].as_chunks_mut::<2>().0.iter_mut())
         {
             let r5 = (s[0] as u16 * 31 + 128) >> 8;
             let g6 = (s[1] as u16 * 63 + 128) >> 8;
@@ -296,8 +346,10 @@ fn bgra_to_rgb565_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 4]
-            .chunks_exact(4)
-            .zip(dst[y * ds..][..w * 2].chunks_exact_mut(2))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 2].as_chunks_mut::<2>().0.iter_mut())
         {
             let r5 = (s[2] as u16 * 31 + 128) >> 8;
             let g6 = (s[1] as u16 * 63 + 128) >> 8;
@@ -318,8 +370,10 @@ fn rgba_to_rgba4444_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 4]
-            .chunks_exact(4)
-            .zip(dst[y * ds..][..w * 2].chunks_exact_mut(2))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 2].as_chunks_mut::<2>().0.iter_mut())
         {
             let r4 = (s[0] as u16 * 15 + 128) >> 8;
             let g4 = (s[1] as u16 * 15 + 128) >> 8;
@@ -341,8 +395,10 @@ fn bgra_to_rgba4444_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 4]
-            .chunks_exact(4)
-            .zip(dst[y * ds..][..w * 2].chunks_exact_mut(2))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 2].as_chunks_mut::<2>().0.iter_mut())
         {
             let r4 = (s[2] as u16 * 15 + 128) >> 8;
             let g4 = (s[1] as u16 * 15 + 128) >> 8;
@@ -385,7 +441,7 @@ fn bgra_to_rgba4444_strided_impl(
 // If your source data stores the u16 values in big-endian byte order (high
 // byte first), swap each byte pair before calling:
 // ```rust,ignore
-// for pair in src.chunks_exact_mut(2) { pair.swap(0, 1); }
+// for pair in src.as_chunks_mut::<2>().0.iter_mut() { pair.swap(0, 1); }
 // ```
 // Then call the conversion function as normal. A dedicated `_be` variant
 // may be added in a future release if there is demand.

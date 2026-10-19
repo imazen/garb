@@ -130,10 +130,13 @@ fn unpack_one_to_rgba16(src: &[u8; 4], dst: &mut [u16; 4]) {
 
 #[autoversion(v3, neon, wasm128)]
 fn rgba1010102_to_rgba16_impl(src: &[u8], dst: &mut [u16]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
-        let s4: &[u8; 4] = s.try_into().unwrap();
-        let d4: &mut [u16; 4] = d.try_into().unwrap();
-        unpack_one_to_rgba16(s4, d4);
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
+        unpack_one_to_rgba16(s, d);
     }
 }
 
@@ -148,12 +151,12 @@ fn rgba1010102_to_rgba16_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 4]
-            .chunks_exact(4)
-            .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 4].as_chunks_mut::<4>().0.iter_mut())
         {
-            let s4: &[u8; 4] = s.try_into().unwrap();
-            let d4: &mut [u16; 4] = d.try_into().unwrap();
-            unpack_one_to_rgba16(s4, d4);
+            unpack_one_to_rgba16(s, d);
         }
     }
 }
@@ -174,10 +177,13 @@ fn pack_one_from_rgba16(src: &[u16; 4], dst: &mut [u8; 4]) {
 
 #[autoversion(v3, neon, wasm128)]
 fn rgba16_to_rgba1010102_impl(src: &[u16], dst: &mut [u8]) {
-    for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
-        let s4: &[u16; 4] = s.try_into().unwrap();
-        let d4: &mut [u8; 4] = d.try_into().unwrap();
-        pack_one_from_rgba16(s4, d4);
+    for (s, d) in src
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst.as_chunks_mut::<4>().0.iter_mut())
+    {
+        pack_one_from_rgba16(s, d);
     }
 }
 
@@ -192,12 +198,12 @@ fn rgba16_to_rgba1010102_strided_impl(
 ) {
     for y in 0..h {
         for (s, d) in src[y * ss..][..w * 4]
-            .chunks_exact(4)
-            .zip(dst[y * ds..][..w * 4].chunks_exact_mut(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dst[y * ds..][..w * 4].as_chunks_mut::<4>().0.iter_mut())
         {
-            let s4: &[u16; 4] = s.try_into().unwrap();
-            let d4: &mut [u8; 4] = d.try_into().unwrap();
-            pack_one_from_rgba16(s4, d4);
+            pack_one_from_rgba16(s, d);
         }
     }
 }
@@ -484,7 +490,7 @@ mod tests {
         let mut rng = Lcg::new(0xA110_1010_2222_3333);
         let n_pixels = 4096;
         let mut packed = vec![0u8; n_pixels * 4];
-        for chunk in packed.chunks_exact_mut(4) {
+        for chunk in packed.as_chunks_mut::<4>().0.iter_mut() {
             chunk.copy_from_slice(&rng.next_u32().to_le_bytes());
         }
 

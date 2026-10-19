@@ -18,7 +18,7 @@ pub(super) fn swap_br_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
         v128_store(out, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
         px.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
@@ -36,7 +36,12 @@ pub(super) fn copy_swap_br_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &m
         v128_store(d, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+    for (s, d) in src[i..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
+    {
         let v = u32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
         d.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
     }
@@ -54,7 +59,7 @@ pub(super) fn fill_alpha_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
         v128_store(out, v128_or(v, alpha));
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
         px.copy_from_slice(&(v | 0xFF00_0000).to_ne_bytes());
     }
@@ -73,7 +78,12 @@ pub(super) fn rgb_to_bgra_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 12;
         id += 16;
     }
-    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+    for (s, d) in src[is..]
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d.copy_from_slice(
             &(s[2] as u32 | ((s[1] as u32) << 8) | ((s[0] as u32) << 16) | 0xFF00_0000)
                 .to_ne_bytes(),
@@ -94,7 +104,12 @@ pub(super) fn rgb_to_rgba_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 12;
         id += 16;
     }
-    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+    for (s, d) in src[is..]
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d.copy_from_slice(
             &(s[0] as u32 | ((s[1] as u32) << 8) | ((s[2] as u32) << 16) | 0xFF00_0000)
                 .to_ne_bytes(),
@@ -127,7 +142,10 @@ pub(super) fn gray_to_4bpp_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &m
         is += 16;
         id += 64;
     }
-    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
+    for (&v, d) in src[is..]
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         let g = v as u32;
         d.copy_from_slice(&(g | (g << 8) | (g << 16) | 0xFF00_0000).to_ne_bytes());
     }
@@ -149,7 +167,12 @@ pub(super) fn gray_alpha_to_4bpp_row_wasm128(_token: Wasm128Token, src: &[u8], d
         is += 16;
         id += 32;
     }
-    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
+    for (ga, d) in src[is..]
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         let g = ga[0] as u32;
         d.copy_from_slice(&(g | (g << 8) | (g << 16) | ((ga[1] as u32) << 24)).to_ne_bytes());
     }
@@ -169,7 +192,7 @@ pub(super) fn swap_bgr_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
         row[i..i + 12].copy_from_slice(&tmp[..12]);
         i += 12;
     }
-    for px in row[i..].chunks_exact_mut(3) {
+    for px in row[i..].as_chunks_mut::<3>().0.iter_mut() {
         px.swap(0, 2);
     }
 }
@@ -187,7 +210,12 @@ pub(super) fn copy_swap_bgr_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &
         v128_store(d, i8x16_swizzle(v, mask));
         i += 12;
     }
-    for (s, d) in src[i..].chunks_exact(3).zip(dst[i..].chunks_exact_mut(3)) {
+    for (s, d) in src[i..]
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -209,7 +237,12 @@ pub(super) fn rgba_to_rgb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 16;
         id += 12;
     }
-    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+    for (s, d) in src[is..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
@@ -231,7 +264,12 @@ pub(super) fn bgra_to_rgb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 16;
         id += 12;
     }
-    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+    for (s, d) in src[is..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[2];
         d[1] = s[1];
         d[2] = s[0];
@@ -254,7 +292,7 @@ pub(super) fn rotate_left_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
         v128_store(out, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let a = px[0];
         px[0] = px[1];
         px[1] = px[2];
@@ -275,7 +313,12 @@ pub(super) fn copy_rotate_left_row_wasm128(_token: Wasm128Token, src: &[u8], dst
         v128_store(d, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+    for (s, d) in src[i..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[1];
         d[1] = s[2];
         d[2] = s[3];
@@ -295,7 +338,7 @@ pub(super) fn rotate_right_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
         v128_store(out, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let d = px[3];
         px[3] = px[2];
         px[2] = px[1];
@@ -316,7 +359,12 @@ pub(super) fn copy_rotate_right_row_wasm128(_token: Wasm128Token, src: &[u8], ds
         v128_store(d, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+    for (s, d) in src[i..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[0];
         d[2] = s[1];
@@ -336,7 +384,7 @@ pub(super) fn reverse_4bpp_row_wasm128(_token: Wasm128Token, row: &mut [u8]) {
         v128_store(out, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
         px.copy_from_slice(&v.swap_bytes().to_ne_bytes());
     }
@@ -354,7 +402,12 @@ pub(super) fn copy_reverse_4bpp_row_wasm128(_token: Wasm128Token, src: &[u8], ds
         v128_store(d, i8x16_swizzle(v, mask));
         i += 16;
     }
-    for (s, d) in src[i..].chunks_exact(4).zip(dst[i..].chunks_exact_mut(4)) {
+    for (s, d) in src[i..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[2];
         d[2] = s[1];
@@ -374,7 +427,7 @@ pub(super) fn fill_alpha_first_row_wasm128(_token: Wasm128Token, row: &mut [u8])
         v128_store(out, v128_or(v, alpha));
         i += 16;
     }
-    for px in row[i..].chunks_exact_mut(4) {
+    for px in row[i..].as_chunks_mut::<4>().0.iter_mut() {
         px[0] = 0xFF;
     }
 }
@@ -392,7 +445,12 @@ pub(super) fn rgb_to_argb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 12;
         id += 16;
     }
-    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+    for (s, d) in src[is..]
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = 0xFF;
         d[1] = s[0];
         d[2] = s[1];
@@ -413,7 +471,12 @@ pub(super) fn rgb_to_abgr_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 12;
         id += 16;
     }
-    for (s, d) in src[is..].chunks_exact(3).zip(dst[id..].chunks_exact_mut(4)) {
+    for (s, d) in src[is..]
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = 0xFF;
         d[1] = s[2];
         d[2] = s[1];
@@ -435,7 +498,12 @@ pub(super) fn argb_to_rgb_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 16;
         id += 12;
     }
-    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+    for (s, d) in src[is..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[1];
         d[1] = s[2];
         d[2] = s[3];
@@ -456,7 +524,12 @@ pub(super) fn argb_to_bgr_row_wasm128(_token: Wasm128Token, src: &[u8], dst: &mu
         is += 16;
         id += 12;
     }
-    for (s, d) in src[is..].chunks_exact(4).zip(dst[id..].chunks_exact_mut(3)) {
+    for (s, d) in src[is..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<3>().0.iter_mut())
+    {
         d[0] = s[3];
         d[1] = s[2];
         d[2] = s[1];
@@ -492,7 +565,10 @@ pub(super) fn gray_to_4bpp_alpha_first_row_wasm128(
         is += 16;
         id += 64;
     }
-    for (&v, d) in src[is..].iter().zip(dst[id..].chunks_exact_mut(4)) {
+    for (&v, d) in src[is..]
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = 0xFF;
         d[1] = v;
         d[2] = v;
@@ -520,7 +596,12 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_row_wasm128(
         is += 16;
         id += 32;
     }
-    for (ga, d) in src[is..].chunks_exact(2).zip(dst[id..].chunks_exact_mut(4)) {
+    for (ga, d) in src[is..]
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+    {
         d[0] = ga[1];
         d[1] = ga[0];
         d[2] = ga[0];
