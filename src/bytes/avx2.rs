@@ -1239,6 +1239,14 @@ mod experimental {
         }
     }
 
+    /// `x / den` for integer `x`, correctly rounded, from the reciprocal plus one FMA
+    /// correction: the same bits as a division, without its cost.
+    #[rite]
+    fn exact_quotient_v3(_t: X64V3Token, x: __m256, inv: __m256, den: __m256) -> __m256 {
+        let q = _mm256_mul_ps(x, inv);
+        _mm256_fmadd_ps(_mm256_fnmadd_ps(q, den, x), inv, q)
+    }
+
     #[rite]
     pub(in crate::bytes) fn convert_u8_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
         let scale = _mm256_set1_ps(1.0 / 255.0);
@@ -1250,13 +1258,13 @@ mod experimental {
             let v = _mm_loadu_si128(&tmp);
             let wide32 = _mm256_cvtepu8_epi32(v);
             let floats = _mm256_cvtepi32_ps(wide32);
-            let result = _mm256_mul_ps(floats, scale);
+            let result = exact_quotient_v3(_t, floats, scale, _mm256_set1_ps(255.0));
             let d: &mut [u8; 32] = (&mut dst[i * 4..i * 4 + 32]).try_into().unwrap();
             _mm256_storeu_si256(d, _mm256_castps_si256(result));
             i += 8;
         }
         for j in i..n {
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 * (1.0 / 255.0)).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 / 255.0).to_ne_bytes());
         }
     }
 
@@ -1301,14 +1309,14 @@ mod experimental {
             let v = _mm_loadu_si128(s);
             let wide32 = _mm256_cvtepu16_epi32(v);
             let floats = _mm256_cvtepi32_ps(wide32);
-            let result = _mm256_mul_ps(floats, scale);
+            let result = exact_quotient_v3(_t, floats, scale, _mm256_set1_ps(65535.0));
             let d: &mut [u8; 32] = (&mut dst[i * 4..i * 4 + 32]).try_into().unwrap();
             _mm256_storeu_si256(d, _mm256_castps_si256(result));
             i += 8;
         }
         for j in i..n {
             let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 * (1.0 / 65535.0)).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
         }
     }
 

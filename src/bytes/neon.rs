@@ -822,12 +822,11 @@ mod experimental {
     /// u8 → f32 via `v / 255.0`. 16 elements/iter.
     #[rite]
     pub(in crate::bytes) fn convert_u8_to_f32_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
-        // Reciprocal-multiply, matching the AVX2 tier (`_mm256_set1_ps(1.0/255.0)`).
-        // vdivq_f32 would be bit-exact with the scalar path but measured ~53%
-        // SLOWER than scalar here: FDIV throughput on Apple cores is low enough
-        // that the kernel stops being memory-bound. See CHANGELOG for the
-        // pre-existing scalar-vs-SIMD f32 discrepancy this inherits.
+        // Corrected reciprocal, matching the AVX2 tier: bit-exact with the scalar division.
+        // vdivq_f32 would be too, but measured ~53% SLOWER than scalar here: FDIV throughput
+        // on Apple cores is low enough that the kernel stops being memory-bound.
         let scale = vdupq_n_f32(1.0 / 255.0);
+        let den = vdupq_n_f32(255.0);
         let n = src.len().min(dst.len() / 4);
         let mut i = 0;
         while i + 16 <= n {
@@ -837,10 +836,20 @@ mod experimental {
             let w16hi = vmovl_high_u8(v);
             // Straight-line: binding these in an array forces a stack spill of
             // every vector, which measured 52% slower than the scalar path.
-            let f0 = vmulq_f32(vcvtq_f32_u32(vmovl_u16(vget_low_u16(w16lo))), scale);
-            let f1 = vmulq_f32(vcvtq_f32_u32(vmovl_high_u16(w16lo)), scale);
-            let f2 = vmulq_f32(vcvtq_f32_u32(vmovl_u16(vget_low_u16(w16hi))), scale);
-            let f3 = vmulq_f32(vcvtq_f32_u32(vmovl_high_u16(w16hi)), scale);
+            let f0 = exact_quotient_neon(
+                _t,
+                vcvtq_f32_u32(vmovl_u16(vget_low_u16(w16lo))),
+                scale,
+                den,
+            );
+            let f1 = exact_quotient_neon(_t, vcvtq_f32_u32(vmovl_high_u16(w16lo)), scale, den);
+            let f2 = exact_quotient_neon(
+                _t,
+                vcvtq_f32_u32(vmovl_u16(vget_low_u16(w16hi))),
+                scale,
+                den,
+            );
+            let f3 = exact_quotient_neon(_t, vcvtq_f32_u32(vmovl_high_u16(w16hi)), scale, den);
             let base = i * 4;
             let d0: &mut [u8; 16] = (&mut dst[base..base + 16]).try_into().unwrap();
             store_f32x4(_t, d0, f0);
@@ -853,22 +862,36 @@ mod experimental {
             i += 16;
         }
         for j in i..n {
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 * (1.0 / 255.0)).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 / 255.0).to_ne_bytes());
         }
+    }
+
+    /// `x / den` for integer `x`, correctly rounded, from the reciprocal plus one fused
+    /// correction: the same bits as a division, without its cost.
+    #[rite]
+    fn exact_quotient_neon(
+        _t: NeonToken,
+        x: float32x4_t,
+        inv: float32x4_t,
+        den: float32x4_t,
+    ) -> float32x4_t {
+        let q = vmulq_f32(x, inv);
+        vfmaq_f32(q, vfmsq_f32(x, q, den), inv)
     }
 
     /// u16 → f32 via `v / 65535.0`. 8 elements/iter.
     #[rite]
     pub(in crate::bytes) fn convert_u16_to_f32_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
-        // Reciprocal-multiply, matching the AVX2 tier. See convert_u8_to_f32.
+        // Corrected reciprocal, matching the AVX2 tier. See convert_u8_to_f32.
         let scale = vdupq_n_f32(1.0 / 65535.0);
+        let den = vdupq_n_f32(65535.0);
         let n = (src.len() / 2).min(dst.len() / 4);
         let mut i = 0;
         while i + 8 <= n {
             let s: &[u8; 16] = src[i * 2..i * 2 + 16].try_into().unwrap();
             let v = vreinterpretq_u16_u8(vld1q_u8(s));
-            let f0 = vmulq_f32(vcvtq_f32_u32(vmovl_u16(vget_low_u16(v))), scale);
-            let f1 = vmulq_f32(vcvtq_f32_u32(vmovl_high_u16(v)), scale);
+            let f0 = exact_quotient_neon(_t, vcvtq_f32_u32(vmovl_u16(vget_low_u16(v))), scale, den);
+            let f1 = exact_quotient_neon(_t, vcvtq_f32_u32(vmovl_high_u16(v)), scale, den);
             let base = i * 4;
             let d0: &mut [u8; 16] = (&mut dst[base..base + 16]).try_into().unwrap();
             store_f32x4(_t, d0, f0);
@@ -878,7 +901,7 @@ mod experimental {
         }
         for j in i..n {
             let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 * (1.0 / 65535.0)).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
         }
     }
 

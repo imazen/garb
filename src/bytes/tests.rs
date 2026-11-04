@@ -3045,22 +3045,29 @@ mod packed_format_tests {
     }
 }
 
+/// Every value, at every tier: the same bits as a division, wherever it sits in a row.
 #[cfg(feature = "experimental")]
 #[test]
-fn widening_does_not_depend_on_position() {
+fn widening_is_correctly_rounded_at_every_tier_and_position() {
     let u16s: Vec<u8> = (0..=u16::MAX).flat_map(|v| v.to_ne_bytes()).collect();
-    let mut whole = vec![0u8; u16s.len() * 2];
-    convert_u16_to_f32(&u16s, &mut whole).unwrap();
-    let mut one = [0u8; 4];
-    for (i, s) in u16s.chunks_exact(2).enumerate() {
-        convert_u16_to_f32(s, &mut one).unwrap();
-        assert_eq!(one, whole[i * 4..i * 4 + 4], "u16 {i}");
-    }
     let u8s: Vec<u8> = (0..=u8::MAX).collect();
-    let mut whole = vec![0u8; u8s.len() * 4];
-    convert_u8_to_f32(&u8s, &mut whole).unwrap();
-    for (i, s) in u8s.chunks_exact(1).enumerate() {
-        convert_u8_to_f32(s, &mut one).unwrap();
-        assert_eq!(one, whole[i * 4..i * 4 + 4], "u8 {i}");
-    }
+    let _ = for_each_token_permutation(CompileTimePolicy::Warn, |_| {
+        let mut whole = vec![0u8; u16s.len() * 2];
+        convert_u16_to_f32(&u16s, &mut whole).unwrap();
+        let mut one = [0u8; 4];
+        for (v, d) in (0..=u16::MAX).zip(whole.chunks_exact(4)) {
+            let want = (f32::from(v) / 65535.0).to_ne_bytes();
+            assert_eq!(d, want, "u16 {v}");
+            convert_u16_to_f32(&v.to_ne_bytes(), &mut one).unwrap();
+            assert_eq!(one, want, "u16 {v} alone");
+        }
+        let mut whole = vec![0u8; u8s.len() * 4];
+        convert_u8_to_f32(&u8s, &mut whole).unwrap();
+        for (v, d) in (0..=u8::MAX).zip(whole.chunks_exact(4)) {
+            let want = (f32::from(v) / 255.0).to_ne_bytes();
+            assert_eq!(d, want, "u8 {v}");
+            convert_u8_to_f32(&[v], &mut one).unwrap();
+            assert_eq!(one, want, "u8 {v} alone");
+        }
+    });
 }
