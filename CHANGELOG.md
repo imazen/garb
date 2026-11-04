@@ -4,6 +4,7 @@
 
 ### Changed
 
+- `convert_u8_to_f32` and `convert_u16_to_f32` use the reciprocal multiply of their vector bodies in tails and the scalar tier, so a value widens to the same bits wherever it sits in a row and at every tier. Those values can change by 1 ULP.
 - Admit archmage 0.9.31-beta.2 for crates that use `#[attune]`; 234 tests pass with `--all-features` on that version. Replace the cap with the stable floor before publishing.
 - Optional packed/NEON/WASM byte loops use equivalent array chunks (`b723fb2a`); benchmark groups follow their experimental feature and active macOS CI uses ARM64 (`11607925`). Default/experimental benchmark checks, strict full/minimal lint and all 222 library tests pass.
 - Admit archmage 0.9.31-beta.1 while retaining the stable floor (`5d32c69f`). Byte conversion loops use equivalent array-chunk iterators; formatting, strict library lint and default library tests pass (`309647b6`).

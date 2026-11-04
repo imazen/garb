@@ -3044,3 +3044,23 @@ mod packed_format_tests {
         unaligned_bgra_to_rgba4444: bgra_to_rgba4444, 4, 2;
     }
 }
+
+#[cfg(feature = "experimental")]
+#[test]
+fn widening_does_not_depend_on_position() {
+    let u16s: Vec<u8> = (0..=u16::MAX).flat_map(|v| v.to_ne_bytes()).collect();
+    let mut whole = vec![0u8; u16s.len() * 2];
+    convert_u16_to_f32(&u16s, &mut whole).unwrap();
+    let mut one = [0u8; 4];
+    for (i, s) in u16s.chunks_exact(2).enumerate() {
+        convert_u16_to_f32(s, &mut one).unwrap();
+        assert_eq!(one, whole[i * 4..i * 4 + 4], "u16 {i}");
+    }
+    let u8s: Vec<u8> = (0..=u8::MAX).collect();
+    let mut whole = vec![0u8; u8s.len() * 4];
+    convert_u8_to_f32(&u8s, &mut whole).unwrap();
+    for (i, s) in u8s.chunks_exact(1).enumerate() {
+        convert_u8_to_f32(s, &mut one).unwrap();
+        assert_eq!(one, whole[i * 4..i * 4 + 4], "u8 {i}");
+    }
+}

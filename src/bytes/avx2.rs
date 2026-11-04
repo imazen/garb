@@ -1256,7 +1256,7 @@ mod experimental {
             i += 8;
         }
         for j in i..n {
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 / 255.0).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 * (1.0 / 255.0)).to_ne_bytes());
         }
     }
 
@@ -1308,7 +1308,7 @@ mod experimental {
         }
         for j in i..n {
             let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 * (1.0 / 65535.0)).to_ne_bytes());
         }
     }
 

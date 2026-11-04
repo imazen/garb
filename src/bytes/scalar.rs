@@ -724,7 +724,7 @@ mod experimental {
         dst: &mut [u8],
     ) {
         for (s, d) in src.iter().zip(dst.as_chunks_mut::<4>().0.iter_mut()) {
-            d.copy_from_slice(&(*s as f32 / 255.0).to_ne_bytes());
+            d.copy_from_slice(&(*s as f32 * (1.0 / 255.0)).to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn convert_f32_to_u8_row_scalar(
@@ -749,7 +749,7 @@ mod experimental {
             .zip(dst.as_chunks_mut::<4>().0.iter_mut())
         {
             let v = u16::from_ne_bytes([s[0], s[1]]);
-            d.copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
+            d.copy_from_slice(&(v as f32 * (1.0 / 65535.0)).to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn convert_f32_to_u16_row_scalar(
