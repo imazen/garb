@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Admit archmage 0.9.31-beta.2 for crates that use `#[attune]`; 234 tests pass with `--all-features` on that version. Replace the cap with the stable floor before publishing.
 - Optional packed/NEON/WASM byte loops use equivalent array chunks (`b723fb2a`); benchmark groups follow their experimental feature and active macOS CI uses ARM64 (`11607925`). Default/experimental benchmark checks, strict full/minimal lint and all 222 library tests pass.
 - Admit archmage 0.9.31-beta.1 while retaining the stable floor (`5d32c69f`). Byte conversion loops use equivalent array-chunk iterators; formatting, strict library lint and default library tests pass (`309647b6`).
 
