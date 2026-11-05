@@ -20,6 +20,8 @@ None recorded.
 
 ### Changed
 
+- Accept the archmage and magetypes 0.9.31 stable release.
+
 - `convert_u8_to_f32` and `convert_u16_to_f32` are correctly rounded at every tier and position: the AVX2 and NEON bodies add one FMA correction to the reciprocal multiply, so they give the same bits as the division in tails and the scalar tier. Body values can change by 1 ULP.
 - Admit archmage 0.9.31-beta.2 for crates that use `#[attune]`; 234 tests pass with `--all-features` on that version. Replace the cap with the stable floor before publishing.
 - Optional packed/NEON/WASM byte loops use equivalent array chunks (`b723fb2a`); benchmark groups follow their experimental feature and active macOS CI uses ARM64 (`11607925`). Default/experimental benchmark checks, strict full/minimal lint and all 222 library tests pass.
