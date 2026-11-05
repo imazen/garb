@@ -1,6 +1,6 @@
 # SIMD boundaries and outstanding work
 
-Observed 2026-11-05 against main `7ab73292`. Re-check branch and issue state before acting.
+Observed 2026-11-05 against source baseline `7ab73292`; later `76abf370` prepares package version 0.2.9 without publishing it. Re-check branch and issue state before acting.
 
 ## API guidance
 
@@ -26,6 +26,7 @@ All two live remote branches and the additional local feature ref are accounted 
 ## Issues and TODOs
 
 - [#9](https://github.com/imazen/garb/issues/9) remains open, but the observed current [CI run](https://github.com/imazen/garb/actions/runs/41985965661) passes `clippy + fmt` and all platform test jobs. Its old failing-job counts are historical evidence, not the current lint census. Review/resolve the issue using that evidence; this inventory does not weaken the lint or change its expected output.
+- A separate later CI regression ([run 41990539720](https://github.com/imazen/garb/actions/runs/41990539720)) came from the newly added precision example calling experimental grayscale APIs in no-default builds. Its Cargo feature requirement is fixed in `9ec9fa71`; both feature combinations and the no-default library/test suite pass locally. This is separate from #9's lint issue. See [project notes](../CLAUDE.md).
 - The other three issues (#1, #2 and #7) are closed historical alignment/transition work. Closed state alone is not a new re-test of every historical report.
 - No TODO/FIXME/HACK/XXX markers were found in the inspected source, tests, examples, docs, manifest and justfile. Open work is recorded in branches/issues instead; absence of markers is not a claim that the crate needs no further work.
 - The June [ablation report](public-api/ABLATION-garb.md) is a dated consumer scan. Re-check current source and consumers before using it to remove or promote an API.

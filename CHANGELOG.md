@@ -4,7 +4,13 @@
 
 Prepared package version: **0.2.9**. Publication awaits README approval and release gates.
 
+### QUEUED BREAKING CHANGES
+
+None recorded.
+
 ### Fixed
+
+- Declare the precision-policy example's `experimental` feature requirement so no-default CI builds the library/tests without unavailable grayscale example APIs (`9ec9fa71`).
 
 - RGB565/RGBA4444 compression rounds the full-range u8 value to nearest rather than dividing by 256. This corrects 15/31/7 of 256 channel values at 5/6/4-bit precision; bit-replicating expansion and exact packed round trips are preserved.
 
@@ -18,8 +24,6 @@ Prepared package version: **0.2.9**. Publication awaits README approval and rele
 - Admit archmage 0.9.31-beta.2 for crates that use `#[attune]`; 234 tests pass with `--all-features` on that version. Replace the cap with the stable floor before publishing.
 - Optional packed/NEON/WASM byte loops use equivalent array chunks (`b723fb2a`); benchmark groups follow their experimental feature and active macOS CI uses ARM64 (`11607925`). Default/experimental benchmark checks, strict full/minimal lint and all 222 library tests pass.
 - Admit archmage 0.9.31-beta.1 while retaining the stable floor (`5d32c69f`). Byte conversion loops use equivalent array-chunk iterators; formatting, strict library lint and default library tests pass (`309647b6`).
-
-### Changed
 
 - `bytemuck` 1.25.0 → 1.25.2 and `imgref` 1.12.0 → 1.12.3, plus a full transitive
   lockfile refresh. **Verified byte-identical:** every one of garb's 44 two-buffer
