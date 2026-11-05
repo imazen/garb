@@ -52,3 +52,7 @@ imgref = ["dep:imgref", "rgb"]
 [[bench]]
 name = "kernel_tiers"
 harness = false
+
+[[example]]
+name = "precision_policies"
+required-features = ["experimental"]

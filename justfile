@@ -48,3 +48,9 @@ release-check:
 
 precision-policies:
     cargo run --release --all-features --example precision_policies
+
+# The precision example calls experimental grayscale conversions explicitly.
+check-precision-example-features:
+    cargo check --no-default-features --examples
+    cargo check --all-features --example precision_policies
+    cargo test --no-default-features -- --test-threads=1
