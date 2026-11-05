@@ -68,20 +68,14 @@
 - Exclude `.github/`, `.gitignore`, `benchmarks/`, and `tests/` from published crate package; also exclude `docs/` and `justfile`
 - README overhaul: normalized the badge row, added a Quick start, fixed the `no_std` claim (only `imgref` pulls in `alloc`), refreshed the crosslink footer, and split a badge-free crates.io README (`README.crates.md`, now the `readme` target) from the GitHub `README.md`; added `benchmarks/README.md` with repro/methodology
 
-### Known issues
+### Resolved historical issue
 
-- **Pre-existing scalar-vs-SIMD f32 discrepancy in `convert_u8_to_f32` /
-  `convert_u16_to_f32`** (not introduced by the NEON work, but inherited by it,
-  so recording it here). The scalar tier divides (`v / 255.0`); the AVX2 tier
-  has always reciprocal-multiplied (`_mm256_set1_ps(1.0 / 255.0)`), and the new
-  NEON tier matches AVX2. These are not bit-identical: an exhaustive check over
-  the whole input domain shows 126 of 256 `u8` inputs and 512 of 65536 `u16`
-  inputs yield a different f32 bit pattern. The current tests cannot see it
-  because they are `u8→f32→u8` roundtrips and the difference vanishes on the
-  way back. Using true division in the NEON kernel would be bit-exact with
-  scalar but measured ~53% slower than the scalar path — worse than shipping no
-  NEON kernel at all. Needs a decision on which tier is authoritative; if scalar
-  is, the AVX2 tier has the same bug and both should switch to division.
+- The scalar/SIMD normalization discrepancy recorded in July is fixed by
+  corrected reciprocal multiplication (`605276d7`). Exhaustive u8/u16 input
+  and row/tier checks match rounded division. The earlier 126/256 u8 count
+  described that older implementation, not the 0.2.8 release comparison;
+  the released 0.2.8 comparison changes 126/256 u8 values and 512/65536 u16
+  values in full vector bodies. See docs/precision.md.
 
 ### QUEUED BREAKING CHANGES
 
