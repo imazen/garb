@@ -339,12 +339,14 @@ Two flavors of dispatch underneath, chosen per signal:
 
 #### Chunk-level u8/u16 hooks for fusion into caller SIMD loops
 
+These experimental hooks take arrays and no token. Native calls require a matching CPU-feature function; see [calling context and migration status](https://github.com/imazen/garb/blob/main/docs/SIMD_TRANSITION.md).
+
 For callers already inside a `#[target_feature(enable = "avx2,...")]`
 region (set up by `#[arcane]`, `#[rite]`, or `#[magetypes]`), the u8/u16
 chunk-level primitives skip per-call dispatch. They're tokenless — the
 caller's region establishes target_feature; `#[rite(v3)]` on each
-function adds the matching `#[target_feature]` and inlines into the
-caller's body without crossing an LLVM optimization boundary.
+function adds matching `#[target_feature]` and `#[inline]` attributes.
+Inspect the compiled caller before relying on register-only array passing.
 
 | Function | Operation |
 |----------|-----------|

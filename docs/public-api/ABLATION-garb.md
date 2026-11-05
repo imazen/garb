@@ -1,5 +1,7 @@
 # garb public-API ablation report
 
+**Historical scan (2026-06-11).** Consumer absence and surface counts below are dated observations. Use [current boundary and work guidance](../SIMD_TRANSITION.md) for the tokenless hooks, branch history and current CI evidence; re-scan consumers before changing public exposure.
+
 **Date:** 2026-06-11
 **Snapshot commit:** 0618744
 **Crate analyzed:** `garb` (133 default / 457 all-features items)

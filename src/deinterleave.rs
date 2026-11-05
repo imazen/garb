@@ -500,27 +500,26 @@ use x86::{rgb24_to_planes_impl_v3, rgb48_to_planes_impl_v3};
 // `#[rite]`, or `#[magetypes]`) and want to deinterleave one 8-pixel chunk
 // at a time without paying any per-call dispatch cost.
 //
-// Inlining behavior: `#[rite]` injects `#[inline]` and the matching
-// `#[target_feature]` attrs, so when called from another `#[rite]` /
-// `#[arcane]` / `#[magetypes]`-decorated function with the same features,
-// LLVM inlines the body and keeps the f32x8 results in YMM registers
-// (the returned `[f32; 8]` arrays do NOT round-trip through stack memory
-// when the consumer reads them with another `#[target_feature]` SIMD load).
+// `#[rite]` adds matching target features and an inline hint. LLVM can
+// inline the body into a matching feature function, but array arguments and
+// returns do not guarantee register-only passing: inspect the compiled caller
+// before relying on that optimization.
 //
 // Output shape matches the natural f32x8 layout: 3 fixed-size arrays of
 // 8 floats each (R, G, B). Caller wraps each with their preferred f32x8
 // abstraction (magetypes f32x8, std::simd, raw `__m256`, etc.).
 
 /// AVX2 chunk-level deinterleave: `&[u8; 24]` (8 RGB pixels, packed) →
-/// 3×`[f32; 8]` (planar). Caller provides an `X64V3Token` proving AVX2
-/// is available; calling from inside a non-AVX2 target_feature region
-/// will fail to compile.
+/// 3×`[f32; 8]` (planar, integer code values in `0..255`). No token argument.
+/// Call inside a matching V3 CPU-feature function; ordinary native calls fail
+/// with E0133. Use the dispatched bulk API from ordinary code.
 #[cfg(target_arch = "x86_64")]
 #[doc(hidden)]
 pub use x86::rgb24_chunk8_tokenless_v3 as rgb24_chunk8_to_planes_tokenless_v3;
 
 /// AVX2 chunk-level deinterleave for `RGB48` (`u16` per channel). See
-/// [`rgb24_chunk8_to_planes_v3`]; same shape, just `&[u16; 24]` input.
+/// [`crate::deinterleave::rgb24_chunk8_to_planes_tokenless_v3`]; same shape,
+/// with `&[u16; 24]` input and output code values in `0..65535`.
 #[cfg(target_arch = "x86_64")]
 #[doc(hidden)]
 pub use x86::rgb48_chunk8_tokenless_v3 as rgb48_chunk8_to_planes_tokenless_v3;
