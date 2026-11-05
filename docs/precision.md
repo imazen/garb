@@ -24,8 +24,12 @@ of 256 channel inputs at 5/6/4 bits (`7b0272f5`). Bit-replicating RGB565
 expansion remains: 4 of 32 five-bit codes and 10 of 64 six-bit codes differ
 from nearest normalized u8 scaling by one output code.
 
-Weighted grayscale uses integer coefficient sets rather than exact
-floating-point BT.601/709/2020 weights. RGB565/RGBA4444 intentionally discard
+Weighted grayscale uses integer coefficient sets rather than exact decimal
+BT.601/709/2020 weights. Exhaustive RGB triples (16,777,216 per curve) differ
+from decimal-weight nearest rounding at 2,243,315 / 2,679,642 / 2,103,840
+triples respectively, maximum one u8 code. `just precision-policies`
+reproduces this. Keep this existing fixed-point contract in the patch;
+an exact-coefficient variant needs separate API review. RGB565/RGBA4444 intentionally discard
 depth. RGBA1010102 stores 10-bit RGB in the low bits of u16; it does not
 scale to full-range u16. Its alpha expands to 0/341/682/1023 and narrows to
 nearest. These are format policies, distinct from generic depth conversion.

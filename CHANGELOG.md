@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+Prepared package version: **0.2.9**. Publication awaits README approval and release gates.
+
 ### Fixed
 
 - RGB565/RGBA4444 compression rounds the full-range u8 value to nearest rather than dividing by 256. This corrects 15/31/7 of 256 channel values at 5/6/4-bit precision; bit-replicating expansion and exact packed round trips are preserved.

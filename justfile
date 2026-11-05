@@ -44,4 +44,7 @@ precision-float-check:
 release-check:
     cargo test --all-targets --all-features
     cargo test --doc --all-features
-    cargo semver-checks --baseline-version 0.2.8
+    cargo +1.98.1 semver-checks --baseline-version 0.2.8
+
+precision-policies:
+    cargo run --release --all-features --example precision_policies
