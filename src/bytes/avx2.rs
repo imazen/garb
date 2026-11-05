@@ -1214,14 +1214,15 @@ mod experimental {
     #[rite]
     pub(in crate::bytes) fn convert_u16_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
         let mul255 = _mm256_set1_epi32(255);
-        let add_half = _mm256_set1_epi32(32768);
+        // floor((v + 128) / 257), exact for every u16.
+        let bias = _mm256_set1_epi32(129);
         let n = src.len() / 2;
         let mut i = 0;
         while i + 8 <= n {
             let s: &[u8; 16] = src[i * 2..i * 2 + 16].try_into().unwrap();
             let v = _mm_loadu_si128(s);
             let wide = _mm256_cvtepu16_epi32(v);
-            let prod = _mm256_add_epi32(_mm256_mullo_epi32(wide, mul255), add_half);
+            let prod = _mm256_mullo_epi32(_mm256_add_epi32(wide, bias), mul255);
             let shifted = _mm256_srli_epi32::<16>(prod);
             let packed16 = _mm256_packus_epi32(shifted, shifted);
             let packed8 = _mm256_packus_epi16(packed16, packed16);
@@ -1235,7 +1236,7 @@ mod experimental {
         }
         for j in i..n {
             let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
-            dst[j] = ((v as u32 * 255 + 32768) >> 16) as u8;
+            dst[j] = ((v as u32 + 128) / 257) as u8;
         }
     }
 

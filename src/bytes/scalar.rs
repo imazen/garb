@@ -715,7 +715,7 @@ mod experimental {
     ) {
         for (s, d) in src.as_chunks::<2>().0.iter().zip(dst.iter_mut()) {
             let v = u16::from_ne_bytes([s[0], s[1]]);
-            *d = ((v as u32 * 255 + 32768) >> 16) as u8;
+            *d = ((v as u32 + 128) / 257) as u8;
         }
     }
     pub(in crate::bytes) fn convert_u8_to_f32_row_scalar(

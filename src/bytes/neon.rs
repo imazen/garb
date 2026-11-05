@@ -791,7 +791,7 @@ mod experimental {
         }
     }
 
-    /// u16 → u8 via `(v * 255 + 32768) >> 16`. 8 elements/iter.
+    /// u16 → u8 rounded to nearest, equivalent to `(v + 128) / 257`. 8 elements/iter.
     #[rite]
     pub(in crate::bytes) fn convert_u16_to_u8_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
         let n = (src.len() / 2).min(dst.len());
@@ -799,13 +799,13 @@ mod experimental {
         while i + 8 <= n {
             let s: &[u8; 16] = src[i * 2..i * 2 + 16].try_into().unwrap();
             let v = vreinterpretq_u16_u8(vld1q_u8(s));
-            let lo = vshrq_n_u32::<16>(vaddq_u32(
-                vmulq_n_u32(vmovl_u16(vget_low_u16(v)), 255),
-                vdupq_n_u32(32768),
+            let lo = vshrq_n_u32::<16>(vmulq_n_u32(
+                vaddq_u32(vmovl_u16(vget_low_u16(v)), vdupq_n_u32(129)),
+                255,
             ));
-            let hi = vshrq_n_u32::<16>(vaddq_u32(
-                vmulq_n_u32(vmovl_high_u16(v), 255),
-                vdupq_n_u32(32768),
+            let hi = vshrq_n_u32::<16>(vmulq_n_u32(
+                vaddq_u32(vmovl_high_u16(v), vdupq_n_u32(129)),
+                255,
             ));
             let packed16 = vcombine_u16(vmovn_u32(lo), vmovn_u32(hi));
             let packed8 = vmovn_u16(packed16);
@@ -815,7 +815,7 @@ mod experimental {
         }
         for j in i..n {
             let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
-            dst[j] = ((v as u32 * 255 + 32768) >> 16) as u8;
+            dst[j] = ((v as u32 + 128) / 257) as u8;
         }
     }
 

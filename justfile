@@ -32,3 +32,7 @@ beta-all-formats-check:
     cargo clippy --locked --all-features --lib -- -D warnings
     cargo test --locked --all-features --lib
     cargo clippy --locked --no-default-features --lib -- -D warnings
+
+# Exhaustive nearest-value depth regression across dispatch tiers and row splits.
+precision-depth-check:
+    cargo test --all-features --lib depth_u16_to_u8_nearest_exhaustive

@@ -1416,6 +1416,21 @@ mod experimental_tests {
         &[1, 2, 3, 7, 8, 15, 16, 31, 32, 33, 63, 64, 65, 100, 255, 256];
 
     #[test]
+    fn depth_u16_to_u8_nearest_exhaustive() {
+        let src: Vec<u8> = (0..=u16::MAX).flat_map(u16::to_ne_bytes).collect();
+        let expected: Vec<u8> = (0..=65535u32).map(|v| ((v + 128) / 257) as u8).collect();
+        for_each_token_permutation(policy(), |perm| {
+            for width in [1, 7, 8, 17, 65536] {
+                let mut dst = vec![0; 65536];
+                for (s, d) in src.chunks(width * 2).zip(dst.chunks_mut(width)) {
+                    convert_u16_to_u8(s, d).unwrap();
+                }
+                assert_eq!(dst, expected, "nearest u16→u8 width={width} tier={perm}");
+            }
+        });
+    }
+
+    #[test]
     fn depth_u8_to_u16_roundtrip_exhaustive() {
         // u8 → u16 → u8 must be exact identity for all 256 values
         let src: Vec<u8> = (0..=255).collect();

@@ -928,7 +928,7 @@ mod experimental_api {
         Ok(())
     }
 
-    /// Convert u16 elements to u8 elements. Rounded: `(v * 255 + 32768) >> 16`.
+    /// Convert u16 elements to u8 elements. Rounded to nearest: `(v + 128) / 257`.
     ///
     /// `src` contains u16 values (must be a multiple of 2 bytes).
     /// `dst` must have at least `src.len() / 2` bytes.

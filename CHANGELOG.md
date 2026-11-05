@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `convert_u16_to_u8` rounds to nearest `(v + 128) / 257`; 127 of 65,536 inputs now increase by one. Scalar, AVX2 and NEON use the same mapping.
+
 ### Changed
 
 - `convert_u8_to_f32` and `convert_u16_to_f32` are correctly rounded at every tier and position: the AVX2 and NEON bodies add one FMA correction to the reciprocal multiply, so they give the same bits as the division in tails and the scalar tier. Body values can change by 1 ULP.
