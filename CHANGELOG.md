@@ -4,7 +4,9 @@
 
 ### Fixed
 
-- `convert_u16_to_u8` rounds to nearest `(v + 128) / 257`; 127 of 65,536 inputs now increase by one. Scalar, AVX2 and NEON use the same mapping.
+- f32 to u8/u16 widens before scaling to avoid double rounding below half-code thresholds; clamps and NaN-to-zero behavior are preserved.
+
+- `convert_u16_to_u8` rounds to nearest `(v + 128) / 257`; 127 of 65,536 inputs now increase by one (`ecf6c6b3`). Scalar, AVX2 and NEON use the same mapping.
 
 ### Changed
 

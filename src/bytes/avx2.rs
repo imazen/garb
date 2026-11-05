@@ -1269,20 +1269,28 @@ mod experimental {
         }
     }
 
+    // Widen before scaling: f32 multiplication can round a value just below
+    // a half-code onto the half-code. f64 holds this product and bias exactly.
+    #[rite]
+    fn quantize_nearest_v3(_t: X64V3Token, v: __m256, scale: f64) -> __m256i {
+        let clamped = _mm256_min_ps(_mm256_max_ps(v, _mm256_setzero_ps()), _mm256_set1_ps(1.0));
+        let lo = _mm256_cvtps_pd(_mm256_castps256_ps128(clamped));
+        let hi = _mm256_cvtps_pd(_mm256_extractf128_ps::<1>(clamped));
+        let scale = _mm256_set1_pd(scale);
+        let half = _mm256_set1_pd(0.5);
+        let lo = _mm256_cvttpd_epi32(_mm256_add_pd(_mm256_mul_pd(lo, scale), half));
+        let hi = _mm256_cvttpd_epi32(_mm256_add_pd(_mm256_mul_pd(hi, scale), half));
+        _mm256_inserti128_si256::<1>(_mm256_castsi128_si256(lo), hi)
+    }
+
     #[rite]
     pub(in crate::bytes) fn convert_f32_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-        let scale = _mm256_set1_ps(255.0);
-        let half = _mm256_set1_ps(0.5);
-        let zero = _mm256_setzero_ps();
-        let one = _mm256_set1_ps(1.0);
         let n = src.len() / 4;
         let mut i = 0;
         while i + 8 <= n {
             let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
             let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-            let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
-            let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
-            let ints = _mm256_cvttps_epi32(scaled);
+            let ints = quantize_nearest_v3(_t, v, 255.0);
             let packed16 = _mm256_packus_epi32(ints, ints);
             let packed8 = _mm256_packus_epi16(packed16, packed16);
             let lo = _mm256_extracti128_si256::<0>(packed8);
@@ -1296,7 +1304,7 @@ mod experimental {
         for j in i..n {
             let v =
                 f32::from_ne_bytes([src[j * 4], src[j * 4 + 1], src[j * 4 + 2], src[j * 4 + 3]]);
-            dst[j] = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            dst[j] = (f64::from(v).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         }
     }
 
@@ -1323,18 +1331,12 @@ mod experimental {
 
     #[rite]
     pub(in crate::bytes) fn convert_f32_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-        let scale = _mm256_set1_ps(65535.0);
-        let half = _mm256_set1_ps(0.5);
-        let zero = _mm256_setzero_ps();
-        let one = _mm256_set1_ps(1.0);
         let n = src.len() / 4;
         let mut i = 0;
         while i + 8 <= n {
             let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
             let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-            let clamped = _mm256_min_ps(_mm256_max_ps(v, zero), one);
-            let scaled = _mm256_add_ps(_mm256_mul_ps(clamped, scale), half);
-            let ints = _mm256_cvttps_epi32(scaled);
+            let ints = quantize_nearest_v3(_t, v, 65535.0);
             let packed16 = _mm256_packus_epi32(ints, ints);
             let perm = _mm256_permute4x64_epi64::<0b00_00_10_00>(packed16);
             let mut tmp = [0u8; 32];
@@ -1345,7 +1347,7 @@ mod experimental {
         for j in i..n {
             let v =
                 f32::from_ne_bytes([src[j * 4], src[j * 4 + 1], src[j * 4 + 2], src[j * 4 + 3]]);
-            let u16_val = (v.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+            let u16_val = (f64::from(v).clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
             dst[j * 2..j * 2 + 2].copy_from_slice(&u16_val.to_ne_bytes());
         }
     }

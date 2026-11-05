@@ -1416,10 +1416,59 @@ mod experimental_tests {
         &[1, 2, 3, 7, 8, 15, 16, 31, 32, 33, 63, 64, 65, 100, 255, 256];
 
     #[test]
+    fn depth_f32_nearest_at_every_quantization_boundary() {
+        // Every half-code threshold, and the two adjacent f32 inputs. The
+        // f64 oracle represents f32 * u16::MAX + 0.5 without rounding error.
+        for scale in [255.0f64, 65535.0] {
+            let mut values = vec![
+                f32::NAN,
+                f32::NEG_INFINITY,
+                f32::INFINITY,
+                -0.0,
+                0.0,
+                -1.0,
+                1.0,
+                2.0,
+            ];
+            for code in 0..scale as u32 {
+                let center = (((code as f64) + 0.5) / scale) as f32;
+                values.extend([center.next_down(), center, center.next_up()]);
+            }
+            let src: Vec<u8> = values.iter().flat_map(|v| v.to_ne_bytes()).collect();
+            let _ = for_each_token_permutation(policy(), |perm| {
+                for width in [1, 7, 8, 17, values.len()] {
+                    let bytes_per = if scale == 255.0 { 1 } else { 2 };
+                    let mut dst = vec![0; values.len() * bytes_per];
+                    for (s, d) in src.chunks(width * 4).zip(dst.chunks_mut(width * bytes_per)) {
+                        if bytes_per == 1 {
+                            convert_f32_to_u8(s, d).unwrap();
+                        } else {
+                            convert_f32_to_u16(s, d).unwrap();
+                        }
+                    }
+                    for (i, (&v, got)) in values.iter().zip(dst.chunks_exact(bytes_per)).enumerate()
+                    {
+                        let want = (f64::from(v).clamp(0.0, 1.0) * scale + 0.5) as u16;
+                        let got = if bytes_per == 1 {
+                            got[0] as u16
+                        } else {
+                            u16::from_ne_bytes([got[0], got[1]])
+                        };
+                        assert_eq!(
+                            got, want,
+                            "v={v:?} index={i} scale={scale} width={width} tier={perm}"
+                        );
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
     fn depth_u16_to_u8_nearest_exhaustive() {
         let src: Vec<u8> = (0..=u16::MAX).flat_map(u16::to_ne_bytes).collect();
         let expected: Vec<u8> = (0..=65535u32).map(|v| ((v + 128) / 257) as u8).collect();
-        for_each_token_permutation(policy(), |perm| {
+        let _ = for_each_token_permutation(policy(), |perm| {
             for width in [1, 7, 8, 17, 65536] {
                 let mut dst = vec![0; 65536];
                 for (s, d) in src.chunks(width * 2).zip(dst.chunks_mut(width)) {
@@ -3070,17 +3119,17 @@ fn widening_is_correctly_rounded_at_every_tier_and_position() {
         let mut whole = vec![0u8; u16s.len() * 2];
         convert_u16_to_f32(&u16s, &mut whole).unwrap();
         let mut one = [0u8; 4];
-        for (v, d) in (0..=u16::MAX).zip(whole.chunks_exact(4)) {
+        for (v, d) in (0..=u16::MAX).zip(whole.as_chunks::<4>().0) {
             let want = (f32::from(v) / 65535.0).to_ne_bytes();
-            assert_eq!(d, want, "u16 {v}");
+            assert_eq!(*d, want, "u16 {v}");
             convert_u16_to_f32(&v.to_ne_bytes(), &mut one).unwrap();
             assert_eq!(one, want, "u16 {v} alone");
         }
         let mut whole = vec![0u8; u8s.len() * 4];
         convert_u8_to_f32(&u8s, &mut whole).unwrap();
-        for (v, d) in (0..=u8::MAX).zip(whole.chunks_exact(4)) {
+        for (v, d) in (0..=u8::MAX).zip(whole.as_chunks::<4>().0) {
             let want = (f32::from(v) / 255.0).to_ne_bytes();
-            assert_eq!(d, want, "u8 {v}");
+            assert_eq!(*d, want, "u8 {v}");
             convert_u8_to_f32(&[v], &mut one).unwrap();
             assert_eq!(one, want, "u8 {v} alone");
         }

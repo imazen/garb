@@ -907,15 +907,20 @@ mod experimental {
 
     /// Clamp to [0,1], scale, add 0.5, truncate — shared by the f32→int kernels.
     #[rite]
-    fn quantize(_t: NeonToken, v: float32x4_t, scale: float32x4_t) -> uint32x4_t {
+    fn quantize(_t: NeonToken, v: float32x4_t, scale: float64x2_t) -> uint32x4_t {
         let clamped = vminq_f32(vmaxq_f32(v, vdupq_n_f32(0.0)), vdupq_n_f32(1.0));
-        vcvtq_u32_f32(vaddq_f32(vmulq_f32(clamped, scale), vdupq_n_f32(0.5)))
+        let lo = vcvt_f64_f32(vget_low_f32(clamped));
+        let hi = vcvt_high_f64_f32(clamped);
+        let half = vdupq_n_f64(0.5);
+        let lo = vmovn_u64(vcvtq_u64_f64(vaddq_f64(vmulq_f64(lo, scale), half)));
+        let hi = vmovn_u64(vcvtq_u64_f64(vaddq_f64(vmulq_f64(hi, scale), half)));
+        vcombine_u32(lo, hi)
     }
 
     /// f32 → u8 via `clamp(v,0,1) * 255 + 0.5`, truncated. 16 elements/iter.
     #[rite]
     pub(in crate::bytes) fn convert_f32_to_u8_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
-        let scale = vdupq_n_f32(255.0);
+        let scale = vdupq_n_f64(255.0);
         let n = (src.len() / 4).min(dst.len());
         let mut i = 0;
         while i + 16 <= n {
@@ -936,14 +941,14 @@ mod experimental {
         for j in i..n {
             let s: &[u8; 4] = src[j * 4..j * 4 + 4].try_into().unwrap();
             let v = f32::from_ne_bytes(*s);
-            dst[j] = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            dst[j] = (f64::from(v).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         }
     }
 
     /// f32 → u16 via `clamp(v,0,1) * 65535 + 0.5`, truncated. 8 elements/iter.
     #[rite]
     pub(in crate::bytes) fn convert_f32_to_u16_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
-        let scale = vdupq_n_f32(65535.0);
+        let scale = vdupq_n_f64(65535.0);
         let n = (src.len() / 4).min(dst.len() / 2);
         let mut i = 0;
         while i + 8 <= n {
@@ -962,8 +967,9 @@ mod experimental {
         for j in i..n {
             let s: &[u8; 4] = src[j * 4..j * 4 + 4].try_into().unwrap();
             let v = f32::from_ne_bytes(*s);
-            dst[j * 2..j * 2 + 2]
-                .copy_from_slice(&((v.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16).to_ne_bytes());
+            dst[j * 2..j * 2 + 2].copy_from_slice(
+                &((f64::from(v).clamp(0.0, 1.0) * 65535.0 + 0.5) as u16).to_ne_bytes(),
+            );
         }
     }
 

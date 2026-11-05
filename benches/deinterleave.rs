@@ -88,7 +88,7 @@ fn bench_rgb24(suite: &mut Suite) {
             let bytes = pixels * 3;
             g.throughput(Throughput::Bytes(bytes as u64));
 
-            g.bench(&format!("{label} :: scalar"), move |b| {
+            g.bench(format!("{label} :: scalar"), move |b| {
                 b.with_input(move || {
                     let src = make_u8(pixels);
                     let r = vec![0.0f32; pixels];
@@ -102,7 +102,7 @@ fn bench_rgb24(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: scalar+autovec(avx2)"), move |b| {
+            g.bench(format!("{label} :: scalar+autovec(avx2)"), move |b| {
                 b.with_input(move || {
                     let src = make_u8(pixels);
                     let r = vec![0.0f32; pixels];
@@ -116,7 +116,7 @@ fn bench_rgb24(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: simd-dispatch"), move |b| {
+            g.bench(format!("{label} :: simd-dispatch"), move |b| {
                 b.with_input(move || {
                     let src = make_u8(pixels);
                     let r = vec![0.0f32; pixels];
@@ -141,7 +141,7 @@ fn bench_rgb48(suite: &mut Suite) {
             let bytes = pixels * 6;
             g.throughput(Throughput::Bytes(bytes as u64));
 
-            g.bench(&format!("{label} :: scalar"), move |b| {
+            g.bench(format!("{label} :: scalar"), move |b| {
                 b.with_input(move || {
                     let src = make_u16(pixels);
                     let r = vec![0.0f32; pixels];
@@ -155,7 +155,7 @@ fn bench_rgb48(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: scalar+autovec(avx2)"), move |b| {
+            g.bench(format!("{label} :: scalar+autovec(avx2)"), move |b| {
                 b.with_input(move || {
                     let src = make_u16(pixels);
                     let r = vec![0.0f32; pixels];
@@ -169,7 +169,7 @@ fn bench_rgb48(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: simd-dispatch"), move |b| {
+            g.bench(format!("{label} :: simd-dispatch"), move |b| {
                 b.with_input(move || {
                     let src = make_u16(pixels);
                     let r = vec![0.0f32; pixels];
@@ -204,7 +204,7 @@ fn bench_rgb_f32(suite: &mut Suite) {
             let bytes = pixels * 3 * 4;
             g.throughput(Throughput::Bytes(bytes as u64));
 
-            g.bench(&format!("{label} :: scatter scalar"), move |b| {
+            g.bench(format!("{label} :: scatter scalar"), move |b| {
                 b.with_input(move || {
                     let src = make_f32(pixels, 3);
                     let r = vec![0.0f32; pixels];
@@ -220,7 +220,7 @@ fn bench_rgb_f32(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: scatter dispatch(avx2)"), move |b| {
+            g.bench(format!("{label} :: scatter dispatch(avx2)"), move |b| {
                 b.with_input(move || {
                     let src = make_f32(pixels, 3);
                     let r = vec![0.0f32; pixels];
@@ -234,7 +234,7 @@ fn bench_rgb_f32(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: gather scalar"), move |b| {
+            g.bench(format!("{label} :: gather scalar"), move |b| {
                 b.with_input(move || {
                     let r = make_f32(pixels, 1);
                     let gp = make_f32(pixels, 1);
@@ -248,7 +248,7 @@ fn bench_rgb_f32(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: gather dispatch(avx2)"), move |b| {
+            g.bench(format!("{label} :: gather dispatch(avx2)"), move |b| {
                 b.with_input(move || {
                     let r = make_f32(pixels, 1);
                     let gp = make_f32(pixels, 1);
@@ -272,7 +272,7 @@ fn bench_rgba_f32(suite: &mut Suite) {
             let bytes = pixels * 4 * 4;
             g.throughput(Throughput::Bytes(bytes as u64));
 
-            g.bench(&format!("{label} :: scatter scalar"), move |b| {
+            g.bench(format!("{label} :: scatter scalar"), move |b| {
                 b.with_input(move || {
                     let src = make_f32(pixels, 4);
                     let r = vec![0.0f32; pixels];
@@ -289,7 +289,7 @@ fn bench_rgba_f32(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: scatter dispatch(avx2)"), move |b| {
+            g.bench(format!("{label} :: scatter dispatch(avx2)"), move |b| {
                 b.with_input(move || {
                     let src = make_f32(pixels, 4);
                     let r = vec![0.0f32; pixels];
@@ -304,7 +304,7 @@ fn bench_rgba_f32(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: gather scalar"), move |b| {
+            g.bench(format!("{label} :: gather scalar"), move |b| {
                 b.with_input(move || {
                     let r = make_f32(pixels, 1);
                     let gp = make_f32(pixels, 1);
@@ -319,7 +319,7 @@ fn bench_rgba_f32(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("{label} :: gather dispatch(avx2)"), move |b| {
+            g.bench(format!("{label} :: gather dispatch(avx2)"), move |b| {
                 b.with_input(move || {
                     let r = make_f32(pixels, 1);
                     let gp = make_f32(pixels, 1);
@@ -450,9 +450,9 @@ fn bench_dispatch_cadence(suite: &mut Suite) {
         g.throughput(Throughput::Bytes((total_pixels * 3 * 4) as u64));
 
         for &chunk in &[8_usize, 32, 128, 512, 2048, 8192] {
-            g.subgroup(&format!("chunk={chunk}"));
+            g.subgroup(format!("chunk={chunk}"));
 
-            g.bench(&format!("chunk={chunk} :: dispatch-per-chunk"), move |b| {
+            g.bench(format!("chunk={chunk} :: dispatch-per-chunk"), move |b| {
                 b.with_input(move || {
                     let src = make_f32(total_pixels, 3);
                     let r = vec![0.0f32; total_pixels];
@@ -466,7 +466,7 @@ fn bench_dispatch_cadence(suite: &mut Suite) {
                 })
             });
 
-            g.bench(&format!("chunk={chunk} :: autovec-whole-loop"), move |b| {
+            g.bench(format!("chunk={chunk} :: autovec-whole-loop"), move |b| {
                 b.with_input(move || {
                     let src = make_f32(total_pixels, 3);
                     let r = vec![0.0f32; total_pixels];
