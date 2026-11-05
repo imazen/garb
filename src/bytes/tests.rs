@@ -2827,13 +2827,13 @@ mod packed_format_tests {
 
     /// Reference: compress 8-bit to 5-bit with round-to-nearest.
     fn compress5(v: u8) -> u8 {
-        ((v as u16 * 31 + 128) >> 8) as u8
+        (f64::from(v) * 31.0 / 255.0).round() as u8
     }
     fn compress6(v: u8) -> u8 {
-        ((v as u16 * 63 + 128) >> 8) as u8
+        (f64::from(v) * 63.0 / 255.0).round() as u8
     }
     fn compress4(v: u8) -> u8 {
-        ((v as u16 * 15 + 128) >> 8) as u8
+        (f64::from(v) * 15.0 / 255.0).round() as u8
     }
 
     /// Reference: RGBA → RGB565 (LE).

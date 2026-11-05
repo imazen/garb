@@ -230,7 +230,7 @@ fn rgba4444_to_bgra_strided_impl(
 // ## Rounding
 //
 // Channels are compressed from 8 bits using round-to-nearest:
-//   compress_N(v) = (v * max_N + 128) >> 8
+//   compress_N(v) = (v * max_N + 127) / 255
 // where max_N is the maximum value for N bits (31, 63, or 15).
 //
 // This guarantees:
@@ -252,9 +252,9 @@ fn rgba_to_rgb565_impl(s: &[u8], d: &mut [u8]) {
         .iter()
         .zip(d.as_chunks_mut::<2>().0.iter_mut())
     {
-        let r5 = (s[0] as u16 * 31 + 128) >> 8;
-        let g6 = (s[1] as u16 * 63 + 128) >> 8;
-        let b5 = (s[2] as u16 * 31 + 128) >> 8;
+        let r5 = (s[0] as u16 * 31 + 127) / 255;
+        let g6 = (s[1] as u16 * 63 + 127) / 255;
+        let b5 = (s[2] as u16 * 31 + 127) / 255;
         d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
     }
 }
@@ -268,9 +268,9 @@ fn bgra_to_rgb565_impl(s: &[u8], d: &mut [u8]) {
         .iter()
         .zip(d.as_chunks_mut::<2>().0.iter_mut())
     {
-        let r5 = (s[2] as u16 * 31 + 128) >> 8;
-        let g6 = (s[1] as u16 * 63 + 128) >> 8;
-        let b5 = (s[0] as u16 * 31 + 128) >> 8;
+        let r5 = (s[2] as u16 * 31 + 127) / 255;
+        let g6 = (s[1] as u16 * 63 + 127) / 255;
+        let b5 = (s[0] as u16 * 31 + 127) / 255;
         d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
     }
 }
@@ -284,10 +284,10 @@ fn rgba_to_rgba4444_impl(s: &[u8], d: &mut [u8]) {
         .iter()
         .zip(d.as_chunks_mut::<2>().0.iter_mut())
     {
-        let r4 = (s[0] as u16 * 15 + 128) >> 8;
-        let g4 = (s[1] as u16 * 15 + 128) >> 8;
-        let b4 = (s[2] as u16 * 15 + 128) >> 8;
-        let a4 = (s[3] as u16 * 15 + 128) >> 8;
+        let r4 = (s[0] as u16 * 15 + 127) / 255;
+        let g4 = (s[1] as u16 * 15 + 127) / 255;
+        let b4 = (s[2] as u16 * 15 + 127) / 255;
+        let a4 = (s[3] as u16 * 15 + 127) / 255;
         d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
     }
 }
@@ -301,10 +301,10 @@ fn bgra_to_rgba4444_impl(s: &[u8], d: &mut [u8]) {
         .iter()
         .zip(d.as_chunks_mut::<2>().0.iter_mut())
     {
-        let r4 = (s[2] as u16 * 15 + 128) >> 8;
-        let g4 = (s[1] as u16 * 15 + 128) >> 8;
-        let b4 = (s[0] as u16 * 15 + 128) >> 8;
-        let a4 = (s[3] as u16 * 15 + 128) >> 8;
+        let r4 = (s[2] as u16 * 15 + 127) / 255;
+        let g4 = (s[1] as u16 * 15 + 127) / 255;
+        let b4 = (s[0] as u16 * 15 + 127) / 255;
+        let a4 = (s[3] as u16 * 15 + 127) / 255;
         d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
     }
 }
@@ -327,9 +327,9 @@ fn rgba_to_rgb565_strided_impl(
             .iter()
             .zip(dst[y * ds..][..w * 2].as_chunks_mut::<2>().0.iter_mut())
         {
-            let r5 = (s[0] as u16 * 31 + 128) >> 8;
-            let g6 = (s[1] as u16 * 63 + 128) >> 8;
-            let b5 = (s[2] as u16 * 31 + 128) >> 8;
+            let r5 = (s[0] as u16 * 31 + 127) / 255;
+            let g6 = (s[1] as u16 * 63 + 127) / 255;
+            let b5 = (s[2] as u16 * 31 + 127) / 255;
             d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
         }
     }
@@ -351,9 +351,9 @@ fn bgra_to_rgb565_strided_impl(
             .iter()
             .zip(dst[y * ds..][..w * 2].as_chunks_mut::<2>().0.iter_mut())
         {
-            let r5 = (s[2] as u16 * 31 + 128) >> 8;
-            let g6 = (s[1] as u16 * 63 + 128) >> 8;
-            let b5 = (s[0] as u16 * 31 + 128) >> 8;
+            let r5 = (s[2] as u16 * 31 + 127) / 255;
+            let g6 = (s[1] as u16 * 63 + 127) / 255;
+            let b5 = (s[0] as u16 * 31 + 127) / 255;
             d.copy_from_slice(&((r5 << 11) | (g6 << 5) | b5).to_le_bytes());
         }
     }
@@ -375,10 +375,10 @@ fn rgba_to_rgba4444_strided_impl(
             .iter()
             .zip(dst[y * ds..][..w * 2].as_chunks_mut::<2>().0.iter_mut())
         {
-            let r4 = (s[0] as u16 * 15 + 128) >> 8;
-            let g4 = (s[1] as u16 * 15 + 128) >> 8;
-            let b4 = (s[2] as u16 * 15 + 128) >> 8;
-            let a4 = (s[3] as u16 * 15 + 128) >> 8;
+            let r4 = (s[0] as u16 * 15 + 127) / 255;
+            let g4 = (s[1] as u16 * 15 + 127) / 255;
+            let b4 = (s[2] as u16 * 15 + 127) / 255;
+            let a4 = (s[3] as u16 * 15 + 127) / 255;
             d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
         }
     }
@@ -400,10 +400,10 @@ fn bgra_to_rgba4444_strided_impl(
             .iter()
             .zip(dst[y * ds..][..w * 2].as_chunks_mut::<2>().0.iter_mut())
         {
-            let r4 = (s[2] as u16 * 15 + 128) >> 8;
-            let g4 = (s[1] as u16 * 15 + 128) >> 8;
-            let b4 = (s[0] as u16 * 15 + 128) >> 8;
-            let a4 = (s[3] as u16 * 15 + 128) >> 8;
+            let r4 = (s[2] as u16 * 15 + 127) / 255;
+            let g4 = (s[1] as u16 * 15 + 127) / 255;
+            let b4 = (s[0] as u16 * 15 + 127) / 255;
+            let a4 = (s[3] as u16 * 15 + 127) / 255;
             d.copy_from_slice(&((r4 << 12) | (g4 << 8) | (b4 << 4) | a4).to_le_bytes());
         }
     }
@@ -572,7 +572,7 @@ pub fn rgba4444_to_bgra_strided(
 // ## Lossy compression
 //
 // These conversions are lossy — 8-bit channels are rounded to fewer bits.
-// The rounding formula `(v * max_N + 128) >> 8` guarantees:
+// The rounding formula `(v * max_N + 127) / 255` guarantees:
 // - **Perfect roundtrip** for values that originated from N bits:
 //   `expand(compress(expand(x))) == expand(x)` for all x in [0, max_N]
 // - **Nearest match** for arbitrary 8-bit values
