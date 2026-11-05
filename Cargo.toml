@@ -31,7 +31,7 @@ archmage = { version = ">=0.9.21, <=0.9.31-beta.2", features = ["testable_dispat
 rgb = { version = "0.8.53", features = ["bytemuck"] }
 imgref = "1.12.3"
 criterion = { version = "0.8.2", default-features = false, features = ["plotters", "html_reports"] }
-zenbench = "0.1.7"
+zenbench = "0.1.11"
 
 [[bench]]
 name = "swizzle"
