@@ -22,7 +22,7 @@ exclude = [
 [dependencies]
 archmage = { version = ">=0.9.31-beta.2, <0.10.0", features = ["macros"] }
 bytemuck = { version = "1.25.2", features = ["derive", "extern_crate_alloc"] }
-paste = { version = "1.0.15", optional = true }
+paste = { package = "pastey", version = "0.2.3", optional = true }
 rgb = { version = "0.8.53", features = ["bytemuck"], optional = true }
 imgref = { version = "1.12.3", optional = true }
 
