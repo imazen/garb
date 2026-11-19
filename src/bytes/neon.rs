@@ -879,7 +879,7 @@ mod experimental {
     #[rite]
     pub(in crate::bytes) fn convert_f32_to_u8_row_neon(t: NeonToken, src: &[u8], dst: &mut [u8]) {
         use magetypes::simd::generic::f32x4 as V;
-        const CFG: u32 = magetypes::IntConvert::new().saturate_all().bits();
+        const CFG: u32 = magetypes::numerics::IntConvert::new().saturate_all().bits();
         let (blocks, tail) = src.as_chunks::<16>();
         let zero = V::zero_t(t);
         let one = V::splat_t(t, 1.0);
@@ -900,7 +900,7 @@ mod experimental {
     #[rite]
     pub(in crate::bytes) fn convert_f32_to_u16_row_neon(t: NeonToken, src: &[u8], dst: &mut [u8]) {
         use magetypes::simd::generic::f32x4 as V;
-        const CFG: u32 = magetypes::IntConvert::new().saturate_all().bits();
+        const CFG: u32 = magetypes::numerics::IntConvert::new().saturate_all().bits();
         let (blocks, tail) = src.as_chunks::<16>();
         let zero = V::zero_t(t);
         let one = V::splat_t(t, 1.0);

@@ -291,14 +291,14 @@ macro_rules! wasm_rgb_planes {
 wasm_rgb_planes!(
     rgb24_to_planes_impl_wasm128,
     rgb24_to_planes_loop_scalar,
-    load_8_rgb_u8_t,
+    load_rgb_u8_t,
     u8
 );
 #[cfg(target_arch = "wasm32")]
 wasm_rgb_planes!(
     rgb48_to_planes_impl_wasm128,
     rgb48_to_planes_loop_scalar,
-    load_8_rgb_u16_t,
+    load_rgb_u16_t,
     u16
 );
 

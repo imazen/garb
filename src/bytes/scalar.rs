@@ -735,7 +735,7 @@ mod experimental {
         for (s, d) in src.as_chunks::<4>().0.iter().zip(dst.iter_mut()) {
             let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
             *d = magetypes::scalar::to_u8_with::<
-                { magetypes::IntConvert::new().saturate_all().bits() },
+                { magetypes::numerics::IntConvert::new().saturate_all().bits() },
             >(v.clamp(0.0, 1.0) * 255.0);
         }
     }
@@ -768,7 +768,7 @@ mod experimental {
             let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
             d.copy_from_slice(
                 &(magetypes::scalar::to_u16_with::<
-                    { magetypes::IntConvert::new().saturate_all().bits() },
+                    { magetypes::numerics::IntConvert::new().saturate_all().bits() },
                 >(v.clamp(0.0, 1.0) * 65535.0))
                 .to_ne_bytes(),
             );

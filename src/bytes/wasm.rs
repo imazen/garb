@@ -1068,7 +1068,7 @@ mod float_pixels {
         convert_u16_to_f32_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 16..]);
     }
 
-    const IN_RANGE: u32 = magetypes::IntConvert::new().in_range().bits();
+    const IN_RANGE: u32 = magetypes::numerics::IntConvert::new().in_range().bits();
 
     #[rite]
     fn quantize_input(t: Wasm128Token, bytes: &[u8; 16], max: f32) -> F32x4<Wasm128Token> {
