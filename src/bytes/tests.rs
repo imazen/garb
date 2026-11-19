@@ -3135,3 +3135,114 @@ fn widening_is_correctly_rounded_at_every_tier_and_position() {
         }
     });
 }
+
+#[cfg(feature = "experimental")]
+#[test]
+fn f32_alpha_rails_in_odd_strided_rows() {
+    let pixels = [
+        [f32::INFINITY, f32::NAN, -1.0, -0.0],
+        [1.0, f32::NEG_INFINITY, 0.0, 0.0],
+        [0.1, -0.0, 0.3, 0.3],
+        [1.0, -2.0, 3.0, f32::INFINITY],
+        [1.0, -2.0, 3.0, f32::from_bits(0xffc0_4567)],
+        [-1.0, f32::NAN, f32::INFINITY, -0.0],
+        [f32::NAN, 7.0, 0.0, -0.0],
+    ];
+    let row = pixels
+        .as_flattened()
+        .iter()
+        .flat_map(|v| v.to_ne_bytes())
+        .collect::<Vec<_>>();
+    let stride = row.len() + 7;
+    let mut source = row.clone();
+    source.resize(stride, 0x13);
+    source.extend_from_slice(&row);
+    let _ = for_each_token_permutation(policy(), |_| {
+        let mut actual = source.clone();
+        let mut copy = vec![0x13; source.len()];
+        unpremultiply_alpha_f32_strided(&mut actual, pixels.len(), 2, stride).unwrap();
+        unpremultiply_alpha_f32_copy_strided(&source, &mut copy, pixels.len(), 2, stride, stride)
+            .unwrap();
+        assert_eq!(&actual[row.len()..stride], &[0x13; 7]);
+        assert_eq!(&copy[row.len()..stride], &[0x13; 7]);
+        for output in [&actual, &copy] {
+            for start in [0, stride] {
+                let lanes = output[start..][..row.len()].as_chunks::<4>().0;
+                for (pixel, result) in pixels.into_iter().zip(lanes.as_chunks::<4>().0) {
+                    let result = result.map(f32::from_ne_bytes);
+                    let a = pixel[3];
+                    if a == 0.0 {
+                        assert_eq!(result.map(f32::to_bits), [0; 4]);
+                        continue;
+                    }
+                    assert_eq!(result[3].to_bits(), a.to_bits());
+                    for i in 0..3 {
+                        let want = pixel[i] * (1.0 / a);
+                        if want.is_nan() {
+                            assert!(result[i].is_nan());
+                        } else {
+                            assert_eq!(result[i].to_bits(), want.to_bits());
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+#[cfg(feature = "experimental")]
+#[test]
+fn float_depth_strided_preserves_exact_rounding_and_padding() {
+    let samples = [
+        f32::NAN,
+        -0.0,
+        0.5,
+        0.0039215684,
+        0.99019605,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+    ];
+    let n = samples.len();
+    let row = samples
+        .iter()
+        .flat_map(|v| v.to_ne_bytes())
+        .collect::<Vec<_>>();
+    let mut src = row.clone();
+    src.extend_from_slice(&[31; 3]);
+    src.extend_from_slice(&row);
+    let _ = for_each_token_permutation(policy(), |_| {
+        let mut bytes = [0x13; 17];
+        let mut words = [0x13; 31];
+        convert_f32_to_u8_strided(&src, &mut bytes, n, 2, row.len() + 3, n + 3).unwrap();
+        convert_f32_to_u16_strided(&src, &mut words, n, 2, row.len() + 3, n * 2 + 3).unwrap();
+        assert_eq!(&bytes[n..n + 3], &[0x13; 3]);
+        assert_eq!(&words[2 * n..2 * n + 3], &[0x13; 3]);
+        let mut from_bytes = [0x13; 61];
+        let mut from_words = [0x13; 61];
+        convert_u8_to_f32_strided(&bytes, &mut from_bytes, n, 2, n + 3, row.len() + 5).unwrap();
+        convert_u16_to_f32_strided(&words, &mut from_words, n, 2, n * 2 + 3, row.len() + 5)
+            .unwrap();
+        for output in [&from_bytes, &from_words] {
+            assert_eq!(&output[row.len()..row.len() + 5], &[0x13; 5]);
+        }
+        for y in 0..2 {
+            for (i, input) in samples.into_iter().enumerate() {
+                let x = f64::from(input).clamp(0.0, 1.0);
+                let byte = (x * 255.0 + 0.5) as u8;
+                let word = (x * 65535.0 + 0.5) as u16;
+                assert_eq!(bytes[y * (n + 3) + i], byte);
+                let off = y * (2 * n + 3) + 2 * i;
+                assert_eq!(&words[off..off + 2], &word.to_ne_bytes());
+                let off = y * (row.len() + 5) + 4 * i;
+                assert_eq!(
+                    &from_bytes[off..off + 4],
+                    &(f32::from(byte) / 255.0).to_ne_bytes()
+                );
+                assert_eq!(
+                    &from_words[off..off + 4],
+                    &(f32::from(word) / 65535.0).to_ne_bytes()
+                );
+            }
+        }
+    });
+}

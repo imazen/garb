@@ -990,16 +990,18 @@ mod experimental {
         vbslq_f32(keep_a, v, vmulq_laneq_f32::<3>(v, v))
     }
 
-    /// `C' = C / A`, alpha preserved; all-zero RGB where A == 0.
+    /// Reciprocal followed by multiplication, with all four lanes zeroed when A == 0.
     ///
     /// Branchless: the scalar path's `if a == 0.0` becomes a vceqzq_f32 mask
     /// plus a select, which is what makes this worth vectorizing at all.
     #[rite]
     fn unpremul_px(_t: NeonToken, v: float32x4_t, keep_a: uint32x4_t) -> float32x4_t {
         let a = vdupq_laneq_f32::<3>(v);
-        let scaled = vmulq_f32(v, vdivq_f32(vdupq_n_f32(1.0), a));
-        let unpremulled = vbslq_f32(vceqzq_f32(a), vdupq_n_f32(0.0), scaled);
-        vbslq_f32(keep_a, v, unpremulled)
+        let zero_mask = vceqzq_f32(a);
+        let one = vdupq_n_f32(1.0);
+        let safe_alpha = vbslq_f32(zero_mask, one, a);
+        let scaled = vmulq_f32(v, vdivq_f32(one, safe_alpha));
+        vbslq_f32(zero_mask, vdupq_n_f32(0.0), vbslq_f32(keep_a, v, scaled))
     }
 
     #[rite]
@@ -1058,15 +1060,17 @@ mod experimental {
         g: float32x4_t,
         b: float32x4_t,
         a: float32x4_t,
-    ) -> (float32x4_t, float32x4_t, float32x4_t) {
+    ) -> (float32x4_t, float32x4_t, float32x4_t, float32x4_t) {
         // Bit-exact with the scalar path: reciprocal first, then multiply.
-        let inv = vdivq_f32(vdupq_n_f32(1.0), a);
         let zero_a = vceqzq_f32(a);
+        let one = vdupq_n_f32(1.0);
+        let inv = vdivq_f32(one, vbslq_f32(zero_a, one, a));
         let zero = vdupq_n_f32(0.0);
         (
             vbslq_f32(zero_a, zero, vmulq_f32(r, inv)),
             vbslq_f32(zero_a, zero, vmulq_f32(g, inv)),
             vbslq_f32(zero_a, zero, vmulq_f32(b, inv)),
+            vbslq_f32(zero_a, zero, a),
         )
     }
 
@@ -1082,7 +1086,7 @@ mod experimental {
             let p2 = load_f32x4(_t, buf[i + 32..i + 48].try_into().unwrap());
             let p3 = load_f32x4(_t, buf[i + 48..i + 64].try_into().unwrap());
             let (r, g, b, a) = transpose4(_t, p0, p1, p2, p3);
-            let (r, g, b) = unpremul_planes(_t, r, g, b, a);
+            let (r, g, b, a) = unpremul_planes(_t, r, g, b, a);
             let (q0, q1, q2, q3) = transpose4(_t, r, g, b, a);
             store_f32x4(_t, (&mut buf[i..i + 16]).try_into().unwrap(), q0);
             store_f32x4(_t, (&mut buf[i + 16..i + 32]).try_into().unwrap(), q1);
@@ -1107,7 +1111,7 @@ mod experimental {
             let p2 = load_f32x4(_t, src[i + 32..i + 48].try_into().unwrap());
             let p3 = load_f32x4(_t, src[i + 48..i + 64].try_into().unwrap());
             let (r, g, b, a) = transpose4(_t, p0, p1, p2, p3);
-            let (r, g, b) = unpremul_planes(_t, r, g, b, a);
+            let (r, g, b, a) = unpremul_planes(_t, r, g, b, a);
             let (q0, q1, q2, q3) = transpose4(_t, r, g, b, a);
             store_f32x4(_t, (&mut dst[i..i + 16]).try_into().unwrap(), q0);
             store_f32x4(_t, (&mut dst[i + 16..i + 32]).try_into().unwrap(), q1);

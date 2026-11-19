@@ -1581,7 +1581,8 @@ mod experimental {
             let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
             let alpha = _mm256_permute_ps::<0xFF>(v);
             let zero_mask = _mm256_cmp_ps::<0>(alpha, zero); // _CMP_EQ_OQ
-            let inv_alpha = _mm256_div_ps(one, alpha);
+            let safe_alpha = _mm256_blendv_ps(alpha, one, zero_mask);
+            let inv_alpha = _mm256_div_ps(one, safe_alpha);
             let unpremul = _mm256_mul_ps(v, inv_alpha);
             let blended = _mm256_blend_ps::<0b1000_1000>(unpremul, v);
             let result = _mm256_andnot_ps(zero_mask, blended);
@@ -1596,7 +1597,7 @@ mod experimental {
                 let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
                 let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
                 if a == 0.0 {
-                    px[0..12].fill(0);
+                    px.fill(0);
                 } else {
                     let inv_a = 1.0 / a;
                     px[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());
@@ -1618,7 +1619,8 @@ mod experimental {
             let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
             let alpha = _mm256_permute_ps::<0xFF>(v);
             let zero_mask = _mm256_cmp_ps::<0>(alpha, zero);
-            let inv_alpha = _mm256_div_ps(one, alpha);
+            let safe_alpha = _mm256_blendv_ps(alpha, one, zero_mask);
+            let inv_alpha = _mm256_div_ps(one, safe_alpha);
             let unpremul = _mm256_mul_ps(v, inv_alpha);
             let blended = _mm256_blend_ps::<0b1000_1000>(unpremul, v);
             let result = _mm256_andnot_ps(zero_mask, blended);

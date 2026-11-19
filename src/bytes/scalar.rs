@@ -1138,7 +1138,7 @@ mod experimental {
             let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
             let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
             if a == 0.0 {
-                px[0..12].fill(0);
+                px.fill(0);
             } else {
                 let inv_a = 1.0 / a;
                 px[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());

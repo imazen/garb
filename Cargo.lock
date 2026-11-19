@@ -105,9 +105,8 @@ dependencies = [
 
 [[package]]
 name = "archmage"
-version = "0.9.31-beta.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b88a77003bd21035bb9ded3659d9ea666fc58499c2cf41949402a9bb388b9a2b"
+version = "0.9.32"
+source = "git+https://github.com/imazen/archmage?rev=423998254fcb3f6e268841918e4280d05741914e#423998254fcb3f6e268841918e4280d05741914e"
 dependencies = [
  "archmage-macros",
  "safe_unaligned_simd",
@@ -116,9 +115,8 @@ dependencies = [
 
 [[package]]
 name = "archmage-macros"
-version = "0.9.31-beta.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a1148cd0448e74ae017248ce560c1f6577da191855f083986e74a2587def019"
+version = "0.9.32"
+source = "git+https://github.com/imazen/archmage?rev=423998254fcb3f6e268841918e4280d05741914e#423998254fcb3f6e268841918e4280d05741914e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -437,6 +435,7 @@ dependencies = [
  "bytemuck",
  "criterion",
  "imgref",
+ "magetypes",
  "pastey",
  "rgb",
  "zenbench",
@@ -539,6 +538,15 @@ name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
+
+[[package]]
+name = "magetypes"
+version = "0.9.32"
+source = "git+https://github.com/imazen/archmage?rev=423998254fcb3f6e268841918e4280d05741914e#423998254fcb3f6e268841918e4280d05741914e"
+dependencies = [
+ "archmage",
+ "rustversion",
+]
 
 [[package]]
 name = "memchr"

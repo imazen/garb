@@ -8,7 +8,13 @@ Prepared package version: **0.2.9**. Publication awaits README approval and rele
 
 None recorded.
 
+### Added
+
+- WASM SIMD128 depth conversion, packed RGB-to-planar, and f32 RGBA alpha kernels.
+
 ### Fixed
+
+- Unpremultiplying f32 RGBA now returns four positive zeros wherever alpha is either signed zero, including odd tails and strided rows.
 
 - Declare the precision-policy example's `experimental` feature requirement so no-default CI builds the library/tests without unavailable grayscale example APIs (`9ec9fa71`).
 
