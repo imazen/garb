@@ -94,6 +94,11 @@ jobs:
         env:
           RUSTFLAGS: "-C target-feature=+simd128"
 
+      - name: Test WASM float and RGB kernels (simd128)
+        run: cargo test --target wasm32-wasip1 --no-default-features --features experimental --lib -- --test-threads=1
+        env:
+          RUSTFLAGS: "-C target-feature=+simd128"
+
   # Lint
   lint:
     name: clippy + fmt

@@ -28,7 +28,7 @@ rgb = { version = "0.8.53", features = ["bytemuck"], optional = true }
 imgref = { version = "1.12.3", optional = true }
 
 [dev-dependencies]
-archmage = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "423998254fcb3f6e268841918e4280d05741914e", default-features = false, features = ["testable_dispatch"] }
+archmage = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "423998254fcb3f6e268841918e4280d05741914e", default-features = false, features = ["std", "testable_dispatch"] }
 rgb = { version = "0.8.53", features = ["bytemuck"] }
 imgref = "1.12.3"
 criterion = { version = "0.8.2", default-features = false, features = ["plotters", "html_reports"] }
