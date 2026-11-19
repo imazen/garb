@@ -1417,9 +1417,9 @@ mod experimental_tests {
 
     #[test]
     fn depth_f32_nearest_at_every_quantization_boundary() {
-        // Every half-code threshold, and the two adjacent f32 inputs. The
-        // f64 oracle represents f32 * u16::MAX + 0.5 without rounding error.
-        for scale in [255.0f64, 65535.0] {
+        // Check both sides of each mathematical half-code. The contract
+        // rounds the f32 product to even, including inputs rounded to a tie.
+        for scale in [255.0_f32, 65535.0] {
             let mut values = vec![
                 f32::NAN,
                 f32::NEG_INFINITY,
@@ -1431,7 +1431,7 @@ mod experimental_tests {
                 2.0,
             ];
             for code in 0..scale as u32 {
-                let center = (((code as f64) + 0.5) / scale) as f32;
+                let center = (((code as f64) + 0.5) / f64::from(scale)) as f32;
                 values.extend([center.next_down(), center, center.next_up()]);
             }
             let src: Vec<u8> = values.iter().flat_map(|v| v.to_ne_bytes()).collect();
@@ -1448,7 +1448,7 @@ mod experimental_tests {
                     }
                     for (i, (&v, got)) in values.iter().zip(dst.chunks_exact(bytes_per)).enumerate()
                     {
-                        let want = (f64::from(v).clamp(0.0, 1.0) * scale + 0.5) as u16;
+                        let want = (v.clamp(0.0, 1.0) * scale).round_ties_even() as u16;
                         let got = if bytes_per == 1 {
                             got[0] as u16
                         } else {
@@ -1575,17 +1575,10 @@ mod experimental_tests {
         std::eprintln!("depth_u8_u16: {report}");
     }
 
-    /// f32→int quantization must match `clamp(0,1) * SCALE + 0.5` cast-truncated
-    /// for out-of-range and non-finite inputs, at every SIMD tier.
-    ///
-    /// The roundtrip tests only feed values that came from `u8`/`u16`, so they
-    /// never exercise negatives, values above 1.0, infinities or NaN — which is
-    /// exactly where a SIMD clamp can diverge from Rust's `f32::clamp` plus
-    /// saturating `as` cast (ARM `FMAX` propagates NaN where `FMAXNM` would not,
-    /// and `FCVTZU` flushes NaN to 0 like Rust's saturating cast).
+    /// Quantization clamps, scales in f32, rounds ties to even, and maps NaN to zero.
     #[test]
     fn permutation_quantize_edge_values() {
-        let edges: [f32; 12] = [
+        let edges: [f32; 13] = [
             -1.0,
             -0.0,
             0.0,
@@ -1597,6 +1590,7 @@ mod experimental_tests {
             f32::INFINITY,
             f32::NEG_INFINITY,
             f32::NAN,
+            f32::from_bits(0x7f80_0001),
             0.5,
         ];
         let report = for_each_token_permutation(policy(), |perm| {
@@ -1605,7 +1599,7 @@ mod experimental_tests {
             let mut dst8 = vec![0u8; edges.len()];
             convert_f32_to_u8(&src, &mut dst8).unwrap();
             for (i, &v) in edges.iter().enumerate() {
-                let expected = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                let expected = (v.clamp(0.0, 1.0) * 255.0).round_ties_even() as u8;
                 assert_eq!(dst8[i], expected, "f32→u8 v={v} i={i} tier={perm}");
             }
 
@@ -1613,7 +1607,7 @@ mod experimental_tests {
             convert_f32_to_u16(&src, &mut dst16).unwrap();
             let got16: &[u16] = bytemuck::cast_slice(&dst16);
             for (i, &v) in edges.iter().enumerate() {
-                let expected = (v.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+                let expected = (v.clamp(0.0, 1.0) * 65535.0).round_ties_even() as u16;
                 assert_eq!(got16[i], expected, "f32→u16 v={v} i={i} tier={perm}");
             }
         });
@@ -3109,10 +3103,10 @@ mod packed_format_tests {
     }
 }
 
-/// Every value, at every tier: the same bits as a division, wherever it sits in a row.
+/// Every code agrees across tiers and row positions, within one ULP of division.
 #[cfg(feature = "experimental")]
 #[test]
-fn widening_is_correctly_rounded_at_every_tier_and_position() {
+fn widening_agrees_with_reciprocal_multiply_at_every_tier_and_position() {
     let u16s: Vec<u8> = (0..=u16::MAX).flat_map(|v| v.to_ne_bytes()).collect();
     let u8s: Vec<u8> = (0..=u8::MAX).collect();
     let _ = for_each_token_permutation(CompileTimePolicy::Warn, |_| {
@@ -3120,7 +3114,9 @@ fn widening_is_correctly_rounded_at_every_tier_and_position() {
         convert_u16_to_f32(&u16s, &mut whole).unwrap();
         let mut one = [0u8; 4];
         for (v, d) in (0..=u16::MAX).zip(whole.as_chunks::<4>().0) {
-            let want = (f32::from(v) / 65535.0).to_ne_bytes();
+            let want = f32::from(v) * (1.0 / 65535.0);
+            assert!(want.to_bits().abs_diff((f32::from(v) / 65535.0).to_bits()) <= 1);
+            let want = want.to_ne_bytes();
             assert_eq!(*d, want, "u16 {v}");
             convert_u16_to_f32(&v.to_ne_bytes(), &mut one).unwrap();
             assert_eq!(one, want, "u16 {v} alone");
@@ -3128,7 +3124,9 @@ fn widening_is_correctly_rounded_at_every_tier_and_position() {
         let mut whole = vec![0u8; u8s.len() * 4];
         convert_u8_to_f32(&u8s, &mut whole).unwrap();
         for (v, d) in (0..=u8::MAX).zip(whole.as_chunks::<4>().0) {
-            let want = (f32::from(v) / 255.0).to_ne_bytes();
+            let want = f32::from(v) * (1.0 / 255.0);
+            assert!(want.to_bits().abs_diff((f32::from(v) / 255.0).to_bits()) <= 1);
+            let want = want.to_ne_bytes();
             assert_eq!(*d, want, "u8 {v}");
             convert_u8_to_f32(&[v], &mut one).unwrap();
             assert_eq!(one, want, "u8 {v} alone");
@@ -3227,20 +3225,20 @@ fn float_depth_strided_preserves_exact_rounding_and_padding() {
         }
         for y in 0..2 {
             for (i, input) in samples.into_iter().enumerate() {
-                let x = f64::from(input).clamp(0.0, 1.0);
-                let byte = (x * 255.0 + 0.5) as u8;
-                let word = (x * 65535.0 + 0.5) as u16;
+                let x = input.clamp(0.0, 1.0);
+                let byte = (x * 255.0).round_ties_even() as u8;
+                let word = (x * 65535.0).round_ties_even() as u16;
                 assert_eq!(bytes[y * (n + 3) + i], byte);
                 let off = y * (2 * n + 3) + 2 * i;
                 assert_eq!(&words[off..off + 2], &word.to_ne_bytes());
                 let off = y * (row.len() + 5) + 4 * i;
                 assert_eq!(
                     &from_bytes[off..off + 4],
-                    &(f32::from(byte) / 255.0).to_ne_bytes()
+                    &(f32::from(byte) * (1.0 / 255.0)).to_ne_bytes()
                 );
                 assert_eq!(
                     &from_words[off..off + 4],
-                    &(f32::from(word) / 65535.0).to_ne_bytes()
+                    &(f32::from(word) * (1.0 / 65535.0)).to_ne_bytes()
                 );
             }
         }

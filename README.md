@@ -245,11 +245,11 @@ caller-owned slices). Only the `imgref` feature pulls in `alloc`.
 
 ## Precision
 
-Depth narrowing rounds to nearest after clamping. f32→integer conversion
-widens before scaling, so a value just below a half-code does not round up
-prematurely. u16→u8 uses exact `(v + 128) / 257`; integer→f32 matches
-correctly rounded division at every native tier and row position.
-These fixes change some normalized float bits and output bytes versus 0.2.8.
+Depth narrowing from f32 clamps to [0, 1], multiplies by the destination
+maximum in f32, and rounds ties to even. NaN becomes zero.
+u16 to u8 uses exact `(v + 128) / 257`. Integer to f32 multiplies by a
+rounded reciprocal and stays within one ULP of division. Both float
+mappings agree across backends and across chunk and tail positions.
 See the [precision review](https://github.com/imazen/garb/blob/main/docs/precision.md).
 
 ## SIMD dispatch

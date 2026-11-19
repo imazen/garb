@@ -1050,9 +1050,9 @@ mod float_pixels {
     #[rite]
     fn u8_to_f32(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
         let (blocks, tail) = src.as_chunks::<4>();
-        let den = F32x4::splat_t(t, 255.0);
+        let scale = F32x4::splat_t(t, 1.0 / 255.0);
         for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<16>().0) {
-            dst.copy_from_slice((F32x4::from_u8_t(t, src) / den).as_bytes());
+            dst.copy_from_slice((F32x4::from_u8_t(t, src) * scale).as_bytes());
         }
         convert_u8_to_f32_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 16..]);
     }
@@ -1060,35 +1060,29 @@ mod float_pixels {
     #[rite]
     fn u16_to_f32(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
         let (blocks, tail) = src.as_chunks::<8>();
-        let den = F32x4::splat_t(t, 65535.0);
+        let scale = F32x4::splat_t(t, 1.0 / 65535.0);
         for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<16>().0) {
             let words = core::array::from_fn(|i| u16::from_ne_bytes([src[i * 2], src[i * 2 + 1]]));
-            dst.copy_from_slice((F32x4::from_u16_t(t, &words) / den).as_bytes());
+            dst.copy_from_slice((F32x4::from_u16_t(t, &words) * scale).as_bytes());
         }
         convert_u16_to_f32_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 16..]);
     }
 
+    const IN_RANGE: u32 = magetypes::IntConvert::new().in_range().bits();
+
     #[rite]
-    fn quantize(_t: Wasm128Token, bytes: &[u8; 16], max: f64) -> v128 {
-        let value = v128_load(bytes);
-        let clamped = f32x4_min(f32x4_max(value, f32x4_splat(0.0)), f32x4_splat(1.0));
-        // Preserve native-tier half-up rounding by doing both operations in f64.
-        let half_up = |pair| {
-            let v = f64x2_promote_low_f32x4(pair);
-            i32x4_trunc_sat_f64x2_zero(f64x2_add(f64x2_mul(v, f64x2_splat(max)), f64x2_splat(0.5)))
-        };
-        let lo = half_up(clamped);
-        let hi = half_up(i64x2_shuffle::<1, 1>(clamped, clamped));
-        u16x8_narrow_i32x4(i64x2_shuffle::<0, 2>(lo, hi), i32x4_splat(0))
+    fn quantize_input(t: Wasm128Token, bytes: &[u8; 16], max: f32) -> F32x4<Wasm128Token> {
+        let v = v128_load(bytes);
+        // Pseudo-max retains the first operand on unordered lanes.
+        let clamped = f32x4_pmin(f32x4_pmax(f32x4_splat(0.0), v), f32x4_splat(1.0));
+        F32x4::from_raw_t(t, f32x4_mul(clamped, f32x4_splat(max)))
     }
 
     #[rite]
     fn f32_to_u8(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
         let (blocks, tail) = src.as_chunks::<16>();
         for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<4>().0) {
-            let words = quantize(t, src, 255.0);
-            let packed = u8x16_narrow_i16x8(words, words);
-            dst.copy_from_slice(&u32x4_extract_lane::<0>(packed).to_ne_bytes());
+            *dst = quantize_input(t, src, 255.0).to_u8_with::<IN_RANGE>();
         }
         convert_f32_to_u8_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 4..]);
     }
@@ -1097,8 +1091,8 @@ mod float_pixels {
     fn f32_to_u16(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
         let (blocks, tail) = src.as_chunks::<16>();
         for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<8>().0) {
-            let words = quantize(t, src, 65535.0);
-            dst.copy_from_slice(&u64x2_extract_lane::<0>(words).to_ne_bytes());
+            let words = quantize_input(t, src, 65535.0).to_u16_with::<IN_RANGE>();
+            dst.copy_from_slice(bytemuck::bytes_of(&words));
         }
         convert_f32_to_u16_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 8..]);
     }
@@ -1111,8 +1105,7 @@ mod float_pixels {
             let zero = F32x4::zero_t(t);
             let one = F32x4::splat_t(t, 1.0);
             let zero_mask = alpha.simd_eq(zero);
-            let den = F32x4::blend(zero_mask, one, alpha);
-            let scaled = (pixel * (one / den)).with_rgba_alpha(pixel);
+            let scaled = (pixel * (one / alpha)).with_rgba_alpha(pixel);
             F32x4::blend(zero_mask, zero, scaled)
         } else {
             (pixel * alpha).with_rgba_alpha(pixel)
@@ -1139,7 +1132,34 @@ mod float_pixels {
     }
 
     #[rite]
+    fn unpremultiply_four(t: Wasm128Token, src: &[u8; 64]) -> [u8; 64] {
+        let packed = src.as_chunks::<16>().0;
+        let [r, g, b, a] =
+            F32x4::deinterleave_4ch(core::array::from_fn(|i| F32x4::from_bytes_t(t, &packed[i])));
+        let zero = F32x4::zero_t(t);
+        let inv = F32x4::splat_t(t, 1.0) / a;
+        let mask = a.simd_ne(zero);
+        let out = F32x4::interleave_4ch([
+            (r * inv) & mask,
+            (g * inv) & mask,
+            (b * inv) & mask,
+            a & mask,
+        ]);
+        bytemuck::cast(out.map(|v| *v.as_bytes()))
+    }
+
+    #[rite]
     fn alpha_copy<const UNPREMULTIPLY: bool>(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+        let (src, dst) = if UNPREMULTIPLY {
+            let (src_blocks, src_tail) = src.as_chunks::<64>();
+            let (dst_blocks, dst_tail) = dst.as_chunks_mut::<64>();
+            for (src, dst) in src_blocks.iter().zip(dst_blocks) {
+                *dst = unpremultiply_four(t, src);
+            }
+            (src_tail, dst_tail)
+        } else {
+            (src, dst)
+        };
         for (src, dst) in src
             .as_chunks::<16>()
             .0
@@ -1152,6 +1172,15 @@ mod float_pixels {
 
     #[rite]
     fn alpha_in_place<const UNPREMULTIPLY: bool>(t: Wasm128Token, src: &mut [u8]) {
+        let src = if UNPREMULTIPLY {
+            let (blocks, tail) = src.as_chunks_mut::<64>();
+            for block in blocks {
+                *block = unpremultiply_four(t, block);
+            }
+            tail
+        } else {
+            src
+        };
         for pixel in src.as_chunks_mut::<16>().0 {
             *pixel = alpha_pixel::<UNPREMULTIPLY>(t, pixel);
         }
