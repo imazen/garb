@@ -20,7 +20,7 @@
 //!   the unaccelerated path.
 
 use crate::SizeError;
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 use archmage::X64V3Token;
 use archmage::prelude::*;
 
@@ -148,7 +148,7 @@ pub fn autovec_avx2_rgb24(src: &[u8], r: &mut [f32], g: &mut [f32], b: &mut [f32
     let r = &mut r[..pixels];
     let g = &mut g[..pixels];
     let b = &mut b[..pixels];
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     {
         if let Some(t) = X64V3Token::summon() {
             x86::rgb24_to_planes_impl_v3_autovec(t, src, r, g, b);
@@ -166,7 +166,7 @@ pub fn autovec_avx2_rgb48(src: &[u16], r: &mut [f32], g: &mut [f32], b: &mut [f3
     let r = &mut r[..pixels];
     let g = &mut g[..pixels];
     let b = &mut b[..pixels];
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     {
         if let Some(t) = X64V3Token::summon() {
             x86::rgb48_to_planes_impl_v3_autovec(t, src, r, g, b);
@@ -306,7 +306,7 @@ wasm_rgb_planes!(
 // x86-64 AVX2 (v3)
 // ===========================================================================
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 mod x86 {
     use super::*;
 
@@ -530,7 +530,7 @@ mod x86 {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 use x86::{rgb24_to_planes_impl_v3, rgb48_to_planes_impl_v3};
 
 // ===========================================================================
@@ -555,14 +555,14 @@ use x86::{rgb24_to_planes_impl_v3, rgb48_to_planes_impl_v3};
 /// 3×`[f32; 8]` (planar, integer code values in `0..255`). No token argument.
 /// Call inside a matching V3 CPU-feature function; ordinary native calls fail
 /// with E0133. Use the dispatched bulk API from ordinary code.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 #[doc(hidden)]
 pub use x86::rgb24_chunk8_tokenless_v3 as rgb24_chunk8_to_planes_tokenless_v3;
 
 /// AVX2 chunk-level deinterleave for `RGB48` (`u16` per channel). See
 /// [`crate::deinterleave::rgb24_chunk8_to_planes_tokenless_v3`]; same shape,
 /// with `&[u16; 24]` input and output code values in `0..65535`.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 #[doc(hidden)]
 pub use x86::rgb48_chunk8_tokenless_v3 as rgb48_chunk8_to_planes_tokenless_v3;
 
@@ -1340,7 +1340,7 @@ mod tests {
         );
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     #[test]
     fn rgb24_v3_matches_scalar() {
         if let Some(t) = X64V3Token::summon() {
@@ -1366,7 +1366,7 @@ mod tests {
         }
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     #[test]
     fn rgb48_v3_matches_scalar() {
         if let Some(t) = X64V3Token::summon() {

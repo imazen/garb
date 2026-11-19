@@ -12,9 +12,9 @@ use archmage::incant;
 mod scalar;
 use scalar::*;
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 mod avx2;
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 use avx2::*;
 
 #[cfg(target_arch = "aarch64")]
