@@ -6,6 +6,8 @@
 //! # Generic API
 //!
 //! ```rust
+//! # #[allow(deprecated)]
+//! # fn main() {
 //! use rgb::{Rgba, Bgra, Rgb};
 //! use ::imgref::{ImgVec, ImgRefMut};
 //! use garb::{convert_imgref, convert_imgref_inplace};
@@ -19,7 +21,10 @@
 //! let mut dst_buf = vec![Bgra::default(); 4];
 //! let dst = ImgRefMut::new(&mut dst_buf, 2, 2);
 //! convert_imgref(src.as_ref(), dst).unwrap();
+//! # }
 //! ```
+
+#![allow(deprecated)]
 
 use alloc::vec::Vec;
 

@@ -1,4 +1,5 @@
 //! Validates the code examples from README.md compile and behave correctly.
+#![allow(deprecated)]
 
 #[test]
 fn readme_core_api() {

@@ -6,11 +6,11 @@ Prepared package version: **0.2.9**. Publication awaits README approval and rele
 
 ### QUEUED BREAKING CHANGES
 
-- Remove deprecated `experimental` floating-point, planar deinterleave, luma, identity-gray, and `u8` alpha-premultiply APIs in `0.3.0` (`garb::deinterleave`, `convert_{u8,u16}_to_f32*`, `convert_f32_to_{u8,u16}*`, `{premultiply,unpremultiply}_alpha_*f32*`, `{premultiply,unpremultiply}_rgba_f32*`, `{rgb,bgr,rgba,bgra}_to_gray*`, `convert_{rgb,bgr,rgba,bgra}_to_gray*`, and `premultiply_alpha_{rgba,bgra}_u8*`); use `zenpixels-convert` instead.
+- Remove Cargo features `experimental`, `rgb`, and `imgref` (and their gated modules/traits/functions: `garb::deinterleave`, `garb::typed_rgb`, `garb::imgref`, `ConvertTo`, `ConvertInplace`, `convert`, `convert_inplace`, `ConvertImage`, `ConvertImageInplace`, `convert_imgref`, `convert_imgref_inplace`, and all `experimental` `garb::bytes` functions) in `0.3.0`, narrowing `garb` to its core `garb::bytes` SIMD byte-swizzle surface (`std` feature only) with `archmage` as its sole dependency.
 
 ### Deprecated
 
-- Deprecated `garb::deinterleave`, `f32` depth and alpha-premultiply functions, weighted and identity `*_to_gray*` functions, and `premultiply_alpha_{rgba,bgra}_u8*` under `feature = "experimental"` ahead of `0.3.0` removal. Default `garb` (`garb::bytes` byte swizzles, `rgb`, `imgref`) has zero promotions or breaking changes relative to `0.2.8`.
+- Deprecated Cargo features `experimental`, `rgb`, and `imgref` ahead of `0.3.0` removal: enabling any of those features now emits a compiler deprecation warning even when none of their functions are called, and all gated modules, traits, and functions carry `#[deprecated(since = "0.2.9")]` migration notes (`zenpixels-convert` for depth/luma/alpha, `garb::bytes` / `*_strided` for `rgb` / `imgref`). Default `garb` (`garb::bytes` byte swizzles) has zero promotions, zero warnings, and zero breaking changes relative to `0.2.8`.
 
 ### Added
 

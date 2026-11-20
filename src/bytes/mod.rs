@@ -945,6 +945,10 @@ mod experimental_api {
     /// Convert u8 elements to u16 elements. Maps `[0,255]` → `[0,65535]` via `v * 257`.
     ///
     /// `src` contains u8 values. `dst` must have at least `src.len() * 2` bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_u8_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         if src.is_empty() {
             return Err(SizeError::NotPixelAligned);
@@ -958,6 +962,10 @@ mod experimental_api {
     ///
     /// `src` contains u16 values (must be a multiple of 2 bytes).
     /// `dst` must have at least `src.len() / 2` bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_u16_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 1)?;
         incant!(convert_u16_to_u8_impl(src, dst), [v3, neon, scalar]);
@@ -1039,6 +1047,10 @@ mod experimental_api {
     // ===========================================================================
 
     /// Gray (1 byte/px) → RGB/BGR (3 bytes/px). R=G=B=gray.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         if src.is_empty() {
             return Err(SizeError::NotPixelAligned);
@@ -1049,6 +1061,10 @@ mod experimental_api {
     }
 
     /// GrayAlpha (2 bytes/px) → RGB/BGR (3 bytes/px). R=G=B=gray, alpha dropped.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_alpha_to_rgb(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 3)?;
         incant!(gray_alpha_to_rgb_impl(src, dst), [scalar]);
@@ -1056,6 +1072,10 @@ mod experimental_api {
     }
 
     /// Gray (1 byte/px) → GrayAlpha (2 bytes/px). Alpha set to 255.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_to_gray_alpha(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         if src.is_empty() {
             return Err(SizeError::NotPixelAligned);
@@ -1066,6 +1086,10 @@ mod experimental_api {
     }
 
     /// GrayAlpha (2 bytes/px) → Gray (1 byte/px). Drops alpha.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_alpha_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 1)?;
         incant!(gray_alpha_to_gray_impl(src, dst), [scalar]);
@@ -1102,12 +1126,20 @@ mod experimental_api {
 
     /// Alias for [`gray_to_rgb`] — R=G=B so output is identical.
     #[inline(always)]
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         gray_to_rgb(src, dst)
     }
 
     /// Alias for [`gray_alpha_to_rgb`] — R=G=B so output is identical.
     #[inline(always)]
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_alpha_to_bgr(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         gray_alpha_to_rgb(src, dst)
     }
@@ -1135,6 +1167,10 @@ mod experimental_api {
     // Strided gray layout conversions
 
     /// Gray (1 byte/px) → RGB (3 bytes/px) between strided buffers.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_to_rgb_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1153,6 +1189,10 @@ mod experimental_api {
     }
 
     /// GrayAlpha (2 bytes/px) → RGB (3 bytes/px) between strided buffers.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_alpha_to_rgb_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1171,6 +1211,10 @@ mod experimental_api {
     }
 
     /// Gray (1 byte/px) → GrayAlpha (2 bytes/px) between strided buffers.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_to_gray_alpha_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1189,6 +1233,10 @@ mod experimental_api {
     }
 
     /// GrayAlpha (2 bytes/px) → Gray (1 byte/px) between strided buffers.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_alpha_to_gray_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1252,6 +1300,10 @@ mod experimental_api {
 
     /// Alias for [`gray_to_rgb_strided`].
     #[inline(always)]
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_to_bgr_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1265,6 +1317,10 @@ mod experimental_api {
 
     /// Alias for [`gray_alpha_to_rgb_strided`].
     #[inline(always)]
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn gray_alpha_to_bgr_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1313,6 +1369,10 @@ mod experimental_api {
     // Strided depth conversions
 
     /// Convert u8→u16 between strided buffers. `width_elements` is element count per row.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_u8_to_u16_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1331,6 +1391,10 @@ mod experimental_api {
     }
 
     /// Convert u16→u8 between strided buffers. `width` is element count per row.
+    #[deprecated(
+        since = "0.2.9",
+        note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_u16_to_u8_strided(
         src: &[u8],
         dst: &mut [u8],

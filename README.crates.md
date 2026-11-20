@@ -34,9 +34,8 @@ assert_eq!(bgra, [128, 0, 255, 255]);
 ```
 
 Every function returns `Result<(), SizeError>` — no panics, no silent truncation —
-and ships a `_strided` companion for padded row layouts. Enable the `rgb` /
-`imgref` features to let the compiler pick the conversion from typed pixel slices
-(see [Usage](#usage)). For the full operation list, see the
+and ships a `_strided` companion for padded row layouts. *(Note: Cargo features `experimental`, `rgb`, and `imgref` are deprecated in `0.2.9`
+and queued for removal in `0.3.0`; prefer `garb::bytes` directly.)* For the full operation list, see the
 [Function reference](#function-reference).
 
 ## What it does
@@ -63,7 +62,7 @@ stripping channels — so you can get back to the interesting work.
 - GrayAlpha → ARGB / ABGR
 - Fill alpha (set byte 0 = 255 in each 4-byte pixel, for ARGB/ABGR/XRGB/XBGR layouts)
 
-**Experimental** (feature `experimental` — API may change)
+**Experimental** *(feature `experimental` — deprecated in 0.2.9, queued for removal in 0.3.0)*
 - RGB565 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
 - RGBA / BGRA → RGB565 (lossy compress, round-to-nearest, auto-vectorized)
 - RGBA4444 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)

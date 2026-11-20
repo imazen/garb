@@ -6,6 +6,8 @@
 //! # Generic API
 //!
 //! ```rust
+//! # #[allow(deprecated)]
+//! # fn main() {
 //! use rgb::{Rgba, Bgra, Rgb};
 //! use garb::{convert, convert_inplace};
 //!
@@ -17,7 +19,10 @@
 //! // In-place: returns reinterpreted reference
 //! let mut pixels = vec![Rgba::new(255u8, 0, 128, 255); 2];
 //! let bgra: &mut [Bgra<u8>] = convert_inplace(&mut pixels);
+//! # }
 //! ```
+
+#![allow(deprecated)]
 
 use crate::{ConvertInplace, ConvertTo, SizeError};
 use rgb::{Bgr, Bgra, Gray, GrayAlpha, Rgb, Rgba};
@@ -111,6 +116,10 @@ impl_convert_to!(Rgba<u8>, Bgr<u8>, crate::bytes::rgba_to_bgr);
 ///
 /// Empty input is a no-op (no panic). Consistent with the `bytes::*` API's
 /// "no panics" contract documented in the crate README.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `rgb` (`typed_rgb`) will be removed in 0.3.0; cast to `&mut [u8]` and use `garb::bytes::fill_alpha_rgba`"
+)]
 pub fn fill_alpha_rgba(pixels: &mut [Rgba<u8>]) {
     if pixels.is_empty() {
         return;
@@ -123,6 +132,10 @@ pub fn fill_alpha_rgba(pixels: &mut [Rgba<u8>]) {
 ///
 /// Empty input is a no-op (no panic). Consistent with the `bytes::*` API's
 /// "no panics" contract documented in the crate README.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `rgb` (`typed_rgb`) will be removed in 0.3.0; cast to `&mut [u8]` and use `garb::bytes::fill_alpha_bgra`"
+)]
 pub fn fill_alpha_bgra(pixels: &mut [Bgra<u8>]) {
     if pixels.is_empty() {
         return;
