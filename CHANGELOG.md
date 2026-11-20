@@ -31,7 +31,7 @@ Prepared package version: **0.2.9**. Publication awaits README approval and rele
 
 ### Changed
 
-- Sync `archmage` and `magetypes` to `0.9.32` (`imazen/archmage` `main` @ `303341570757`) and exclude repo-local metadata (`CLAUDE.md`, `AGENTS.md`, `README.md`, `apidoc/`, `.zenbench/`) from published crate archives.
+- Upgrade `archmage` and `magetypes` to published crates.io `0.9.32` (removing git patches) and exclude repo-local metadata (`CLAUDE.md`, `AGENTS.md`, `README.md`, `apidoc/`, `.zenbench/`) from published crate archives.
 - Switch float depth conversion to the same f32 reciprocal multiply and nearest-even quantization on every tier. Integer normalization stays within 1 ULP of division. Quantization can change by one code at half-code boundaries; NaN still maps to zero.
 
 
