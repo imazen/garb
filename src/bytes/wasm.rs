@@ -1040,3 +1040,219 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_strided_wasm128(
         );
     }
 }
+
+#[cfg(feature = "experimental")]
+mod float_pixels {
+    use super::super::scalar::*;
+    use archmage::prelude::*;
+    use magetypes::simd::generic::f32x4 as F32x4;
+
+    #[rite]
+    fn u8_to_f32(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+        let (blocks, tail) = src.as_chunks::<4>();
+        let scale = F32x4::splat_t(t, 1.0 / 255.0);
+        for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<16>().0) {
+            dst.copy_from_slice((F32x4::from_u8_t(t, src) * scale).as_bytes());
+        }
+        convert_u8_to_f32_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 16..]);
+    }
+
+    #[rite]
+    fn u16_to_f32(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+        let (blocks, tail) = src.as_chunks::<8>();
+        let scale = F32x4::splat_t(t, 1.0 / 65535.0);
+        for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<16>().0) {
+            let words = core::array::from_fn(|i| u16::from_ne_bytes([src[i * 2], src[i * 2 + 1]]));
+            dst.copy_from_slice((F32x4::from_u16_t(t, &words) * scale).as_bytes());
+        }
+        convert_u16_to_f32_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 16..]);
+    }
+
+    const IN_RANGE: u32 = magetypes::numerics::IntConvert::new().in_range().bits();
+
+    #[rite]
+    fn quantize_input(t: Wasm128Token, bytes: &[u8; 16], max: f32) -> F32x4<Wasm128Token> {
+        let v = v128_load(bytes);
+        // Pseudo-max retains the first operand on unordered lanes.
+        let clamped = f32x4_pmin(f32x4_pmax(f32x4_splat(0.0), v), f32x4_splat(1.0));
+        F32x4::from_raw_t(t, f32x4_mul(clamped, f32x4_splat(max)))
+    }
+
+    #[rite]
+    fn f32_to_u8(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+        let (blocks, tail) = src.as_chunks::<16>();
+        for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<4>().0) {
+            *dst = quantize_input(t, src, 255.0).to_u8_with::<IN_RANGE>();
+        }
+        convert_f32_to_u8_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 4..]);
+    }
+
+    #[rite]
+    fn f32_to_u16(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+        let (blocks, tail) = src.as_chunks::<16>();
+        for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<8>().0) {
+            let words = quantize_input(t, src, 65535.0).to_u16_with::<IN_RANGE>();
+            dst.copy_from_slice(bytemuck::bytes_of(&words));
+        }
+        convert_f32_to_u16_row_scalar(ScalarToken, tail, &mut dst[blocks.len() * 8..]);
+    }
+
+    #[rite]
+    fn alpha_pixel<const UNPREMULTIPLY: bool>(t: Wasm128Token, pixel: &[u8; 16]) -> [u8; 16] {
+        let pixel = F32x4::from_bytes_t(t, pixel);
+        let alpha = pixel.broadcast_rgba_alpha();
+        let result = if UNPREMULTIPLY {
+            let zero = F32x4::zero_t(t);
+            let one = F32x4::splat_t(t, 1.0);
+            let zero_mask = alpha.simd_eq(zero);
+            let scaled = (pixel * (one / alpha)).with_rgba_alpha(pixel);
+            F32x4::blend(zero_mask, zero, scaled)
+        } else {
+            (pixel * alpha).with_rgba_alpha(pixel)
+        };
+        *result.as_bytes()
+    }
+
+    macro_rules! copy_workers {
+        ($row:ident $(::<$param:literal>)?, $whole:ident, $strided:ident, $src_bpp:literal, $dst_bpp:literal) => {
+            #[arcane]
+            pub(in crate::bytes) fn $whole(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+                $row $(::<$param>)?(t, src, dst);
+            }
+
+            #[arcane]
+            pub(in crate::bytes) fn $strided(
+                t: Wasm128Token, src: &[u8], dst: &mut [u8], w: usize, h: usize, ss: usize, ds: usize,
+            ) {
+                for y in 0..h {
+                    $row $(::<$param>)?(t, &src[y * ss..][..w * $src_bpp], &mut dst[y * ds..][..w * $dst_bpp]);
+                }
+            }
+        };
+    }
+
+    #[rite]
+    fn unpremultiply_four(t: Wasm128Token, src: &[u8; 64]) -> [u8; 64] {
+        let packed = src.as_chunks::<16>().0;
+        let [r, g, b, a] =
+            F32x4::deinterleave_4ch(core::array::from_fn(|i| F32x4::from_bytes_t(t, &packed[i])));
+        let zero = F32x4::zero_t(t);
+        let inv = F32x4::splat_t(t, 1.0) / a;
+        let mask = a.simd_ne(zero);
+        let out = F32x4::interleave_4ch([
+            (r * inv) & mask,
+            (g * inv) & mask,
+            (b * inv) & mask,
+            a & mask,
+        ]);
+        bytemuck::cast(out.map(|v| *v.as_bytes()))
+    }
+
+    #[rite]
+    fn alpha_copy<const UNPREMULTIPLY: bool>(t: Wasm128Token, src: &[u8], dst: &mut [u8]) {
+        let (src, dst) = if UNPREMULTIPLY {
+            let (src_blocks, src_tail) = src.as_chunks::<64>();
+            let (dst_blocks, dst_tail) = dst.as_chunks_mut::<64>();
+            for (src, dst) in src_blocks.iter().zip(dst_blocks) {
+                *dst = unpremultiply_four(t, src);
+            }
+            (src_tail, dst_tail)
+        } else {
+            (src, dst)
+        };
+        for (src, dst) in src
+            .as_chunks::<16>()
+            .0
+            .iter()
+            .zip(dst.as_chunks_mut::<16>().0)
+        {
+            *dst = alpha_pixel::<UNPREMULTIPLY>(t, src);
+        }
+    }
+
+    #[rite]
+    fn alpha_in_place<const UNPREMULTIPLY: bool>(t: Wasm128Token, src: &mut [u8]) {
+        let src = if UNPREMULTIPLY {
+            let (blocks, tail) = src.as_chunks_mut::<64>();
+            for block in blocks {
+                *block = unpremultiply_four(t, block);
+            }
+            tail
+        } else {
+            src
+        };
+        for pixel in src.as_chunks_mut::<16>().0 {
+            *pixel = alpha_pixel::<UNPREMULTIPLY>(t, pixel);
+        }
+    }
+
+    macro_rules! alpha_workers {
+        ($unpremul:literal, $whole:ident, $strided:ident, $copy:ident, $copy_strided:ident) => {
+            copy_workers!(alpha_copy::<$unpremul>, $copy, $copy_strided, 16, 16);
+
+            #[arcane]
+            pub(in crate::bytes) fn $whole(t: Wasm128Token, buf: &mut [u8]) {
+                alpha_in_place::<$unpremul>(t, buf);
+            }
+
+            #[arcane]
+            pub(in crate::bytes) fn $strided(
+                t: Wasm128Token,
+                buf: &mut [u8],
+                w: usize,
+                h: usize,
+                stride: usize,
+            ) {
+                for y in 0..h {
+                    alpha_in_place::<$unpremul>(t, &mut buf[y * stride..][..w * 16]);
+                }
+            }
+        };
+    }
+
+    copy_workers!(
+        u8_to_f32,
+        convert_u8_to_f32_impl_wasm128,
+        convert_u8_to_f32_strided_wasm128,
+        1,
+        4
+    );
+    copy_workers!(
+        u16_to_f32,
+        convert_u16_to_f32_impl_wasm128,
+        convert_u16_to_f32_strided_wasm128,
+        2,
+        4
+    );
+    copy_workers!(
+        f32_to_u8,
+        convert_f32_to_u8_impl_wasm128,
+        convert_f32_to_u8_strided_wasm128,
+        4,
+        1
+    );
+    copy_workers!(
+        f32_to_u16,
+        convert_f32_to_u16_impl_wasm128,
+        convert_f32_to_u16_strided_wasm128,
+        4,
+        2
+    );
+    alpha_workers!(
+        false,
+        premul_f32_impl_wasm128,
+        premul_f32_strided_wasm128,
+        premul_f32_copy_impl_wasm128,
+        premul_f32_copy_strided_wasm128
+    );
+    alpha_workers!(
+        true,
+        unpremul_f32_impl_wasm128,
+        unpremul_f32_strided_wasm128,
+        unpremul_f32_copy_impl_wasm128,
+        unpremul_f32_copy_strided_wasm128
+    );
+}
+
+#[cfg(feature = "experimental")]
+pub(super) use float_pixels::*;

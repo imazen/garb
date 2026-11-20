@@ -724,7 +724,7 @@ mod experimental {
         dst: &mut [u8],
     ) {
         for (s, d) in src.iter().zip(dst.as_chunks_mut::<4>().0.iter_mut()) {
-            d.copy_from_slice(&(*s as f32 / 255.0).to_ne_bytes());
+            d.copy_from_slice(&(*s as f32 * (1.0 / 255.0)).to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn convert_f32_to_u8_row_scalar(
@@ -734,7 +734,9 @@ mod experimental {
     ) {
         for (s, d) in src.as_chunks::<4>().0.iter().zip(dst.iter_mut()) {
             let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
-            *d = (f64::from(v).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            *d = magetypes::scalar::to_u8_with::<
+                { magetypes::numerics::IntConvert::new().saturate_all().bits() },
+            >(v.clamp(0.0, 1.0) * 255.0);
         }
     }
     pub(in crate::bytes) fn convert_u16_to_f32_row_scalar(
@@ -749,7 +751,7 @@ mod experimental {
             .zip(dst.as_chunks_mut::<4>().0.iter_mut())
         {
             let v = u16::from_ne_bytes([s[0], s[1]]);
-            d.copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
+            d.copy_from_slice(&(v as f32 * (1.0 / 65535.0)).to_ne_bytes());
         }
     }
     pub(in crate::bytes) fn convert_f32_to_u16_row_scalar(
@@ -765,7 +767,10 @@ mod experimental {
         {
             let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
             d.copy_from_slice(
-                &((f64::from(v).clamp(0.0, 1.0) * 65535.0 + 0.5) as u16).to_ne_bytes(),
+                &(magetypes::scalar::to_u16_with::<
+                    { magetypes::numerics::IntConvert::new().saturate_all().bits() },
+                >(v.clamp(0.0, 1.0) * 65535.0))
+                .to_ne_bytes(),
             );
         }
     }
@@ -1138,7 +1143,7 @@ mod experimental {
             let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
             let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
             if a == 0.0 {
-                px[0..12].fill(0);
+                px.fill(0);
             } else {
                 let inv_a = 1.0 / a;
                 px[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());

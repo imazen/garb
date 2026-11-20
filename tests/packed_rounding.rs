@@ -1,4 +1,5 @@
 #![cfg(feature = "experimental")]
+#![allow(deprecated)]
 use archmage::testing::{CompileTimePolicy, for_each_token_permutation};
 use garb::bytes as b;
 

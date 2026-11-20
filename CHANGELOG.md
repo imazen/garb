@@ -6,9 +6,20 @@ Prepared package version: **0.2.9**. Publication awaits README approval and rele
 
 ### QUEUED BREAKING CHANGES
 
-None recorded.
+- Remove Cargo features `experimental`, `rgb`, and `imgref` (and their gated modules/traits/functions: `garb::deinterleave`, `garb::typed_rgb`, `garb::imgref`, `ConvertTo`, `ConvertInplace`, `convert`, `convert_inplace`, `ConvertImage`, `ConvertImageInplace`, `convert_imgref`, `convert_imgref_inplace`, and all `experimental` `garb::bytes` functions) in `0.3.0`, narrowing `garb` to its core `garb::bytes` SIMD byte-swizzle surface (`std` feature only) with `archmage` as its sole dependency.
+
+### Deprecated
+
+- Deprecated Cargo features `experimental`, `rgb`, and `imgref` ahead of `0.3.0` removal: enabling any of those features now emits a compiler deprecation warning even when none of their functions are called, and all gated modules, traits, and functions carry `#[deprecated(since = "0.2.9")]` migration notes (`zenpixels-convert` for depth/luma/alpha, `garb::bytes` / `*_strided` for `rgb` / `imgref`). Default `garb` (`garb::bytes` byte swizzles) has zero promotions, zero warnings, and zero breaking changes relative to `0.2.8`.
+
+### Added
+
+- WASM SIMD128 depth conversion, packed RGB-to-planar, and f32 RGBA alpha kernels.
 
 ### Fixed
+
+- Gate x86 AVX2 module behind `all(target_arch = "x86_64", target_feature = "sse2")` so soft-float `x86_64-unknown-none` builds cleanly.
+- Unpremultiplying f32 RGBA now returns four positive zeros wherever alpha is either signed zero, including odd tails and strided rows.
 
 - Declare the precision-policy example's `experimental` feature requirement so no-default CI builds the library/tests without unavailable grayscale example APIs (`9ec9fa71`).
 
@@ -19,6 +30,10 @@ None recorded.
 - `convert_u16_to_u8` rounds to nearest `(v + 128) / 257`; 127 of 65,536 inputs now increase by one (`ecf6c6b3`). Scalar, AVX2 and NEON use the same mapping.
 
 ### Changed
+
+- Sync `archmage` and `magetypes` to `0.9.32` (`imazen/archmage` `main` @ `303341570757`) and exclude repo-local metadata (`CLAUDE.md`, `AGENTS.md`, `README.md`, `apidoc/`, `.zenbench/`) from published crate archives.
+- Switch float depth conversion to the same f32 reciprocal multiply and nearest-even quantization on every tier. Integer normalization stays within 1 ULP of division. Quantization can change by one code at half-code boundaries; NaN still maps to zero.
+
 
 - Accept the archmage and magetypes 0.9.31 stable release.
 

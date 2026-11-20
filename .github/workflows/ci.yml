@@ -80,10 +80,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1, wasm32-unknown-unknown
-      - name: Install wasmtime
-        run: |
-          curl https://wasmtime.dev/install.sh -sSf | bash
-          echo "$HOME/.wasmtime/bin" >> "$GITHUB_PATH"
+      - uses: taiki-e/install-action@wasmtime
       - uses: Swatinem/rust-cache@v2
       - name: Check wasm32-unknown-unknown (no SIMD)
         run: cargo check --target wasm32-unknown-unknown --no-default-features
@@ -91,6 +88,11 @@ jobs:
         run: cargo test --target wasm32-wasip1 --no-default-features -- --test-threads=1
       - name: Test wasm32-wasip1 (simd128)
         run: cargo test --target wasm32-wasip1 --no-default-features -- --test-threads=1
+        env:
+          RUSTFLAGS: "-C target-feature=+simd128"
+
+      - name: Test WASM float and RGB kernels (simd128)
+        run: cargo test --target wasm32-wasip1 --no-default-features --features experimental --lib -- --test-threads=1
         env:
           RUSTFLAGS: "-C target-feature=+simd128"
 
@@ -105,8 +107,9 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
-      - run: cargo clippy --all-features -- -D warnings
+      - run: cargo clippy -- -D warnings
       - run: cargo clippy --no-default-features -- -D warnings
+      - run: cargo clippy --all-features -- -D warnings -A deprecated
       - name: Doc build (warnings as errors)
         run: cargo doc --all-features --no-deps
         env:

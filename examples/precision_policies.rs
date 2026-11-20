@@ -1,4 +1,6 @@
 //! Compare retained format policies with exact decimal ratios.
+#![allow(deprecated)]
+
 fn main() {
     for (name, reference, denominator) in [
         ("BT601", [299u32, 587, 114], 1000),

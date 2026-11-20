@@ -6,6 +6,8 @@
 //! (per-pixel cost dominates), so we can fit `α + β · pixels` and report
 //! both the intercept and the slope.
 
+#![allow(deprecated)]
+
 use archmage::SimdToken;
 use garb::deinterleave::{
     planes_f32_to_rgb_f32, planes_f32_to_rgba_f32, rgb_f32_to_planes_f32, rgb24_to_planes_f32,

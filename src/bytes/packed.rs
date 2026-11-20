@@ -1,6 +1,7 @@
 //! Packed pixel format conversions (RGB565, RGBA4444).
 
 #![cfg_attr(target_arch = "x86", allow(unused_imports))]
+#![allow(deprecated)]
 
 use archmage::prelude::*;
 
@@ -458,6 +459,10 @@ fn bgra_to_rgba4444_strided_impl(
 ///
 /// Source bit layout per u16 (little-endian): `R[15:11] G[10:5] B[4:0]`.
 /// Sub-byte channels are expanded to 8 bits by MSB replication.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgb565_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 2, dst.len(), 4)?;
     rgb565_to_rgba_impl(src, dst);
@@ -468,6 +473,10 @@ pub fn rgb565_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 ///
 /// Source bit layout per u16: `R[15:11] G[10:5] B[4:0]`.
 /// Output byte order: `[B, G, R, A]`.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgb565_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 2, dst.len(), 4)?;
     rgb565_to_bgra_impl(src, dst);
@@ -477,6 +486,10 @@ pub fn rgb565_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 /// RGBA4444 (little-endian u16, 2 bytes/px) → RGBA (4 bytes/px).
 ///
 /// Source bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba4444_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 2, dst.len(), 4)?;
     rgba4444_to_rgba_impl(src, dst);
@@ -487,6 +500,10 @@ pub fn rgba4444_to_rgba(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 ///
 /// Source bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
 /// Output byte order: `[B, G, R, A]`.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba4444_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 2, dst.len(), 4)?;
     rgba4444_to_bgra_impl(src, dst);
@@ -498,6 +515,10 @@ pub fn rgba4444_to_bgra(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 /// RGB565 (LE, 2 bytes/px) → RGBA (4 bytes/px) between strided buffers.
 ///
 /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgb565_to_rgba_strided(
     src: &[u8],
     dst: &mut [u8],
@@ -515,6 +536,10 @@ pub fn rgb565_to_rgba_strided(
 /// RGB565 (LE, 2 bytes/px) → BGRA (4 bytes/px) between strided buffers.
 ///
 /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgb565_to_bgra_strided(
     src: &[u8],
     dst: &mut [u8],
@@ -532,6 +557,10 @@ pub fn rgb565_to_bgra_strided(
 /// RGBA4444 (LE, 2 bytes/px) → RGBA (4 bytes/px) between strided buffers.
 ///
 /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba4444_to_rgba_strided(
     src: &[u8],
     dst: &mut [u8],
@@ -549,6 +578,10 @@ pub fn rgba4444_to_rgba_strided(
 /// RGBA4444 (LE, 2 bytes/px) → BGRA (4 bytes/px) between strided buffers.
 ///
 /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba4444_to_bgra_strided(
     src: &[u8],
     dst: &mut [u8],
@@ -591,6 +624,10 @@ pub fn rgba4444_to_bgra_strided(
 ///
 /// Lossy: 8-bit channels are rounded to 5/6/5 bits.
 /// Output bit layout per u16: `R[15:11] G[10:5] B[4:0]`.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba_to_rgb565(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 2)?;
     rgba_to_rgb565_impl(src, dst);
@@ -601,6 +638,10 @@ pub fn rgba_to_rgb565(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 ///
 /// Lossy: 8-bit channels are rounded to 5/6/5 bits.
 /// Output bit layout per u16: `R[15:11] G[10:5] B[4:0]`.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn bgra_to_rgb565(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 2)?;
     bgra_to_rgb565_impl(src, dst);
@@ -611,6 +652,10 @@ pub fn bgra_to_rgb565(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 ///
 /// Lossy: 8-bit channels are rounded to 4 bits each.
 /// Output bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba_to_rgba4444(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 2)?;
     rgba_to_rgba4444_impl(src, dst);
@@ -621,6 +666,10 @@ pub fn rgba_to_rgba4444(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 ///
 /// Lossy: 8-bit channels are rounded to 4 bits each.
 /// Output bit layout per u16: `R[15:12] G[11:8] B[7:4] A[3:0]`.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn bgra_to_rgba4444(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
     check_copy(src.len(), 4, dst.len(), 2)?;
     bgra_to_rgba4444_impl(src, dst);
@@ -632,6 +681,10 @@ pub fn bgra_to_rgba4444(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
 /// RGBA (4 bytes/px) → RGB565 (LE, 2 bytes/px) between strided buffers. Alpha dropped.
 ///
 /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba_to_rgb565_strided(
     src: &[u8],
     dst: &mut [u8],
@@ -649,6 +702,10 @@ pub fn rgba_to_rgb565_strided(
 /// BGRA (4 bytes/px) → RGB565 (LE, 2 bytes/px) between strided buffers. Alpha dropped.
 ///
 /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn bgra_to_rgb565_strided(
     src: &[u8],
     dst: &mut [u8],
@@ -666,6 +723,10 @@ pub fn bgra_to_rgb565_strided(
 /// RGBA (4 bytes/px) → RGBA4444 (LE, 2 bytes/px) between strided buffers.
 ///
 /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba_to_rgba4444_strided(
     src: &[u8],
     dst: &mut [u8],
@@ -683,6 +744,10 @@ pub fn rgba_to_rgba4444_strided(
 /// BGRA (4 bytes/px) → RGBA4444 (LE, 2 bytes/px) between strided buffers.
 ///
 /// `width` is pixels per row. `src_stride`/`dst_stride` are bytes between row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn bgra_to_rgba4444_strided(
     src: &[u8],
     dst: &mut [u8],

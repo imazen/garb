@@ -13,6 +13,11 @@ readme = "README.crates.md"
 exclude = [
     ".github/",
     ".gitignore",
+    ".zenbench/",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "apidoc/",
     "benchmarks/",
     "tests/",
     "docs/",
@@ -20,14 +25,15 @@ exclude = [
 ]
 
 [dependencies]
-archmage = { version = ">=0.9.31-beta.2, <0.10.0", features = ["macros"] }
-bytemuck = { version = "1.25.2", features = ["derive", "extern_crate_alloc"] }
+archmage = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "303341570757936368fca1ee7254a19075cbff08", default-features = false, features = ["macros"] }
+magetypes = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "303341570757936368fca1ee7254a19075cbff08", default-features = false, optional = true }
+bytemuck = { version = "1.25.2", default-features = false, optional = true }
 paste = { package = "pastey", version = "0.2.3", optional = true }
 rgb = { version = "0.8.53", features = ["bytemuck"], optional = true }
 imgref = { version = "1.12.3", optional = true }
 
 [dev-dependencies]
-archmage = { version = ">=0.9.31-beta.2, <0.10.0", features = ["testable_dispatch"] }
+archmage = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "303341570757936368fca1ee7254a19075cbff08", default-features = false, features = ["std", "testable_dispatch"] }
 rgb = { version = "0.8.53", features = ["bytemuck"] }
 imgref = "1.12.3"
 criterion = { version = "0.8.2", default-features = false, features = ["plotters", "html_reports"] }
@@ -44,10 +50,10 @@ required-features = ["experimental"]
 
 [features]
 default = ["std"]
-std = ["archmage/std"]
-experimental = ["dep:paste"]
-rgb = ["dep:rgb"]
-imgref = ["dep:imgref", "rgb"]
+std = ["archmage/std", "magetypes?/std"]
+experimental = ["dep:paste", "dep:magetypes", "dep:bytemuck"]
+rgb = ["dep:rgb", "dep:bytemuck"]
+imgref = ["dep:imgref", "rgb", "bytemuck/extern_crate_alloc"]
 
 [[bench]]
 name = "kernel_tiers"
@@ -56,3 +62,8 @@ harness = false
 [[example]]
 name = "precision_policies"
 required-features = ["experimental"]
+
+# Use the reviewed SIMD stack until 0.9.32 ships on crates.io.
+[patch.crates-io]
+archmage = { git = "https://github.com/imazen/archmage", rev = "303341570757936368fca1ee7254a19075cbff08" }
+magetypes = { git = "https://github.com/imazen/archmage", rev = "303341570757936368fca1ee7254a19075cbff08" }

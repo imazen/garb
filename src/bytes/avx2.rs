@@ -1240,14 +1240,6 @@ mod experimental {
         }
     }
 
-    /// `x / den` for integer `x`, correctly rounded, from the reciprocal plus one FMA
-    /// correction: the same bits as a division, without its cost.
-    #[rite]
-    fn exact_quotient_v3(_t: X64V3Token, x: __m256, inv: __m256, den: __m256) -> __m256 {
-        let q = _mm256_mul_ps(x, inv);
-        _mm256_fmadd_ps(_mm256_fnmadd_ps(q, den, x), inv, q)
-    }
-
     #[rite]
     pub(in crate::bytes) fn convert_u8_to_f32_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
         let scale = _mm256_set1_ps(1.0 / 255.0);
@@ -1259,53 +1251,35 @@ mod experimental {
             let v = _mm_loadu_si128(&tmp);
             let wide32 = _mm256_cvtepu8_epi32(v);
             let floats = _mm256_cvtepi32_ps(wide32);
-            let result = exact_quotient_v3(_t, floats, scale, _mm256_set1_ps(255.0));
+            let result = _mm256_mul_ps(floats, scale);
             let d: &mut [u8; 32] = (&mut dst[i * 4..i * 4 + 32]).try_into().unwrap();
             _mm256_storeu_si256(d, _mm256_castps_si256(result));
             i += 8;
         }
         for j in i..n {
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 / 255.0).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 * (1.0 / 255.0)).to_ne_bytes());
         }
     }
 
-    // Widen before scaling: f32 multiplication can round a value just below
-    // a half-code onto the half-code. f64 holds this product and bias exactly.
     #[rite]
-    fn quantize_nearest_v3(_t: X64V3Token, v: __m256, scale: f64) -> __m256i {
-        let clamped = _mm256_min_ps(_mm256_max_ps(v, _mm256_setzero_ps()), _mm256_set1_ps(1.0));
-        let lo = _mm256_cvtps_pd(_mm256_castps256_ps128(clamped));
-        let hi = _mm256_cvtps_pd(_mm256_extractf128_ps::<1>(clamped));
-        let scale = _mm256_set1_pd(scale);
-        let half = _mm256_set1_pd(0.5);
-        let lo = _mm256_cvttpd_epi32(_mm256_add_pd(_mm256_mul_pd(lo, scale), half));
-        let hi = _mm256_cvttpd_epi32(_mm256_add_pd(_mm256_mul_pd(hi, scale), half));
-        _mm256_inserti128_si256::<1>(_mm256_castsi128_si256(lo), hi)
-    }
-
-    #[rite]
-    pub(in crate::bytes) fn convert_f32_to_u8_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-        let n = src.len() / 4;
-        let mut i = 0;
-        while i + 8 <= n {
-            let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
-            let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-            let ints = quantize_nearest_v3(_t, v, 255.0);
-            let packed16 = _mm256_packus_epi32(ints, ints);
-            let packed8 = _mm256_packus_epi16(packed16, packed16);
-            let lo = _mm256_extracti128_si256::<0>(packed8);
-            let hi = _mm256_extracti128_si256::<1>(packed8);
-            let combined = _mm_unpacklo_epi32(lo, hi);
-            let mut tmp = [0u8; 16];
-            _mm_storeu_si128(&mut tmp, combined);
-            dst[i..i + 8].copy_from_slice(&tmp[..8]);
-            i += 8;
+    pub(in crate::bytes) fn convert_f32_to_u8_row_v3(t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        use magetypes::simd::generic::f32x8 as V;
+        const CFG: u32 = magetypes::numerics::IntConvert::new().in_range().bits();
+        let (blocks, tail) = src.as_chunks::<32>();
+        let zero = V::zero_t(t);
+        let one = V::splat_t(t, 1.0);
+        let scale = V::splat_t(t, 255.0);
+        for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<8>().0) {
+            let v = V::from_raw_t(t, _mm256_castsi256_ps(_mm256_loadu_si256(src)));
+            let clamped = v.max_fast(zero).min_fast(one);
+            let converted = (clamped * scale).to_u8_with::<CFG>();
+            dst.copy_from_slice(bytemuck::bytes_of(&converted));
         }
-        for j in i..n {
-            let v =
-                f32::from_ne_bytes([src[j * 4], src[j * 4 + 1], src[j * 4 + 2], src[j * 4 + 3]]);
-            dst[j] = (f64::from(v).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-        }
+        super::super::scalar::convert_f32_to_u8_row_scalar(
+            archmage::ScalarToken,
+            tail,
+            &mut dst[blocks.len() * 8..],
+        );
     }
 
     #[rite]
@@ -1318,38 +1292,36 @@ mod experimental {
             let v = _mm_loadu_si128(s);
             let wide32 = _mm256_cvtepu16_epi32(v);
             let floats = _mm256_cvtepi32_ps(wide32);
-            let result = exact_quotient_v3(_t, floats, scale, _mm256_set1_ps(65535.0));
+            let result = _mm256_mul_ps(floats, scale);
             let d: &mut [u8; 32] = (&mut dst[i * 4..i * 4 + 32]).try_into().unwrap();
             _mm256_storeu_si256(d, _mm256_castps_si256(result));
             i += 8;
         }
         for j in i..n {
             let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 * (1.0 / 65535.0)).to_ne_bytes());
         }
     }
 
     #[rite]
-    pub(in crate::bytes) fn convert_f32_to_u16_row_v3(_t: X64V3Token, src: &[u8], dst: &mut [u8]) {
-        let n = src.len() / 4;
-        let mut i = 0;
-        while i + 8 <= n {
-            let s: &[u8; 32] = src[i * 4..i * 4 + 32].try_into().unwrap();
-            let v = _mm256_castsi256_ps(_mm256_loadu_si256(s));
-            let ints = quantize_nearest_v3(_t, v, 65535.0);
-            let packed16 = _mm256_packus_epi32(ints, ints);
-            let perm = _mm256_permute4x64_epi64::<0b00_00_10_00>(packed16);
-            let mut tmp = [0u8; 32];
-            _mm256_storeu_si256(&mut tmp, perm);
-            dst[i * 2..i * 2 + 16].copy_from_slice(&tmp[..16]);
-            i += 8;
+    pub(in crate::bytes) fn convert_f32_to_u16_row_v3(t: X64V3Token, src: &[u8], dst: &mut [u8]) {
+        use magetypes::simd::generic::f32x8 as V;
+        const CFG: u32 = magetypes::numerics::IntConvert::new().in_range().bits();
+        let (blocks, tail) = src.as_chunks::<32>();
+        let zero = V::zero_t(t);
+        let one = V::splat_t(t, 1.0);
+        let scale = V::splat_t(t, 65535.0);
+        for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<16>().0) {
+            let v = V::from_raw_t(t, _mm256_castsi256_ps(_mm256_loadu_si256(src)));
+            let clamped = v.max_fast(zero).min_fast(one);
+            let converted = (clamped * scale).to_u16_with::<CFG>();
+            dst.copy_from_slice(bytemuck::bytes_of(&converted));
         }
-        for j in i..n {
-            let v =
-                f32::from_ne_bytes([src[j * 4], src[j * 4 + 1], src[j * 4 + 2], src[j * 4 + 3]]);
-            let u16_val = (f64::from(v).clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
-            dst[j * 2..j * 2 + 2].copy_from_slice(&u16_val.to_ne_bytes());
-        }
+        super::super::scalar::convert_f32_to_u16_row_scalar(
+            archmage::ScalarToken,
+            tail,
+            &mut dst[blocks.len() * 16..],
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1596,7 +1568,7 @@ mod experimental {
                 let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
                 let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
                 if a == 0.0 {
-                    px[0..12].fill(0);
+                    px.fill(0);
                 } else {
                     let inv_a = 1.0 / a;
                     px[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());

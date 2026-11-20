@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use archmage::SimdToken;
 use criterion::{BenchmarkGroup, Criterion, Throughput, measurement::WallTime};
 

@@ -819,14 +819,10 @@ mod experimental {
         }
     }
 
-    /// u8 → f32 via `v / 255.0`. 16 elements/iter.
+    /// Normalize u8 using a rounded f32 reciprocal. 16 elements/iter.
     #[rite]
     pub(in crate::bytes) fn convert_u8_to_f32_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
-        // Corrected reciprocal, matching the AVX2 tier: bit-exact with the scalar division.
-        // vdivq_f32 would be too, but measured ~53% SLOWER than scalar here: FDIV throughput
-        // on Apple cores is low enough that the kernel stops being memory-bound.
         let scale = vdupq_n_f32(1.0 / 255.0);
-        let den = vdupq_n_f32(255.0);
         let n = src.len().min(dst.len() / 4);
         let mut i = 0;
         while i + 16 <= n {
@@ -836,20 +832,10 @@ mod experimental {
             let w16hi = vmovl_high_u8(v);
             // Straight-line: binding these in an array forces a stack spill of
             // every vector, which measured 52% slower than the scalar path.
-            let f0 = exact_quotient_neon(
-                _t,
-                vcvtq_f32_u32(vmovl_u16(vget_low_u16(w16lo))),
-                scale,
-                den,
-            );
-            let f1 = exact_quotient_neon(_t, vcvtq_f32_u32(vmovl_high_u16(w16lo)), scale, den);
-            let f2 = exact_quotient_neon(
-                _t,
-                vcvtq_f32_u32(vmovl_u16(vget_low_u16(w16hi))),
-                scale,
-                den,
-            );
-            let f3 = exact_quotient_neon(_t, vcvtq_f32_u32(vmovl_high_u16(w16hi)), scale, den);
+            let f0 = vmulq_f32(vcvtq_f32_u32(vmovl_u16(vget_low_u16(w16lo))), scale);
+            let f1 = vmulq_f32(vcvtq_f32_u32(vmovl_high_u16(w16lo)), scale);
+            let f2 = vmulq_f32(vcvtq_f32_u32(vmovl_u16(vget_low_u16(w16hi))), scale);
+            let f3 = vmulq_f32(vcvtq_f32_u32(vmovl_high_u16(w16hi)), scale);
             let base = i * 4;
             let d0: &mut [u8; 16] = (&mut dst[base..base + 16]).try_into().unwrap();
             store_f32x4(_t, d0, f0);
@@ -862,36 +848,21 @@ mod experimental {
             i += 16;
         }
         for j in i..n {
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 / 255.0).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(src[j] as f32 * (1.0 / 255.0)).to_ne_bytes());
         }
     }
 
-    /// `x / den` for integer `x`, correctly rounded, from the reciprocal plus one fused
-    /// correction: the same bits as a division, without its cost.
-    #[rite]
-    fn exact_quotient_neon(
-        _t: NeonToken,
-        x: float32x4_t,
-        inv: float32x4_t,
-        den: float32x4_t,
-    ) -> float32x4_t {
-        let q = vmulq_f32(x, inv);
-        vfmaq_f32(q, vfmsq_f32(x, q, den), inv)
-    }
-
-    /// u16 → f32 via `v / 65535.0`. 8 elements/iter.
+    /// Normalize u16 using a rounded f32 reciprocal. 8 elements/iter.
     #[rite]
     pub(in crate::bytes) fn convert_u16_to_f32_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
-        // Corrected reciprocal, matching the AVX2 tier. See convert_u8_to_f32.
         let scale = vdupq_n_f32(1.0 / 65535.0);
-        let den = vdupq_n_f32(65535.0);
         let n = (src.len() / 2).min(dst.len() / 4);
         let mut i = 0;
         while i + 8 <= n {
             let s: &[u8; 16] = src[i * 2..i * 2 + 16].try_into().unwrap();
             let v = vreinterpretq_u16_u8(vld1q_u8(s));
-            let f0 = exact_quotient_neon(_t, vcvtq_f32_u32(vmovl_u16(vget_low_u16(v))), scale, den);
-            let f1 = exact_quotient_neon(_t, vcvtq_f32_u32(vmovl_high_u16(v)), scale, den);
+            let f0 = vmulq_f32(vcvtq_f32_u32(vmovl_u16(vget_low_u16(v))), scale);
+            let f1 = vmulq_f32(vcvtq_f32_u32(vmovl_high_u16(v)), scale);
             let base = i * 4;
             let d0: &mut [u8; 16] = (&mut dst[base..base + 16]).try_into().unwrap();
             store_f32x4(_t, d0, f0);
@@ -901,76 +872,50 @@ mod experimental {
         }
         for j in i..n {
             let v = u16::from_ne_bytes([src[j * 2], src[j * 2 + 1]]);
-            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
+            dst[j * 4..j * 4 + 4].copy_from_slice(&(v as f32 * (1.0 / 65535.0)).to_ne_bytes());
         }
     }
 
-    /// Clamp to [0,1], scale, add 0.5, truncate — shared by the f32→int kernels.
     #[rite]
-    fn quantize(_t: NeonToken, v: float32x4_t, scale: float64x2_t) -> uint32x4_t {
-        let clamped = vminq_f32(vmaxq_f32(v, vdupq_n_f32(0.0)), vdupq_n_f32(1.0));
-        let lo = vcvt_f64_f32(vget_low_f32(clamped));
-        let hi = vcvt_high_f64_f32(clamped);
-        let half = vdupq_n_f64(0.5);
-        let lo = vmovn_u64(vcvtq_u64_f64(vaddq_f64(vmulq_f64(lo, scale), half)));
-        let hi = vmovn_u64(vcvtq_u64_f64(vaddq_f64(vmulq_f64(hi, scale), half)));
-        vcombine_u32(lo, hi)
+    pub(in crate::bytes) fn convert_f32_to_u8_row_neon(t: NeonToken, src: &[u8], dst: &mut [u8]) {
+        use magetypes::simd::generic::f32x4 as V;
+        const CFG: u32 = magetypes::numerics::IntConvert::new().saturate_all().bits();
+        let (blocks, tail) = src.as_chunks::<16>();
+        let zero = V::zero_t(t);
+        let one = V::splat_t(t, 1.0);
+        let scale = V::splat_t(t, 255.0);
+        for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<4>().0) {
+            let v = load_f32x4(t, src);
+            let clamped = V::from_raw_t(t, vminq_f32(vmaxq_f32(v, zero.raw()), one.raw()));
+            let converted = (clamped * scale).to_u8_with::<CFG>();
+            dst.copy_from_slice(bytemuck::bytes_of(&converted));
+        }
+        super::super::scalar::convert_f32_to_u8_row_scalar(
+            archmage::ScalarToken,
+            tail,
+            &mut dst[blocks.len() * 4..],
+        );
     }
 
-    /// f32 → u8 via `clamp(v,0,1) * 255 + 0.5`, truncated. 16 elements/iter.
     #[rite]
-    pub(in crate::bytes) fn convert_f32_to_u8_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
-        let scale = vdupq_n_f64(255.0);
-        let n = (src.len() / 4).min(dst.len());
-        let mut i = 0;
-        while i + 16 <= n {
-            let mut q = [vdupq_n_u32(0); 4];
-            for (k, qk) in q.iter_mut().enumerate() {
-                let s: &[u8; 16] = src[(i + k * 4) * 4..(i + k * 4) * 4 + 16]
-                    .try_into()
-                    .unwrap();
-                *qk = quantize(_t, load_f32x4(_t, s), scale);
-            }
-            let lo = vcombine_u16(vmovn_u32(q[0]), vmovn_u32(q[1]));
-            let hi = vcombine_u16(vmovn_u32(q[2]), vmovn_u32(q[3]));
-            let packed = vcombine_u8(vmovn_u16(lo), vmovn_u16(hi));
-            let out: &mut [u8; 16] = (&mut dst[i..i + 16]).try_into().unwrap();
-            vst1q_u8(out, packed);
-            i += 16;
+    pub(in crate::bytes) fn convert_f32_to_u16_row_neon(t: NeonToken, src: &[u8], dst: &mut [u8]) {
+        use magetypes::simd::generic::f32x4 as V;
+        const CFG: u32 = magetypes::numerics::IntConvert::new().saturate_all().bits();
+        let (blocks, tail) = src.as_chunks::<16>();
+        let zero = V::zero_t(t);
+        let one = V::splat_t(t, 1.0);
+        let scale = V::splat_t(t, 65535.0);
+        for (src, dst) in blocks.iter().zip(dst.as_chunks_mut::<8>().0) {
+            let v = load_f32x4(t, src);
+            let clamped = V::from_raw_t(t, vminq_f32(vmaxq_f32(v, zero.raw()), one.raw()));
+            let converted = (clamped * scale).to_u16_with::<CFG>();
+            dst.copy_from_slice(bytemuck::bytes_of(&converted));
         }
-        for j in i..n {
-            let s: &[u8; 4] = src[j * 4..j * 4 + 4].try_into().unwrap();
-            let v = f32::from_ne_bytes(*s);
-            dst[j] = (f64::from(v).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-        }
-    }
-
-    /// f32 → u16 via `clamp(v,0,1) * 65535 + 0.5`, truncated. 8 elements/iter.
-    #[rite]
-    pub(in crate::bytes) fn convert_f32_to_u16_row_neon(_t: NeonToken, src: &[u8], dst: &mut [u8]) {
-        let scale = vdupq_n_f64(65535.0);
-        let n = (src.len() / 4).min(dst.len() / 2);
-        let mut i = 0;
-        while i + 8 <= n {
-            let mut q = [vdupq_n_u32(0); 2];
-            for (k, qk) in q.iter_mut().enumerate() {
-                let s: &[u8; 16] = src[(i + k * 4) * 4..(i + k * 4) * 4 + 16]
-                    .try_into()
-                    .unwrap();
-                *qk = quantize(_t, load_f32x4(_t, s), scale);
-            }
-            let packed = vcombine_u16(vmovn_u32(q[0]), vmovn_u32(q[1]));
-            let out: &mut [u8; 16] = (&mut dst[i * 2..i * 2 + 16]).try_into().unwrap();
-            vst1q_u8(out, vreinterpretq_u8_u16(packed));
-            i += 8;
-        }
-        for j in i..n {
-            let s: &[u8; 4] = src[j * 4..j * 4 + 4].try_into().unwrap();
-            let v = f32::from_ne_bytes(*s);
-            dst[j * 2..j * 2 + 2].copy_from_slice(
-                &((f64::from(v).clamp(0.0, 1.0) * 65535.0 + 0.5) as u16).to_ne_bytes(),
-            );
-        }
+        super::super::scalar::convert_f32_to_u16_row_scalar(
+            archmage::ScalarToken,
+            tail,
+            &mut dst[blocks.len() * 8..],
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -990,16 +935,17 @@ mod experimental {
         vbslq_f32(keep_a, v, vmulq_laneq_f32::<3>(v, v))
     }
 
-    /// `C' = C / A`, alpha preserved; all-zero RGB where A == 0.
+    /// Reciprocal followed by multiplication, with all four lanes zeroed when A == 0.
     ///
     /// Branchless: the scalar path's `if a == 0.0` becomes a vceqzq_f32 mask
     /// plus a select, which is what makes this worth vectorizing at all.
     #[rite]
     fn unpremul_px(_t: NeonToken, v: float32x4_t, keep_a: uint32x4_t) -> float32x4_t {
         let a = vdupq_laneq_f32::<3>(v);
-        let scaled = vmulq_f32(v, vdivq_f32(vdupq_n_f32(1.0), a));
-        let unpremulled = vbslq_f32(vceqzq_f32(a), vdupq_n_f32(0.0), scaled);
-        vbslq_f32(keep_a, v, unpremulled)
+        let zero_mask = vceqzq_f32(a);
+        let one = vdupq_n_f32(1.0);
+        let scaled = vmulq_f32(v, vdivq_f32(one, a));
+        vbslq_f32(zero_mask, vdupq_n_f32(0.0), vbslq_f32(keep_a, v, scaled))
     }
 
     #[rite]
@@ -1058,15 +1004,17 @@ mod experimental {
         g: float32x4_t,
         b: float32x4_t,
         a: float32x4_t,
-    ) -> (float32x4_t, float32x4_t, float32x4_t) {
+    ) -> (float32x4_t, float32x4_t, float32x4_t, float32x4_t) {
         // Bit-exact with the scalar path: reciprocal first, then multiply.
-        let inv = vdivq_f32(vdupq_n_f32(1.0), a);
         let zero_a = vceqzq_f32(a);
+        let one = vdupq_n_f32(1.0);
+        let inv = vdivq_f32(one, a);
         let zero = vdupq_n_f32(0.0);
         (
             vbslq_f32(zero_a, zero, vmulq_f32(r, inv)),
             vbslq_f32(zero_a, zero, vmulq_f32(g, inv)),
             vbslq_f32(zero_a, zero, vmulq_f32(b, inv)),
+            vbslq_f32(zero_a, zero, a),
         )
     }
 
@@ -1082,7 +1030,7 @@ mod experimental {
             let p2 = load_f32x4(_t, buf[i + 32..i + 48].try_into().unwrap());
             let p3 = load_f32x4(_t, buf[i + 48..i + 64].try_into().unwrap());
             let (r, g, b, a) = transpose4(_t, p0, p1, p2, p3);
-            let (r, g, b) = unpremul_planes(_t, r, g, b, a);
+            let (r, g, b, a) = unpremul_planes(_t, r, g, b, a);
             let (q0, q1, q2, q3) = transpose4(_t, r, g, b, a);
             store_f32x4(_t, (&mut buf[i..i + 16]).try_into().unwrap(), q0);
             store_f32x4(_t, (&mut buf[i + 16..i + 32]).try_into().unwrap(), q1);
@@ -1107,7 +1055,7 @@ mod experimental {
             let p2 = load_f32x4(_t, src[i + 32..i + 48].try_into().unwrap());
             let p3 = load_f32x4(_t, src[i + 48..i + 64].try_into().unwrap());
             let (r, g, b, a) = transpose4(_t, p0, p1, p2, p3);
-            let (r, g, b) = unpremul_planes(_t, r, g, b, a);
+            let (r, g, b, a) = unpremul_planes(_t, r, g, b, a);
             let (q0, q1, q2, q3) = transpose4(_t, r, g, b, a);
             store_f32x4(_t, (&mut dst[i..i + 16]).try_into().unwrap(), q0);
             store_f32x4(_t, (&mut dst[i + 16..i + 32]).try_into().unwrap(), q1);

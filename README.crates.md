@@ -34,9 +34,8 @@ assert_eq!(bgra, [128, 0, 255, 255]);
 ```
 
 Every function returns `Result<(), SizeError>` — no panics, no silent truncation —
-and ships a `_strided` companion for padded row layouts. Enable the `rgb` /
-`imgref` features to let the compiler pick the conversion from typed pixel slices
-(see [Usage](#usage)). For the full operation list, see the
+and ships a `_strided` companion for padded row layouts. *(Note: Cargo features `experimental`, `rgb`, and `imgref` are deprecated in `0.2.9`
+and queued for removal in `0.3.0`; prefer `garb::bytes` directly.)* For the full operation list, see the
 [Function reference](#function-reference).
 
 ## What it does
@@ -63,7 +62,7 @@ stripping channels — so you can get back to the interesting work.
 - GrayAlpha → ARGB / ABGR
 - Fill alpha (set byte 0 = 255 in each 4-byte pixel, for ARGB/ABGR/XRGB/XBGR layouts)
 
-**Experimental** (feature `experimental` — API may change)
+**Experimental** *(feature `experimental` — deprecated in 0.2.9, queued for removal in 0.3.0)*
 - RGB565 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
 - RGBA / BGRA → RGB565 (lossy compress, round-to-nearest, auto-vectorized)
 - RGBA4444 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
@@ -72,11 +71,8 @@ stripping channels — so you can get back to the interesting work.
   matches DXGI `R10G10B10A2_UNORM` / Vulkan `A2B10G10R10_UNORM_PACK32` /
   WGPU `Rgb10a2Unorm`; 2-bit alpha bit-replicated to 10 bits per the graphics-API
   convention; transfer functions are NOT applied — chain with `linear-srgb` for PQ/HLG)
-- u8 alpha premultiply for RGBA / BGRA (exact integer, auto-vectorized)
-- Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha
-- RGB / RGBA / BGR / BGRA → Gray (weighted luma: BT.709, BT.601, BT.2020; or identity)
-- Depth conversion: u8 ↔ u16, u8 ↔ f32, u16 ↔ f32
-- f32 alpha premultiply / unpremultiply (in-place and copy, AVX2 SIMD)
+- Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha, u8 ↔ u16 depth conversion
+- *(Deprecated in 0.2.9 for 0.3.0 removal; use `zenpixels-convert`)*: `garb::deinterleave`, `f32` depth conversion, `f32` and `u8` alpha premultiply/unpremultiply, and weighted/identity `*_to_gray*`
 
 All operations have `_strided` variants for images with padding between rows
 (common in video frames and GPU textures).
@@ -196,11 +192,11 @@ caller-owned slices). Only the `imgref` feature pulls in `alloc`.
 
 ## Precision
 
-Depth narrowing rounds to nearest after clamping. f32→integer conversion
-widens before scaling, so a value just below a half-code does not round up
-prematurely. u16→u8 uses exact `(v + 128) / 257`; integer→f32 matches
-correctly rounded division at every native tier and row position.
-These fixes change some normalized float bits and output bytes versus 0.2.8.
+Depth narrowing from f32 clamps to [0, 1], multiplies by the destination
+maximum in f32, and rounds ties to even. NaN becomes zero.
+u16 to u8 uses exact `(v + 128) / 257`. Integer to f32 multiplies by a
+rounded reciprocal and stays within one ULP of division. Both float
+mappings agree across backends and across chunk and tail positions.
 See the [precision review](https://github.com/imazen/garb/blob/main/docs/precision.md).
 
 ## SIMD dispatch

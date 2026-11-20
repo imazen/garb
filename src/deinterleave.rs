@@ -15,11 +15,14 @@
 //! - **aarch64 NEON** — `vld3_u8` / `vld3q_u16` hardware structure-loads
 //!   deinterleave in a single instruction, then `vmovl_*` widens and
 //!   `vcvtq_f32_u32` converts.
+//! - **WASM SIMD128** — widen and shuffle packed blocks through Magetypes.
 //! - **Scalar** — explicit `array::from_fn` writes, exposed for benchmarking
 //!   the unaccelerated path.
 
+#![allow(deprecated)]
+
 use crate::SizeError;
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 use archmage::X64V3Token;
 use archmage::prelude::*;
 
@@ -53,7 +56,10 @@ pub fn rgb24_to_planes_f32(
     let r = &mut r[..pixels];
     let g = &mut g[..pixels];
     let b = &mut b[..pixels];
-    incant!(rgb24_to_planes_impl(src, r, g, b), [v3, neon, scalar]);
+    incant!(
+        rgb24_to_planes_impl(src, r, g, b),
+        [v3, neon, wasm128, scalar]
+    );
     Ok(())
 }
 
@@ -83,7 +89,10 @@ pub fn rgb48_to_planes_f32(
     let r = &mut r[..pixels];
     let g = &mut g[..pixels];
     let b = &mut b[..pixels];
-    incant!(rgb48_to_planes_impl(src, r, g, b), [v3, neon, scalar]);
+    incant!(
+        rgb48_to_planes_impl(src, r, g, b),
+        [v3, neon, wasm128, scalar]
+    );
     Ok(())
 }
 
@@ -141,7 +150,7 @@ pub fn autovec_avx2_rgb24(src: &[u8], r: &mut [f32], g: &mut [f32], b: &mut [f32
     let r = &mut r[..pixels];
     let g = &mut g[..pixels];
     let b = &mut b[..pixels];
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     {
         if let Some(t) = X64V3Token::summon() {
             x86::rgb24_to_planes_impl_v3_autovec(t, src, r, g, b);
@@ -159,7 +168,7 @@ pub fn autovec_avx2_rgb48(src: &[u16], r: &mut [f32], g: &mut [f32], b: &mut [f3
     let r = &mut r[..pixels];
     let g = &mut g[..pixels];
     let b = &mut b[..pixels];
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     {
         if let Some(t) = X64V3Token::summon() {
             x86::rgb48_to_planes_impl_v3_autovec(t, src, r, g, b);
@@ -260,11 +269,46 @@ pub(crate) fn rgb48_to_planes_impl_scalar(
     rgb48_to_planes_loop_scalar(src, r, g, b);
 }
 
+#[cfg(target_arch = "wasm32")]
+macro_rules! wasm_rgb_planes {
+    ($worker:ident, $tail:ident, $load:ident, $element:ty) => {
+        #[arcane]
+        fn $worker(t: Wasm128Token, src: &[$element], r: &mut [f32], g: &mut [f32], b: &mut [f32]) {
+            use magetypes::simd::generic::f32x8;
+            let (blocks, tail) = src.as_chunks::<24>();
+            for (i, block) in blocks.iter().enumerate() {
+                let (rv, gv, bv) = f32x8::$load(t, block);
+                let start = i * 8;
+                rv.store((&mut r[start..][..8]).try_into().unwrap());
+                gv.store((&mut g[start..][..8]).try_into().unwrap());
+                bv.store((&mut b[start..][..8]).try_into().unwrap());
+            }
+            let start = blocks.len() * 8;
+            $tail(tail, &mut r[start..], &mut g[start..], &mut b[start..]);
+        }
+    };
+}
+
+#[cfg(target_arch = "wasm32")]
+wasm_rgb_planes!(
+    rgb24_to_planes_impl_wasm128,
+    rgb24_to_planes_loop_scalar,
+    load_rgb_u8_t,
+    u8
+);
+#[cfg(target_arch = "wasm32")]
+wasm_rgb_planes!(
+    rgb48_to_planes_impl_wasm128,
+    rgb48_to_planes_loop_scalar,
+    load_rgb_u16_t,
+    u16
+);
+
 // ===========================================================================
 // x86-64 AVX2 (v3)
 // ===========================================================================
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 mod x86 {
     use super::*;
 
@@ -488,7 +532,7 @@ mod x86 {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 use x86::{rgb24_to_planes_impl_v3, rgb48_to_planes_impl_v3};
 
 // ===========================================================================
@@ -513,14 +557,14 @@ use x86::{rgb24_to_planes_impl_v3, rgb48_to_planes_impl_v3};
 /// 3×`[f32; 8]` (planar, integer code values in `0..255`). No token argument.
 /// Call inside a matching V3 CPU-feature function; ordinary native calls fail
 /// with E0133. Use the dispatched bulk API from ordinary code.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 #[doc(hidden)]
 pub use x86::rgb24_chunk8_tokenless_v3 as rgb24_chunk8_to_planes_tokenless_v3;
 
 /// AVX2 chunk-level deinterleave for `RGB48` (`u16` per channel). See
 /// [`crate::deinterleave::rgb24_chunk8_to_planes_tokenless_v3`]; same shape,
 /// with `&[u16; 24]` input and output code values in `0..65535`.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 #[doc(hidden)]
 pub use x86::rgb48_chunk8_tokenless_v3 as rgb48_chunk8_to_planes_tokenless_v3;
 
@@ -1298,7 +1342,7 @@ mod tests {
         );
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     #[test]
     fn rgb24_v3_matches_scalar() {
         if let Some(t) = X64V3Token::summon() {
@@ -1324,7 +1368,7 @@ mod tests {
         }
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     #[test]
     fn rgb48_v3_matches_scalar() {
         if let Some(t) = X64V3Token::summon() {

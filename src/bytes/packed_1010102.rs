@@ -73,6 +73,7 @@
 //! complexity for a format this niche.
 
 #![cfg_attr(target_arch = "x86", allow(unused_imports))]
+#![allow(deprecated)]
 
 use archmage::prelude::*;
 
@@ -278,13 +279,20 @@ fn check_strided_bytes(
 /// The destination must hold at least 4 `u16` per source pixel.
 ///
 /// ```rust
+/// # #[allow(deprecated)]
+/// # fn main() {
 /// use garb::bytes::rgba1010102_to_rgba16;
 /// // Pure red max: r=1023, g=0, b=0, a=3 -> bytes 0xFF 0x03 0x00 0xC0
 /// let src = [0xFF_u8, 0x03, 0x00, 0xC0];
 /// let mut dst = [0u16; 4];
 /// rgba1010102_to_rgba16(&src, &mut dst).unwrap();
 /// assert_eq!(dst, [1023, 0, 0, 1023]);
+/// # }
 /// ```
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba1010102_to_rgba16(src: &[u8], dst: &mut [u16]) -> Result<(), SizeError> {
     check_unpack(src.len(), dst.len())?;
     rgba1010102_to_rgba16_impl(src, dst);
@@ -306,12 +314,19 @@ pub fn rgba1010102_to_rgba16(src: &[u8], dst: &mut [u16]) -> Result<(), SizeErro
 /// the four legal alpha values (`0, 341, 682, 1023`).
 ///
 /// ```rust
+/// # #[allow(deprecated)]
+/// # fn main() {
 /// use garb::bytes::rgba16_to_rgba1010102;
 /// let src: [u16; 4] = [1023, 0, 0, 1023]; // pure red, opaque
 /// let mut dst = [0u8; 4];
 /// rgba16_to_rgba1010102(&src, &mut dst).unwrap();
 /// assert_eq!(dst, [0xFF, 0x03, 0x00, 0xC0]);
+/// # }
 /// ```
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba16_to_rgba1010102(src: &[u16], dst: &mut [u8]) -> Result<(), SizeError> {
     check_pack(src.len(), dst.len())?;
     rgba16_to_rgba1010102_impl(src, dst);
@@ -328,6 +343,10 @@ pub fn rgba16_to_rgba1010102(src: &[u16], dst: &mut [u8]) -> Result<(), SizeErro
 /// `dst_stride` is **u16 elements** between destination row starts (i.e. the
 /// stride is in units of the slice's element type, matching garb's typed-API
 /// convention).
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba1010102_to_rgba16_strided(
     src: &[u8],
     dst: &mut [u16],
@@ -350,6 +369,10 @@ pub fn rgba1010102_to_rgba16_strided(
 ///
 /// `src_stride` is **u16 elements** between source row starts; `dst_stride` is
 /// bytes between destination row starts.
+#[deprecated(
+    since = "0.2.9",
+    note = "garb Cargo feature `experimental` is deprecated and queued for removal in 0.3.0"
+)]
 pub fn rgba16_to_rgba1010102_strided(
     src: &[u16],
     dst: &mut [u8],
