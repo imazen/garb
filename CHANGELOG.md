@@ -2,30 +2,38 @@
 
 ## [Unreleased]
 
-Prepared package version: **0.2.9**. Publication awaits README approval and release gates.
+Prepared package version: **0.3.0** (`feat/0.3-integer-only`). Publication awaits README approval and release gates.
 
 ### QUEUED BREAKING CHANGES
 
 None recorded.
 
-### Fixed
+### Removed (BREAKING, `0.3.0`)
 
-- Declare the precision-policy example's `experimental` feature requirement so no-default CI builds the library/tests without unavailable grayscale example APIs (`9ec9fa71`).
+- Removed all floating-point APIs so `garb` stays strictly integer-only (float depth normalization, quantization, premultiply/unpremultiply, and planar deinterleave now live on `magetypes` / `zenpixels-convert` where `DepthPolicy` and `FloatFacts` sample invariants are known):
+  - Removed `garb::deinterleave` module (`rgb24_to_planes_f32`, `rgb48_to_planes_f32`, `{rgb,rgba}_f32_to_planes_f32`, `planes_f32_to_{rgb,rgba}_f32`, and chunk hooks).
+  - Removed `garb::bytes::{convert_u8_to_f32, convert_f32_to_u8, convert_u16_to_f32, convert_f32_to_u16}` and `_strided` variants.
+  - Removed `garb::bytes::{premultiply_alpha_f32, unpremultiply_alpha_f32, premultiply_alpha_f32_copy, unpremultiply_alpha_f32_copy}` and `_strided` variants, plus `typed_rgb` / `imgref` `Rgba<f32>` alpha helpers.
+
+### Changed (`0.3.0`)
+
+- Promoted integer layout, luma, depth, and `u8` alpha-premultiply APIs out of `experimental` into core `garb::bytes` (and `rgb` / `imgref` when enabled):
+  - Grayscale layout: `gray_to_rgb`, `gray_to_bgr`, `gray_alpha_to_rgb`, `gray_alpha_to_bgr`, `gray_to_gray_alpha`, `gray_alpha_to_gray`, `{rgb,rgba,bgr,bgra}_to_gray_identity` (plus `_strided`).
+  - Weighted integer luma: `{rgb,rgba,bgr,bgra}_to_gray{,_bt709,_bt601,_bt2020}` (plus `_strided`).
+  - Integer depth: `convert_u8_to_u16`, `convert_u16_to_u8` (exact `(v + 128) / 257` across scalar, AVX2, and NEON, plus `_strided`).
+  - Integer `u8` premultiply: `premultiply_alpha_{rgba,bgra}_u8{,_copy}` (exact `(c * a + 127) / 255` across scalar, AVX2, and NEON, plus `_strided`).
+- `experimental` now gates only packed sub-byte/10-bit integer formats (`rgb565`, `rgba4444`, `rgba1010102`).
+- Made `bytemuck` optional, enabled only by the `rgb` (and `imgref`) feature; core `garb` has zero `bytemuck` dependency, and `bytemuck/extern_crate_alloc` is enabled only by `imgref`.
+- Soft-float `x86_64-unknown-none` builds compile cleanly out of the box now that `bytes::avx2` has no floating-point ABI values.
+- Require `archmage = "0.9.31"` stable floor.
+
+### Fixed (`0.2.9` unpublished history)
+
+- Declare the precision-policy example's feature requirements; following integer promotion in `0.3.0`, `examples/precision_policies.rs` builds under `--no-default-features` as well (`9ec9fa71`).
 
 - RGB565/RGBA4444 compression rounds the full-range u8 value to nearest rather than dividing by 256. This corrects 15/31/7 of 256 channel values at 5/6/4-bit precision; bit-replicating expansion and exact packed round trips are preserved.
 
-- f32 to u8/u16 widens before scaling to avoid double rounding below half-code thresholds; clamps and NaN-to-zero behavior are preserved (`4310dda3`).
-
 - `convert_u16_to_u8` rounds to nearest `(v + 128) / 257`; 127 of 65,536 inputs now increase by one (`ecf6c6b3`). Scalar, AVX2 and NEON use the same mapping.
-
-### Changed
-
-- Accept the archmage and magetypes 0.9.31 stable release.
-
-- `convert_u8_to_f32` and `convert_u16_to_f32` are correctly rounded at every tier and position: the AVX2 and NEON bodies add one FMA correction to the reciprocal multiply, so they give the same bits as the division in tails and the scalar tier. Body values can change by 1 ULP.
-- Admit archmage 0.9.31-beta.2 for crates that use `#[attune]`; 234 tests pass with `--all-features` on that version. Replace the cap with the stable floor before publishing.
-- Optional packed/NEON/WASM byte loops use equivalent array chunks (`b723fb2a`); benchmark groups follow their experimental feature and active macOS CI uses ARM64 (`11607925`). Default/experimental benchmark checks, strict full/minimal lint and all 222 library tests pass.
-- Admit archmage 0.9.31-beta.1 while retaining the stable floor (`5d32c69f`). Byte conversion loops use equivalent array-chunk iterators; formatting, strict library lint and default library tests pass (`309647b6`).
 
 - `bytemuck` 1.25.0 → 1.25.2 and `imgref` 1.12.0 → 1.12.3, plus a full transitive
   lockfile refresh. **Verified byte-identical:** every one of garb's 44 two-buffer

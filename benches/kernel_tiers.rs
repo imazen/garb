@@ -122,7 +122,6 @@ fn bench(suite: &mut Suite) {
 /// no wasm — and were in NO benchmark. Not part of the cross-bpp set the
 /// module header measured (that covered 4<->3 and 3bpp swaps); these are
 /// 1->3, 2->3, 1->2, 2->1, 3->1 and 4->1.
-#[cfg(feature = "experimental")]
 fn bench_gray_family(suite: &mut Suite) {
     const N: usize = 1 << 20;
     let rgb: &'static [u8] = Box::leak(
@@ -148,7 +147,4 @@ fn bench_gray_family(suite: &mut Suite) {
     });
 }
 
-#[cfg(feature = "experimental")]
 zenbench::main!(bench_gray_family, bench);
-#[cfg(not(feature = "experimental"))]
-zenbench::main!(bench);
