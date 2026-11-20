@@ -6,7 +6,11 @@ Prepared package version: **0.2.9**. Publication awaits README approval and rele
 
 ### QUEUED BREAKING CHANGES
 
-None recorded.
+- Remove deprecated `experimental` floating-point, planar deinterleave, luma, identity-gray, and `u8` alpha-premultiply APIs in `0.3.0` (`garb::deinterleave`, `convert_{u8,u16}_to_f32*`, `convert_f32_to_{u8,u16}*`, `{premultiply,unpremultiply}_alpha_*f32*`, `{premultiply,unpremultiply}_rgba_f32*`, `{rgb,bgr,rgba,bgra}_to_gray*`, `convert_{rgb,bgr,rgba,bgra}_to_gray*`, and `premultiply_alpha_{rgba,bgra}_u8*`); use `zenpixels-convert` instead.
+
+### Deprecated
+
+- Deprecated `garb::deinterleave`, `f32` depth and alpha-premultiply functions, weighted and identity `*_to_gray*` functions, and `premultiply_alpha_{rgba,bgra}_u8*` under `feature = "experimental"` ahead of `0.3.0` removal. Default `garb` (`garb::bytes` byte swizzles, `rgb`, `imgref`) has zero promotions or breaking changes relative to `0.2.8`.
 
 ### Added
 
@@ -14,6 +18,7 @@ None recorded.
 
 ### Fixed
 
+- Gate x86 AVX2 module behind `all(target_arch = "x86_64", target_feature = "sse2")` so soft-float `x86_64-unknown-none` builds cleanly.
 - Unpremultiplying f32 RGBA now returns four positive zeros wherever alpha is either signed zero, including odd tails and strided rows.
 
 - Declare the precision-policy example's `experimental` feature requirement so no-default CI builds the library/tests without unavailable grayscale example APIs (`9ec9fa71`).
@@ -26,6 +31,7 @@ None recorded.
 
 ### Changed
 
+- Sync `archmage` and `magetypes` to `0.9.32` (`imazen/archmage` `main` @ `303341570757`) and exclude repo-local metadata (`CLAUDE.md`, `AGENTS.md`, `README.md`, `apidoc/`, `.zenbench/`) from published crate archives.
 - Switch float depth conversion to the same f32 reciprocal multiply and nearest-even quantization on every tier. Integer normalization stays within 1 ULP of division. Quantization can change by one code at half-code boundaries; NaN still maps to zero.
 
 

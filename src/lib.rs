@@ -12,8 +12,8 @@
 //! ## Modules
 //!
 //! - [`bytes`] — Core `&[u8]` conversions (contiguous and strided).
-//! - [`typed_rgb`] — Type-safe wrappers using `rgb` crate pixel types (feature `rgb`).
-//! - [`imgref`] — Whole-image conversions on `ImgVec` / `ImgRef` (feature `imgref`).
+//! - `typed_rgb` — Type-safe wrappers using `rgb` crate pixel types (feature `rgb`).
+//! - `imgref` — Whole-image conversions on `ImgVec` / `ImgRef` (feature `imgref`).
 //!
 //! ## Naming convention
 //!
@@ -47,14 +47,17 @@
 //!
 //! - **`std`** — Enables `std` on dependencies (e.g. `archmage`).
 //! - **`experimental`** — Gray layout, weighted luma, depth conversion, f32
-//!   alpha premultiply/unpremultiply. API may change between minor versions.
-//! - **`rgb`** — Type-safe conversions using [`rgb`] crate pixel types
+//!   alpha premultiply/unpremultiply. API may change between minor versions;
+//!   float, deinterleave, weighted/identity luma, and `u8` alpha premultiply
+//!   are deprecated in `0.2.9` for `0.3.0` removal in favor of `zenpixels-convert`.
+//! - **`rgb`** — Type-safe conversions using [`rgb`](https://docs.rs/rgb) crate pixel types
 //!   via bytemuck. Zero-copy in-place swaps return reinterpreted references.
 //! - **`imgref`** — Multi-row conversions using `ImgRef` / `ImgRefMut`
 //!   from the [`imgref`](https://docs.rs/imgref) crate. No allocation — caller owns all buffers.
 
 #![no_std]
 #![forbid(unsafe_code)]
+#![cfg_attr(test, allow(deprecated))]
 
 #[cfg(feature = "imgref")]
 extern crate alloc;
@@ -62,6 +65,10 @@ extern crate alloc;
 pub mod bytes;
 
 #[cfg(feature = "experimental")]
+#[deprecated(
+    since = "0.2.9",
+    note = "deinterleave will be removed in garb 0.3.0; vendor chunk helpers or use zenpixels-convert"
+)]
 pub mod deinterleave;
 
 #[cfg(feature = "rgb")]

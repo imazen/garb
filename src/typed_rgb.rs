@@ -255,6 +255,8 @@ pub fn rgba_to_bgr_buf(src: &[Rgba<u8>], dst: &mut [Bgr<u8>]) -> Result<(), Size
 
 #[cfg(feature = "experimental")]
 mod experimental_typed {
+    #![allow(deprecated)]
+
     use super::*;
 
     // -----------------------------------------------------------------------
@@ -372,18 +374,22 @@ mod experimental_typed {
     ($matrix:ident, $doc_matrix:expr) => {
         paste::paste! {
             #[doc = concat!("RGB → Gray using ", $doc_matrix, " luma weights.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<rgb_to_gray_ $matrix _buf>](src: &[Rgb<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
                 crate::bytes::[<rgb_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
             }
             #[doc = concat!("BGR → Gray using ", $doc_matrix, " luma weights.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<bgr_to_gray_ $matrix _buf>](src: &[Bgr<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
                 crate::bytes::[<bgr_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
             }
             #[doc = concat!("RGBA → Gray using ", $doc_matrix, " luma weights.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<rgba_to_gray_ $matrix _buf>](src: &[Rgba<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
                 crate::bytes::[<rgba_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
             }
             #[doc = concat!("BGRA → Gray using ", $doc_matrix, " luma weights.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<bgra_to_gray_ $matrix _buf>](src: &[Bgra<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
                 crate::bytes::[<bgra_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
             }
@@ -396,24 +402,40 @@ mod experimental_typed {
     luma_typed!(bt2020, "BT.2020");
 
     /// Default alias: RGB → Gray uses BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn rgb_to_gray_buf(src: &[Rgb<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
         rgb_to_gray_bt709_buf(src, dst)
     }
 
     /// Default alias: BGR → Gray uses BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn bgr_to_gray_buf(src: &[Bgr<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
         bgr_to_gray_bt709_buf(src, dst)
     }
 
     /// Default alias: RGBA → Gray uses BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn rgba_to_gray_buf(src: &[Rgba<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
         rgba_to_gray_bt709_buf(src, dst)
     }
 
     /// Default alias: BGRA → Gray uses BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn bgra_to_gray_buf(src: &[Bgra<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
         bgra_to_gray_bt709_buf(src, dst)
@@ -426,6 +448,10 @@ mod experimental_typed {
     /// Premultiply alpha for `&mut [Rgba<f32>]` in-place.
     ///
     /// Empty input is a no-op (no panic).
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_rgba_f32(pixels: &mut [Rgba<f32>]) {
         if pixels.is_empty() {
             return;
@@ -435,6 +461,10 @@ mod experimental_typed {
     }
 
     /// Premultiply alpha, copying from `&[Rgba<f32>]` to `&mut [Rgba<f32>]`.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_rgba_f32_buf(
         src: &[Rgba<f32>],
         dst: &mut [Rgba<f32>],
@@ -448,6 +478,10 @@ mod experimental_typed {
     /// Unpremultiply alpha for `&mut [Rgba<f32>]` in-place.
     ///
     /// Empty input is a no-op (no panic).
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn unpremultiply_rgba_f32(pixels: &mut [Rgba<f32>]) {
         if pixels.is_empty() {
             return;
@@ -457,6 +491,10 @@ mod experimental_typed {
     }
 
     /// Unpremultiply alpha, copying from `&[Rgba<f32>]` to `&mut [Rgba<f32>]`.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn unpremultiply_rgba_f32_buf(
         src: &[Rgba<f32>],
         dst: &mut [Rgba<f32>],

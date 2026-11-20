@@ -19,6 +19,8 @@
 //! - **Scalar** — explicit `array::from_fn` writes, exposed for benchmarking
 //!   the unaccelerated path.
 
+#![allow(deprecated)]
+
 use crate::SizeError;
 #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 use archmage::X64V3Token;

@@ -7,6 +7,8 @@
 //! Run: `cargo bench --bench kernel_tiers`
 //! Do NOT build with `-C target-cpu=native` (the tier then cannot be disabled).
 
+#![allow(deprecated)]
+
 use zenbench::prelude::*;
 
 #[cfg(target_arch = "aarch64")]

@@ -269,6 +269,8 @@ pub fn convert_rgba_to_bgr(
 
 #[cfg(feature = "experimental")]
 mod experimental_imgref {
+    #![allow(deprecated)]
+
     use super::*;
 
     // -----------------------------------------------------------------------
@@ -360,6 +362,7 @@ mod experimental_imgref {
     ($matrix:ident, $doc_matrix:expr) => {
         paste::paste! {
             #[doc = concat!("Convert `ImgRef<Rgb<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<convert_rgb_to_gray_ $matrix>](
                 src: ImgRef<'_, Rgb<u8>>,
                 mut dst: ImgRefMut<'_, Gray<u8>>,
@@ -371,6 +374,7 @@ mod experimental_imgref {
                 Ok(())
             }
             #[doc = concat!("Convert `ImgRef<Bgr<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<convert_bgr_to_gray_ $matrix>](
                 src: ImgRef<'_, Bgr<u8>>,
                 mut dst: ImgRefMut<'_, Gray<u8>>,
@@ -382,6 +386,7 @@ mod experimental_imgref {
                 Ok(())
             }
             #[doc = concat!("Convert `ImgRef<Rgba<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<convert_rgba_to_gray_ $matrix>](
                 src: ImgRef<'_, Rgba<u8>>,
                 mut dst: ImgRefMut<'_, Gray<u8>>,
@@ -393,6 +398,7 @@ mod experimental_imgref {
                 Ok(())
             }
             #[doc = concat!("Convert `ImgRef<Bgra<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<convert_bgra_to_gray_ $matrix>](
                 src: ImgRef<'_, Bgra<u8>>,
                 mut dst: ImgRefMut<'_, Gray<u8>>,
@@ -412,6 +418,10 @@ mod experimental_imgref {
     luma_imgref!(bt2020, "BT.2020");
 
     /// Default: RGB → Gray uses BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn convert_rgb_to_gray(
         src: ImgRef<'_, Rgb<u8>>,
@@ -421,6 +431,10 @@ mod experimental_imgref {
     }
 
     /// Default: RGBA → Gray uses BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn convert_rgba_to_gray(
         src: ImgRef<'_, Rgba<u8>>,
@@ -436,6 +450,10 @@ mod experimental_imgref {
     /// Premultiply alpha for an `Rgba<f32>` image in-place.
     ///
     /// Empty rows (width == 0) are skipped without panicking.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_rgba_f32(mut img: ImgRefMut<'_, Rgba<f32>>) {
         for row in img.rows_mut() {
             let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
@@ -449,6 +467,10 @@ mod experimental_imgref {
     /// Unpremultiply alpha for an `Rgba<f32>` image in-place.
     ///
     /// Empty rows (width == 0) are skipped without panicking.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn unpremultiply_rgba_f32(mut img: ImgRefMut<'_, Rgba<f32>>) {
         for row in img.rows_mut() {
             let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);

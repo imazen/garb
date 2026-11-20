@@ -72,11 +72,8 @@ stripping channels — so you can get back to the interesting work.
   matches DXGI `R10G10B10A2_UNORM` / Vulkan `A2B10G10R10_UNORM_PACK32` /
   WGPU `Rgb10a2Unorm`; 2-bit alpha bit-replicated to 10 bits per the graphics-API
   convention; transfer functions are NOT applied — chain with `linear-srgb` for PQ/HLG)
-- u8 alpha premultiply for RGBA / BGRA (exact integer, auto-vectorized)
-- Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha
-- RGB / RGBA / BGR / BGRA → Gray (weighted luma: BT.709, BT.601, BT.2020; or identity)
-- Depth conversion: u8 ↔ u16, u8 ↔ f32, u16 ↔ f32
-- f32 alpha premultiply / unpremultiply (in-place and copy, AVX2 SIMD)
+- Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha, u8 ↔ u16 depth conversion
+- *(Deprecated in 0.2.9 for 0.3.0 removal; use `zenpixels-convert`)*: `garb::deinterleave`, `f32` depth conversion, `f32` and `u8` alpha premultiply/unpremultiply, and weighted/identity `*_to_gray*`
 
 All operations have `_strided` variants for images with padding between rows
 (common in video frames and GPU textures).

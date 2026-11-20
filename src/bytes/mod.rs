@@ -798,6 +798,8 @@ pub fn gray_alpha_to_argb_strided(
 
 #[cfg(feature = "experimental")]
 mod experimental_api {
+    #![allow(deprecated)]
+
     use super::*;
     use crate::SizeError;
     use archmage::incant;
@@ -813,6 +815,7 @@ mod experimental_api {
     ) => {
         paste::paste! {
             #[doc = concat!("RGB (3 bytes/px) → Gray (1 byte/px) using ", $doc_matrix, " luma weights [", stringify!($r), ", ", stringify!($g), ", ", stringify!($b), "].")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<rgb_to_gray_ $matrix>](src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
                 check_copy(src.len(), 3, dst.len(), 1)?;
                 incant!([<rgb_to_gray_ $matrix _impl>](src, dst), [v3, scalar]);
@@ -820,6 +823,7 @@ mod experimental_api {
             }
 
             #[doc = concat!("BGR (3 bytes/px) → Gray (1 byte/px) using ", $doc_matrix, " luma weights.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<bgr_to_gray_ $matrix>](src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
                 check_copy(src.len(), 3, dst.len(), 1)?;
                 incant!([<bgr_to_gray_ $matrix _impl>](src, dst), [v3, scalar]);
@@ -827,6 +831,7 @@ mod experimental_api {
             }
 
             #[doc = concat!("RGBA (4 bytes/px) → Gray (1 byte/px) using ", $doc_matrix, " luma weights. Alpha ignored.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<rgba_to_gray_ $matrix>](src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
                 check_copy(src.len(), 4, dst.len(), 1)?;
                 incant!([<rgba_to_gray_ $matrix _impl>](src, dst), [v3, scalar]);
@@ -834,6 +839,7 @@ mod experimental_api {
             }
 
             #[doc = concat!("BGRA (4 bytes/px) → Gray (1 byte/px) using ", $doc_matrix, " luma weights. Alpha ignored.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<bgra_to_gray_ $matrix>](src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
                 check_copy(src.len(), 4, dst.len(), 1)?;
                 incant!([<bgra_to_gray_ $matrix _impl>](src, dst), [v3, scalar]);
@@ -842,6 +848,7 @@ mod experimental_api {
 
             // Strided variants
             #[doc = concat!("RGB → Gray ", $doc_matrix, " between strided buffers.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<rgb_to_gray_ $matrix _strided>](
                 src: &[u8], dst: &mut [u8], width: usize, height: usize, src_stride: usize, dst_stride: usize,
             ) -> Result<(), SizeError> {
@@ -852,6 +859,7 @@ mod experimental_api {
             }
 
             #[doc = concat!("BGR → Gray ", $doc_matrix, " between strided buffers.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<bgr_to_gray_ $matrix _strided>](
                 src: &[u8], dst: &mut [u8], width: usize, height: usize, src_stride: usize, dst_stride: usize,
             ) -> Result<(), SizeError> {
@@ -862,6 +870,7 @@ mod experimental_api {
             }
 
             #[doc = concat!("RGBA → Gray ", $doc_matrix, " between strided buffers.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<rgba_to_gray_ $matrix _strided>](
                 src: &[u8], dst: &mut [u8], width: usize, height: usize, src_stride: usize, dst_stride: usize,
             ) -> Result<(), SizeError> {
@@ -872,6 +881,7 @@ mod experimental_api {
             }
 
             #[doc = concat!("BGRA → Gray ", $doc_matrix, " between strided buffers.")]
+            #[deprecated(since = "0.2.9", note = "scheduled for removal in garb 0.3.0; use zenpixels-convert")]
             pub fn [<bgra_to_gray_ $matrix _strided>](
                 src: &[u8], dst: &mut [u8], width: usize, height: usize, src_stride: usize, dst_stride: usize,
             ) -> Result<(), SizeError> {
@@ -889,24 +899,40 @@ mod experimental_api {
     luma_api!(bt2020, 67, 174, 15, "BT.2020");
 
     /// Alias: `rgb_to_gray` defaults to BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn rgb_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         rgb_to_gray_bt709(src, dst)
     }
 
     /// Alias: `bgr_to_gray` defaults to BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn bgr_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         bgr_to_gray_bt709(src, dst)
     }
 
     /// Alias: `rgba_to_gray` defaults to BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn rgba_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         rgba_to_gray_bt709(src, dst)
     }
 
     /// Alias: `bgra_to_gray` defaults to BT.709.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn bgra_to_gray(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         bgra_to_gray_bt709(src, dst)
@@ -941,6 +967,10 @@ mod experimental_api {
     /// Convert u8 elements to f32 elements. Maps `[0,255]` → `[0.0, 1.0]` via `v * (1.0 / 255.0)` in f32 (within 1 ULP of division).
     ///
     /// `src` contains u8 values. `dst` must have at least `src.len() * 4` bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_u8_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         if src.is_empty() {
             return Err(SizeError::NotPixelAligned);
@@ -957,6 +987,10 @@ mod experimental_api {
     ///
     /// `src` contains f32 values (must be a multiple of 4 bytes).
     /// `dst` must have at least `src.len() / 4` bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_f32_to_u8(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 4, dst.len(), 1)?;
         incant!(
@@ -970,6 +1004,10 @@ mod experimental_api {
     ///
     /// `src` contains u16 values (must be a multiple of 2 bytes).
     /// `dst` must have at least `src.len() * 2` bytes (u16→f32 doubles byte count).
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_u16_to_f32(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 2, dst.len(), 4)?;
         incant!(
@@ -983,6 +1021,10 @@ mod experimental_api {
     ///
     /// `src` contains f32 values (must be a multiple of 4 bytes).
     /// `dst` must have at least `src.len() / 2` bytes (f32→u16 halves byte count).
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_f32_to_u16(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 4, dst.len(), 2)?;
         incant!(
@@ -1034,6 +1076,10 @@ mod experimental_api {
     ///
     /// Use this for roundtripping gray data that was expanded to RGB (where R=G=B).
     /// For perceptual luminance conversion, use `rgb_to_gray_bt709` instead.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn rgb_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 3, dst.len(), 1)?;
         incant!(rgb_to_gray_identity_impl(src, dst), [scalar]);
@@ -1044,6 +1090,10 @@ mod experimental_api {
     ///
     /// Use this for roundtripping gray data that was expanded to RGBA (where R=G=B).
     /// For perceptual luminance conversion, use `rgba_to_gray_bt709` instead.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn rgba_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 4, dst.len(), 1)?;
         incant!(rgba_to_gray_identity_impl(src, dst), [scalar]);
@@ -1063,12 +1113,20 @@ mod experimental_api {
     }
 
     /// Alias for [`rgb_to_gray_identity`] — R=G=B so any channel works.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn bgr_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         rgb_to_gray_identity(src, dst)
     }
 
     /// Alias for [`rgba_to_gray_identity`] — R=G=B so any channel works.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn bgra_to_gray_identity(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         rgba_to_gray_identity(src, dst)
@@ -1149,6 +1207,10 @@ mod experimental_api {
     }
 
     /// RGB (3 bytes/px) → Gray (1 byte/px) identity extraction between strided buffers.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn rgb_to_gray_identity_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1167,6 +1229,10 @@ mod experimental_api {
     }
 
     /// RGBA (4 bytes/px) → Gray (1 byte/px) identity extraction between strided buffers.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn rgba_to_gray_identity_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1211,6 +1277,10 @@ mod experimental_api {
     }
 
     /// Alias for [`rgb_to_gray_identity_strided`].
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn bgr_to_gray_identity_strided(
         src: &[u8],
@@ -1224,6 +1294,10 @@ mod experimental_api {
     }
 
     /// Alias for [`rgba_to_gray_identity_strided`].
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn bgra_to_gray_identity_strided(
         src: &[u8],
@@ -1275,6 +1349,10 @@ mod experimental_api {
     }
 
     /// Convert u8→f32 between strided buffers. `width` is element count per row.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_u8_to_f32_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1293,6 +1371,10 @@ mod experimental_api {
     }
 
     /// Convert f32→u8 between strided buffers. `width` is element count per row.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_f32_to_u8_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1311,6 +1393,10 @@ mod experimental_api {
     }
 
     /// Convert u16→f32 between strided buffers. `width` is element count per row.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_u16_to_f32_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1329,6 +1415,10 @@ mod experimental_api {
     }
 
     /// Convert f32→u16 between strided buffers. `width` is element count per row.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn convert_f32_to_u16_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1353,6 +1443,10 @@ mod experimental_api {
     /// Premultiply alpha for f32 RGBA pixels in-place: `C' = C * A`, alpha preserved.
     ///
     /// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
         check_inplace(buf.len(), 16)?;
         incant!(premul_f32_impl(buf), [v3, neon, wasm128, scalar]);
@@ -1362,6 +1456,10 @@ mod experimental_api {
     /// Premultiply alpha for f32 RGBA pixels, copying from `src` to `dst`.
     ///
     /// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 16, dst.len(), 16)?;
         incant!(premul_f32_copy_impl(src, dst), [v3, neon, wasm128, scalar]);
@@ -1372,6 +1470,10 @@ mod experimental_api {
     ///
     /// Where alpha is +0 or -0, all channels become +0. Other alpha bits are preserved.
     /// Each pixel is 4 × f32 (16 bytes). The buffer must be a multiple of 16 bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn unpremultiply_alpha_f32(buf: &mut [u8]) -> Result<(), SizeError> {
         check_inplace(buf.len(), 16)?;
         incant!(unpremul_f32_impl(buf), [v3, neon, wasm128, scalar]);
@@ -1382,6 +1484,10 @@ mod experimental_api {
     ///
     /// Where alpha is +0 or -0, all channels become +0. Other alpha bits are preserved.
     /// Each pixel is 4 × f32 (16 bytes). Both buffers must be a multiple of 16 bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn unpremultiply_alpha_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 16, dst.len(), 16)?;
         incant!(
@@ -1392,24 +1498,40 @@ mod experimental_api {
     }
 
     /// Alias for [`premultiply_alpha_f32`].
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn premultiply_alpha_rgba_f32(buf: &mut [u8]) -> Result<(), SizeError> {
         premultiply_alpha_f32(buf)
     }
 
     /// Alias for [`premultiply_alpha_f32_copy`].
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn premultiply_alpha_rgba_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         premultiply_alpha_f32_copy(src, dst)
     }
 
     /// Alias for [`unpremultiply_alpha_f32`].
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn unpremultiply_alpha_rgba_f32(buf: &mut [u8]) -> Result<(), SizeError> {
         unpremultiply_alpha_f32(buf)
     }
 
     /// Alias for [`unpremultiply_alpha_f32_copy`].
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn unpremultiply_alpha_rgba_f32_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         unpremultiply_alpha_f32_copy(src, dst)
@@ -1421,6 +1543,10 @@ mod experimental_api {
     ///
     /// `width` is the number of pixels per row. `stride` is bytes between row starts.
     /// Must be ≥ `width × 16`. Each pixel is 4 × f32 (16 bytes).
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_alpha_f32_strided(
         buf: &mut [u8],
         width: usize,
@@ -1436,6 +1562,10 @@ mod experimental_api {
     }
 
     /// Premultiply alpha for f32 RGBA pixels between strided buffers.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_alpha_f32_copy_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1458,6 +1588,10 @@ mod experimental_api {
     /// Where alpha is +0 or -0, all channels become +0. Other alpha bits are preserved.
     /// `width` is the number of pixels per row. `stride` is bytes between row starts.
     /// Must be ≥ `width × 16`. Each pixel is 4 × f32 (16 bytes).
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn unpremultiply_alpha_f32_strided(
         buf: &mut [u8],
         width: usize,
@@ -1475,6 +1609,10 @@ mod experimental_api {
     /// Unpremultiply alpha for f32 RGBA pixels between strided buffers.
     ///
     /// Where alpha is +0 or -0, all channels become +0. Other alpha bits are preserved.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn unpremultiply_alpha_f32_copy_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1500,6 +1638,10 @@ mod experimental_api {
     /// Each pixel is 4 bytes `[R, G, B, A]` with alpha at byte 3. Uses the
     /// exact integer formula — no precision loss beyond the inherent
     /// quantization to u8. The buffer must be a multiple of 4 bytes.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_alpha_rgba_u8(buf: &mut [u8]) -> Result<(), SizeError> {
         check_inplace(buf.len(), 4)?;
         premul_u8_impl(buf);
@@ -1510,6 +1652,10 @@ mod experimental_api {
     ///
     /// Each pixel is 4 bytes `[B, G, R, A]` with alpha at byte 3. Same
     /// operation as [`premultiply_alpha_rgba_u8`] — alpha position is identical.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn premultiply_alpha_bgra_u8(buf: &mut [u8]) -> Result<(), SizeError> {
         premultiply_alpha_rgba_u8(buf)
@@ -1518,6 +1664,10 @@ mod experimental_api {
     /// Premultiply alpha for u8 RGBA pixels, copying from `src` to `dst`.
     ///
     /// Each pixel is 4 bytes `[R, G, B, A]` with alpha at byte 3.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_alpha_rgba_u8_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         check_copy(src.len(), 4, dst.len(), 4)?;
         premul_u8_copy_impl(src, dst);
@@ -1528,6 +1678,10 @@ mod experimental_api {
     ///
     /// Same operation as [`premultiply_alpha_rgba_u8_copy`] — alpha position
     /// is identical.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn premultiply_alpha_bgra_u8_copy(src: &[u8], dst: &mut [u8]) -> Result<(), SizeError> {
         premultiply_alpha_rgba_u8_copy(src, dst)
@@ -1537,6 +1691,10 @@ mod experimental_api {
     ///
     /// `width` is pixels per row. `stride` is bytes between row starts.
     /// Must be ≥ `width × 4`.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_alpha_rgba_u8_strided(
         buf: &mut [u8],
         width: usize,
@@ -1549,6 +1707,10 @@ mod experimental_api {
     }
 
     /// Alias for [`premultiply_alpha_rgba_u8_strided`].
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn premultiply_alpha_bgra_u8_strided(
         buf: &mut [u8],
@@ -1560,6 +1722,10 @@ mod experimental_api {
     }
 
     /// Premultiply alpha for u8 RGBA pixels between strided buffers.
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     pub fn premultiply_alpha_rgba_u8_copy_strided(
         src: &[u8],
         dst: &mut [u8],
@@ -1575,6 +1741,10 @@ mod experimental_api {
     }
 
     /// Alias for [`premultiply_alpha_rgba_u8_copy_strided`].
+    #[deprecated(
+        since = "0.2.9",
+        note = "scheduled for removal in garb 0.3.0; use zenpixels-convert"
+    )]
     #[inline(always)]
     pub fn premultiply_alpha_bgra_u8_copy_strided(
         src: &[u8],
