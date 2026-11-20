@@ -1155,8 +1155,7 @@ fn permutation_strided_argb_cross_bpp() {
 // Gray layout conversions (no luma weights)
 // -----------------------------------------------------------------------
 
-#[cfg(feature = "experimental")]
-mod experimental_tests {
+mod gray_luma_depth_tests {
     use super::*;
 
     #[test]
@@ -1416,55 +1415,6 @@ mod experimental_tests {
         &[1, 2, 3, 7, 8, 15, 16, 31, 32, 33, 63, 64, 65, 100, 255, 256];
 
     #[test]
-    fn depth_f32_nearest_at_every_quantization_boundary() {
-        // Every half-code threshold, and the two adjacent f32 inputs. The
-        // f64 oracle represents f32 * u16::MAX + 0.5 without rounding error.
-        for scale in [255.0f64, 65535.0] {
-            let mut values = vec![
-                f32::NAN,
-                f32::NEG_INFINITY,
-                f32::INFINITY,
-                -0.0,
-                0.0,
-                -1.0,
-                1.0,
-                2.0,
-            ];
-            for code in 0..scale as u32 {
-                let center = (((code as f64) + 0.5) / scale) as f32;
-                values.extend([center.next_down(), center, center.next_up()]);
-            }
-            let src: Vec<u8> = values.iter().flat_map(|v| v.to_ne_bytes()).collect();
-            let _ = for_each_token_permutation(policy(), |perm| {
-                for width in [1, 7, 8, 17, values.len()] {
-                    let bytes_per = if scale == 255.0 { 1 } else { 2 };
-                    let mut dst = vec![0; values.len() * bytes_per];
-                    for (s, d) in src.chunks(width * 4).zip(dst.chunks_mut(width * bytes_per)) {
-                        if bytes_per == 1 {
-                            convert_f32_to_u8(s, d).unwrap();
-                        } else {
-                            convert_f32_to_u16(s, d).unwrap();
-                        }
-                    }
-                    for (i, (&v, got)) in values.iter().zip(dst.chunks_exact(bytes_per)).enumerate()
-                    {
-                        let want = (f64::from(v).clamp(0.0, 1.0) * scale + 0.5) as u16;
-                        let got = if bytes_per == 1 {
-                            got[0] as u16
-                        } else {
-                            u16::from_ne_bytes([got[0], got[1]])
-                        };
-                        assert_eq!(
-                            got, want,
-                            "v={v:?} index={i} scale={scale} width={width} tier={perm}"
-                        );
-                    }
-                }
-            });
-        }
-    }
-
-    #[test]
     fn depth_u16_to_u8_nearest_exhaustive() {
         let src: Vec<u8> = (0..=u16::MAX).flat_map(u16::to_ne_bytes).collect();
         let expected: Vec<u8> = (0..=65535u32).map(|v| ((v + 128) / 257) as u8).collect();
@@ -1490,68 +1440,8 @@ mod experimental_tests {
         assert_eq!(src, dst, "u8→u16→u8 roundtrip failed");
 
         // Check boundary values
-        let mid16: &[u16] = bytemuck::cast_slice(&mid);
-        assert_eq!(mid16[0], 0);
-        assert_eq!(mid16[255], 65535);
-    }
-
-    #[test]
-    fn depth_u8_to_f32_roundtrip_exhaustive() {
-        // u8 → f32 → u8 must be exact identity for all 256 values
-        let src: Vec<u8> = (0..=255).collect();
-        let mut mid = vec![0u8; 256 * 4];
-        let mut dst = vec![0u8; 256];
-        convert_u8_to_f32(&src, &mut mid).unwrap();
-        convert_f32_to_u8(&mid, &mut dst).unwrap();
-        assert_eq!(src, dst, "u8→f32→u8 roundtrip failed");
-
-        // Check boundary values
-        let mid_f: &[f32] = bytemuck::cast_slice(&mid);
-        assert_eq!(mid_f[0], 0.0);
-        assert_eq!(mid_f[255], 1.0);
-    }
-
-    #[test]
-    fn depth_u16_to_f32_roundtrip_exhaustive() {
-        // u16 → f32 → u16 must be exact identity for all 65536 values
-        let src16: Vec<u16> = (0..=65535u16).collect();
-        let src: &[u8] = bytemuck::cast_slice(&src16);
-        let mut mid = vec![0u8; 65536 * 4];
-        let mut dst_bytes = vec![0u8; 65536 * 2];
-        convert_u16_to_f32(src, &mut mid).unwrap();
-        convert_f32_to_u16(&mid, &mut dst_bytes).unwrap();
-        let dst16: &[u16] = bytemuck::cast_slice(&dst_bytes);
-        assert_eq!(src16.as_slice(), dst16, "u16→f32→u16 roundtrip failed");
-
-        // Check boundary values
-        let mid_f: &[f32] = bytemuck::cast_slice(&mid);
-        assert_eq!(mid_f[0], 0.0);
-        assert_eq!(mid_f[65535], 1.0);
-    }
-
-    #[test]
-    fn depth_f32_clamping() {
-        // Out-of-range f32 → u8 should clamp
-        let src_vals: Vec<f32> = vec![-0.5, -0.001, 0.0, 0.5, 1.0, 1.001, 1.5, 100.0];
-        let src: &[u8] = bytemuck::cast_slice(&src_vals);
-        let mut dst = vec![0u8; 8];
-        convert_f32_to_u8(src, &mut dst).unwrap();
-        assert_eq!(dst[0], 0, "negative should clamp to 0");
-        assert_eq!(dst[1], 0, "small negative should clamp to 0");
-        assert_eq!(dst[2], 0, "zero should stay 0");
-        assert_eq!(dst[3], 128, "0.5 should be 128");
-        assert_eq!(dst[4], 255, "1.0 should be 255");
-        assert_eq!(dst[5], 255, "slightly over 1.0 should clamp to 255");
-        assert_eq!(dst[6], 255, "1.5 should clamp to 255");
-        assert_eq!(dst[7], 255, "100.0 should clamp to 255");
-
-        // Out-of-range f32 → u16 should clamp
-        let mut dst16_bytes = vec![0u8; 16];
-        convert_f32_to_u16(src, &mut dst16_bytes).unwrap();
-        let dst16: &[u16] = bytemuck::cast_slice(&dst16_bytes);
-        assert_eq!(dst16[0], 0);
-        assert_eq!(dst16[4], 65535);
-        assert_eq!(dst16[7], 65535);
+        assert_eq!(u16::from_ne_bytes([mid[0], mid[1]]), 0);
+        assert_eq!(u16::from_ne_bytes([mid[510], mid[511]]), 65535);
     }
 
     #[test]
@@ -1561,10 +1451,9 @@ mod experimental_tests {
                 let src: Vec<u8> = (0..n).map(|i| (i % 256) as u8).collect();
                 let mut mid = vec![0u8; n * 2];
                 convert_u8_to_u16(&src, &mut mid).unwrap();
-                // Check each value
-                let mid16: &[u16] = bytemuck::cast_slice(&mid);
                 for (j, &s) in src.iter().enumerate() {
-                    assert_eq!(mid16[j], s as u16 * 257, "u8→u16 n={n} i={j} tier={perm}");
+                    let got = u16::from_ne_bytes([mid[j * 2], mid[j * 2 + 1]]);
+                    assert_eq!(got, s as u16 * 257, "u8→u16 n={n} i={j} tier={perm}");
                 }
                 // Roundtrip
                 let mut dst = vec![0u8; n];
@@ -1573,87 +1462,6 @@ mod experimental_tests {
             }
         });
         std::eprintln!("depth_u8_u16: {report}");
-    }
-
-    /// f32→int quantization must match `clamp(0,1) * SCALE + 0.5` cast-truncated
-    /// for out-of-range and non-finite inputs, at every SIMD tier.
-    ///
-    /// The roundtrip tests only feed values that came from `u8`/`u16`, so they
-    /// never exercise negatives, values above 1.0, infinities or NaN — which is
-    /// exactly where a SIMD clamp can diverge from Rust's `f32::clamp` plus
-    /// saturating `as` cast (ARM `FMAX` propagates NaN where `FMAXNM` would not,
-    /// and `FCVTZU` flushes NaN to 0 like Rust's saturating cast).
-    #[test]
-    fn permutation_quantize_edge_values() {
-        let edges: [f32; 12] = [
-            -1.0,
-            -0.0,
-            0.0,
-            f32::MIN,
-            1.0,
-            1.5,
-            255.0,
-            f32::MAX,
-            f32::INFINITY,
-            f32::NEG_INFINITY,
-            f32::NAN,
-            0.5,
-        ];
-        let report = for_each_token_permutation(policy(), |perm| {
-            let src: Vec<u8> = edges.iter().flat_map(|v| v.to_ne_bytes()).collect();
-
-            let mut dst8 = vec![0u8; edges.len()];
-            convert_f32_to_u8(&src, &mut dst8).unwrap();
-            for (i, &v) in edges.iter().enumerate() {
-                let expected = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-                assert_eq!(dst8[i], expected, "f32→u8 v={v} i={i} tier={perm}");
-            }
-
-            let mut dst16 = vec![0u8; edges.len() * 2];
-            convert_f32_to_u16(&src, &mut dst16).unwrap();
-            let got16: &[u16] = bytemuck::cast_slice(&dst16);
-            for (i, &v) in edges.iter().enumerate() {
-                let expected = (v.clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
-                assert_eq!(got16[i], expected, "f32→u16 v={v} i={i} tier={perm}");
-            }
-        });
-        std::eprintln!("quantize_edge_values: {report}");
-    }
-
-    #[test]
-    fn permutation_depth_u8_f32() {
-        let report = for_each_token_permutation(policy(), |perm| {
-            for &n in TEST_ELEMENT_COUNTS {
-                let src: Vec<u8> = (0..n).map(|i| (i % 256) as u8).collect();
-                let mut mid = vec![0u8; n * 4];
-                convert_u8_to_f32(&src, &mut mid).unwrap();
-                let mut dst = vec![0u8; n];
-                convert_f32_to_u8(&mid, &mut dst).unwrap();
-                assert_eq!(src, dst, "u8→f32→u8 roundtrip n={n} tier={perm}");
-            }
-        });
-        std::eprintln!("depth_u8_f32: {report}");
-    }
-
-    #[test]
-    fn permutation_depth_u16_f32() {
-        let report = for_each_token_permutation(policy(), |perm| {
-            for &n in TEST_ELEMENT_COUNTS {
-                let src16: Vec<u16> = (0..n).map(|i| (i * 257) as u16).collect();
-                let src: Vec<u8> = bytemuck::cast_slice(&src16).to_vec();
-                let mut mid = vec![0u8; n * 4];
-                convert_u16_to_f32(&src, &mut mid).unwrap();
-                let mut dst = vec![0u8; n * 2];
-                convert_f32_to_u16(&mid, &mut dst).unwrap();
-                let dst16: &[u16] = bytemuck::cast_slice(&dst);
-                assert_eq!(
-                    src16.as_slice(),
-                    dst16,
-                    "u16→f32→u16 roundtrip n={n} tier={perm}"
-                );
-            }
-        });
-        std::eprintln!("depth_u16_f32: {report}");
     }
 
     #[test]
@@ -1668,23 +1476,14 @@ mod experimental_tests {
             convert_u16_to_u8(&[0; 3], &mut [0; 2]),
             Err(SizeError::NotPixelAligned)
         );
-        // Source not aligned (f32 needs 4-byte multiple)
-        assert_eq!(
-            convert_f32_to_u8(&[0; 5], &mut [0; 2]),
-            Err(SizeError::NotPixelAligned)
-        );
         // Dest too small
         assert_eq!(
             convert_u8_to_u16(&[0; 4], &mut [0; 6]),
             Err(SizeError::PixelCountMismatch)
         );
-        assert_eq!(
-            convert_u8_to_f32(&[0; 4], &mut [0; 12]),
-            Err(SizeError::PixelCountMismatch)
-        );
     }
 
-    // --- Unaligned tests for experimental copy functions ---
+    // --- Unaligned tests for gray/luma/depth copy functions ---
     unaligned_copy_tests! {
         unaligned_gray_to_rgb: gray_to_rgb, 1, 3;
         unaligned_gray_alpha_to_rgb: gray_alpha_to_rgb, 2, 3;
@@ -1698,12 +1497,8 @@ mod experimental_tests {
         unaligned_rgba_to_gray_bt2020: rgba_to_gray_bt2020, 4, 1;
         unaligned_convert_u8_to_u16: convert_u8_to_u16, 1, 2;
         unaligned_convert_u16_to_u8: convert_u16_to_u8, 2, 1;
-        unaligned_convert_u8_to_f32: convert_u8_to_f32, 1, 4;
-        unaligned_convert_f32_to_u8: convert_f32_to_u8, 4, 1;
-        unaligned_convert_u16_to_f32: convert_u16_to_f32, 2, 4;
-        unaligned_convert_f32_to_u16: convert_f32_to_u16, 4, 2;
     }
-} // mod experimental_tests
+} // mod gray_luma_depth_tests
 
 // -----------------------------------------------------------------------
 // Size validation
@@ -1888,348 +1683,6 @@ fn test_aliases_match() {
     assert_eq!(fa1, fa4, "fill_alpha_argb = fill_alpha_xbgr");
 }
 
-// -----------------------------------------------------------------------
-// f32 alpha premultiplication
-// -----------------------------------------------------------------------
-
-#[cfg(feature = "experimental")]
-mod experimental_premul_tests {
-    use super::*;
-
-    /// Build f32 RGBA test pixels: R=r, G=g, B=b, A=a packed as bytes.
-    fn make_f32_rgba(pixels: &[[f32; 4]]) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(pixels.len() * 16);
-        for px in pixels {
-            for &v in px {
-                buf.extend_from_slice(&v.to_ne_bytes());
-            }
-        }
-        buf
-    }
-
-    /// Read f32 RGBA pixels back from byte buffer.
-    fn read_f32_rgba(buf: &[u8]) -> Vec<[f32; 4]> {
-        let floats: &[f32] = bytemuck::cast_slice(buf);
-        floats
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|c| [c[0], c[1], c[2], c[3]])
-            .collect()
-    }
-
-    #[test]
-    fn premul_f32_known_values() {
-        // [0.5, 0.3, 0.1, 0.5] → premul → [0.25, 0.15, 0.05, 0.5]
-        let mut buf = make_f32_rgba(&[[0.5, 0.3, 0.1, 0.5]]);
-        premultiply_alpha_f32(&mut buf).unwrap();
-        let result = read_f32_rgba(&buf);
-        assert!((result[0][0] - 0.25).abs() < 1e-6, "R premul");
-        assert!((result[0][1] - 0.15).abs() < 1e-6, "G premul");
-        assert!((result[0][2] - 0.05).abs() < 1e-6, "B premul");
-        assert_eq!(result[0][3], 0.5, "A preserved");
-
-        // Full alpha: no change
-        let mut buf2 = make_f32_rgba(&[[0.8, 0.6, 0.4, 1.0]]);
-        premultiply_alpha_f32(&mut buf2).unwrap();
-        let r2 = read_f32_rgba(&buf2);
-        assert!((r2[0][0] - 0.8).abs() < 1e-6);
-        assert!((r2[0][1] - 0.6).abs() < 1e-6);
-        assert!((r2[0][2] - 0.4).abs() < 1e-6);
-
-        // Zero alpha: all zero
-        let mut buf3 = make_f32_rgba(&[[0.5, 0.3, 0.1, 0.0]]);
-        premultiply_alpha_f32(&mut buf3).unwrap();
-        let r3 = read_f32_rgba(&buf3);
-        assert_eq!(r3[0], [0.0, 0.0, 0.0, 0.0]);
-    }
-
-    #[test]
-    fn premul_unpremul_f32_roundtrip() {
-        let original = vec![
-            [0.8, 0.6, 0.2, 0.7],
-            [1.0, 0.0, 0.5, 0.3],
-            [0.0, 1.0, 1.0, 1.0],
-            [0.1, 0.2, 0.3, 0.0], // zero alpha
-        ];
-        let mut buf = make_f32_rgba(&original);
-        premultiply_alpha_f32(&mut buf).unwrap();
-        unpremultiply_alpha_f32(&mut buf).unwrap();
-        let result = read_f32_rgba(&buf);
-        for (i, (r, o)) in result.iter().zip(original.iter()).enumerate() {
-            if o[3] == 0.0 {
-                // Zero alpha: all channels become 0
-                assert_eq!(*r, [0.0, 0.0, 0.0, 0.0], "zero-alpha pixel {i}");
-            } else {
-                for c in 0..4 {
-                    assert!(
-                        (r[c] - o[c]).abs() < 1e-6,
-                        "pixel {i} channel {c}: {:.8} != {:.8}",
-                        r[c],
-                        o[c]
-                    );
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn premul_unpremul_f32_copy_roundtrip() {
-        let original = vec![
-            [0.5, 0.3, 0.1, 0.5],
-            [1.0, 1.0, 1.0, 0.25],
-            [0.0, 0.0, 0.0, 0.0],
-        ];
-        let src = make_f32_rgba(&original);
-        let mut mid = vec![0u8; src.len()];
-        let mut dst = vec![0u8; src.len()];
-        premultiply_alpha_f32_copy(&src, &mut mid).unwrap();
-        unpremultiply_alpha_f32_copy(&mid, &mut dst).unwrap();
-        let result = read_f32_rgba(&dst);
-        for (i, (r, o)) in result.iter().zip(original.iter()).enumerate() {
-            if o[3] == 0.0 {
-                assert_eq!(*r, [0.0, 0.0, 0.0, 0.0], "zero-alpha pixel {i}");
-            } else {
-                for c in 0..4 {
-                    assert!(
-                        (r[c] - o[c]).abs() < 1e-6,
-                        "copy pixel {i} channel {c}: {:.8} != {:.8}",
-                        r[c],
-                        o[c]
-                    );
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn premul_f32_size_errors() {
-        // Not 16-byte aligned
-        assert_eq!(
-            premultiply_alpha_f32(&mut [0; 15]),
-            Err(SizeError::NotPixelAligned)
-        );
-        assert_eq!(
-            premultiply_alpha_f32(&mut [0; 0]),
-            Err(SizeError::NotPixelAligned)
-        );
-        // Copy: dst too small
-        assert_eq!(
-            premultiply_alpha_f32_copy(&[0; 32], &mut [0; 16]),
-            Err(SizeError::PixelCountMismatch)
-        );
-    }
-
-    #[test]
-    fn permutation_premul_f32() {
-        let report = for_each_token_permutation(policy(), |perm| {
-            // Test with various pixel counts to exercise SIMD and scalar paths
-            for n in [1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33] {
-                let pixels: Vec<[f32; 4]> = (0..n)
-                    .map(|i| {
-                        let t = i as f32 / n.max(1) as f32;
-                        [t, 1.0 - t, t * 0.5, (i % 3) as f32 * 0.5]
-                    })
-                    .collect();
-
-                // In-place premul
-                let mut buf = make_f32_rgba(&pixels);
-                premultiply_alpha_f32(&mut buf).unwrap();
-                let premul_result = read_f32_rgba(&buf);
-                for (i, (r, p)) in premul_result.iter().zip(pixels.iter()).enumerate() {
-                    let expected_r = p[0] * p[3];
-                    let expected_g = p[1] * p[3];
-                    let expected_b = p[2] * p[3];
-                    assert!(
-                        (r[0] - expected_r).abs() < 1e-6
-                            && (r[1] - expected_g).abs() < 1e-6
-                            && (r[2] - expected_b).abs() < 1e-6
-                            && r[3] == p[3],
-                        "premul n={n} i={i} tier={perm}: got {:?}, expected [{expected_r}, {expected_g}, {expected_b}, {}]",
-                        r,
-                        p[3]
-                    );
-                }
-
-                // In-place unpremul (roundtrip)
-                unpremultiply_alpha_f32(&mut buf).unwrap();
-                let result = read_f32_rgba(&buf);
-                for (i, (r, p)) in result.iter().zip(pixels.iter()).enumerate() {
-                    if p[3] == 0.0 {
-                        assert_eq!(
-                            *r,
-                            [0.0, 0.0, 0.0, 0.0],
-                            "zero-alpha n={n} i={i} tier={perm}"
-                        );
-                    } else {
-                        for c in 0..4 {
-                            assert!(
-                                (r[c] - p[c]).abs() < 1e-6,
-                                "roundtrip n={n} i={i} c={c} tier={perm}: {:.8} != {:.8}",
-                                r[c],
-                                p[c]
-                            );
-                        }
-                    }
-                }
-
-                // Copy premul
-                let src = make_f32_rgba(&pixels);
-                let mut dst = vec![0u8; src.len()];
-                premultiply_alpha_f32_copy(&src, &mut dst).unwrap();
-                let copy_result = read_f32_rgba(&dst);
-                assert_eq!(
-                    copy_result, premul_result,
-                    "copy vs inplace n={n} tier={perm}"
-                );
-
-                // Copy unpremul roundtrip
-                let mut dst2 = vec![0u8; src.len()];
-                unpremultiply_alpha_f32_copy(&dst, &mut dst2).unwrap();
-                let copy_rt = read_f32_rgba(&dst2);
-                assert_eq!(copy_rt, result, "copy roundtrip n={n} tier={perm}");
-            }
-        });
-        std::eprintln!("premul_f32: {report}");
-    }
-
-    #[test]
-    fn premul_f32_aliases() {
-        let mut a = make_f32_rgba(&[[0.5, 0.3, 0.1, 0.5]]);
-        let mut b = a.clone();
-        premultiply_alpha_f32(&mut a).unwrap();
-        premultiply_alpha_rgba_f32(&mut b).unwrap();
-        assert_eq!(a, b, "rgba alias should match");
-
-        unpremultiply_alpha_f32(&mut a).unwrap();
-        unpremultiply_alpha_rgba_f32(&mut b).unwrap();
-        assert_eq!(a, b, "rgba unpremul alias should match");
-    }
-
-    // --- Unaligned f32 premultiply tests ---
-    // Uses valid f32 pixel data to avoid NaN divergence concerns.
-
-    fn make_f32_test_pixels(n: usize) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(n * 16);
-        for i in 0..n {
-            let t = i as f32 / n.max(1) as f32;
-            for v in [t, 1.0 - t, t * 0.5, (i % 3) as f32 * 0.5] {
-                buf.extend_from_slice(&v.to_ne_bytes());
-            }
-        }
-        buf
-    }
-
-    #[test]
-    fn unaligned_premultiply_alpha_f32() {
-        let report = for_each_token_permutation(policy(), |perm| {
-            for n in [1, 2, 3, 7, 8, 15, 16, 17, 32, 33] {
-                let src = make_f32_test_pixels(n);
-                let byte_len = src.len();
-
-                // Aligned
-                let mut aligned = src.clone();
-                premultiply_alpha_f32(&mut aligned).unwrap();
-
-                // Unaligned
-                let (mut buf, off) = make_unaligned_buf(byte_len);
-                buf[off..off + byte_len].copy_from_slice(&src);
-                premultiply_alpha_f32(&mut buf[off..off + byte_len]).unwrap();
-
-                assert_eq!(
-                    &buf[off..off + byte_len],
-                    &aligned[..],
-                    "unaligned premul_f32 n={n} tier={perm}"
-                );
-            }
-        });
-        std::eprintln!("unaligned_premul_f32: {report}");
-    }
-
-    #[test]
-    fn unaligned_unpremultiply_alpha_f32() {
-        let report = for_each_token_permutation(policy(), |perm| {
-            for n in [1, 2, 3, 7, 8, 15, 16, 17, 32, 33] {
-                let src = make_f32_test_pixels(n);
-                let byte_len = src.len();
-
-                let mut aligned = src.clone();
-                unpremultiply_alpha_f32(&mut aligned).unwrap();
-
-                let (mut buf, off) = make_unaligned_buf(byte_len);
-                buf[off..off + byte_len].copy_from_slice(&src);
-                unpremultiply_alpha_f32(&mut buf[off..off + byte_len]).unwrap();
-
-                assert_eq!(
-                    &buf[off..off + byte_len],
-                    &aligned[..],
-                    "unaligned unpremul_f32 n={n} tier={perm}"
-                );
-            }
-        });
-        std::eprintln!("unaligned_unpremul_f32: {report}");
-    }
-
-    #[test]
-    fn unaligned_premultiply_alpha_f32_copy() {
-        let report = for_each_token_permutation(policy(), |perm| {
-            for n in [1, 2, 3, 7, 8, 15, 16, 17, 32, 33] {
-                let src = make_f32_test_pixels(n);
-                let byte_len = src.len();
-
-                let mut aligned_dst = vec![0u8; byte_len];
-                premultiply_alpha_f32_copy(&src, &mut aligned_dst).unwrap();
-
-                let (mut src_buf, src_off) = make_unaligned_buf(byte_len);
-                src_buf[src_off..src_off + byte_len].copy_from_slice(&src);
-                let (mut dst_buf, dst_off) = make_unaligned_buf(byte_len);
-                premultiply_alpha_f32_copy(
-                    &src_buf[src_off..src_off + byte_len],
-                    &mut dst_buf[dst_off..dst_off + byte_len],
-                )
-                .unwrap();
-
-                assert_eq!(
-                    &dst_buf[dst_off..dst_off + byte_len],
-                    &aligned_dst[..],
-                    "unaligned premul_f32_copy n={n} tier={perm}"
-                );
-            }
-        });
-        std::eprintln!("unaligned_premul_f32_copy: {report}");
-    }
-
-    #[test]
-    fn unaligned_unpremultiply_alpha_f32_copy() {
-        let report = for_each_token_permutation(policy(), |perm| {
-            for n in [1, 2, 3, 7, 8, 15, 16, 17, 32, 33] {
-                let src = make_f32_test_pixels(n);
-                let byte_len = src.len();
-
-                let mut aligned_dst = vec![0u8; byte_len];
-                unpremultiply_alpha_f32_copy(&src, &mut aligned_dst).unwrap();
-
-                let (mut src_buf, src_off) = make_unaligned_buf(byte_len);
-                src_buf[src_off..src_off + byte_len].copy_from_slice(&src);
-                let (mut dst_buf, dst_off) = make_unaligned_buf(byte_len);
-                unpremultiply_alpha_f32_copy(
-                    &src_buf[src_off..src_off + byte_len],
-                    &mut dst_buf[dst_off..dst_off + byte_len],
-                )
-                .unwrap();
-
-                assert_eq!(
-                    &dst_buf[dst_off..dst_off + byte_len],
-                    &aligned_dst[..],
-                    "unaligned unpremul_f32_copy n={n} tier={perm}"
-                );
-            }
-        });
-        std::eprintln!("unaligned_unpremul_f32_copy: {report}");
-    }
-} // mod experimental_premul_tests
-
-#[cfg(feature = "experimental")]
 mod premul_u8_tests {
     use super::*;
 
@@ -3107,31 +2560,4 @@ mod packed_format_tests {
         unaligned_rgba_to_rgba4444: rgba_to_rgba4444, 4, 2;
         unaligned_bgra_to_rgba4444: bgra_to_rgba4444, 4, 2;
     }
-}
-
-/// Every value, at every tier: the same bits as a division, wherever it sits in a row.
-#[cfg(feature = "experimental")]
-#[test]
-fn widening_is_correctly_rounded_at_every_tier_and_position() {
-    let u16s: Vec<u8> = (0..=u16::MAX).flat_map(|v| v.to_ne_bytes()).collect();
-    let u8s: Vec<u8> = (0..=u8::MAX).collect();
-    let _ = for_each_token_permutation(CompileTimePolicy::Warn, |_| {
-        let mut whole = vec![0u8; u16s.len() * 2];
-        convert_u16_to_f32(&u16s, &mut whole).unwrap();
-        let mut one = [0u8; 4];
-        for (v, d) in (0..=u16::MAX).zip(whole.as_chunks::<4>().0) {
-            let want = (f32::from(v) / 65535.0).to_ne_bytes();
-            assert_eq!(*d, want, "u16 {v}");
-            convert_u16_to_f32(&v.to_ne_bytes(), &mut one).unwrap();
-            assert_eq!(one, want, "u16 {v} alone");
-        }
-        let mut whole = vec![0u8; u8s.len() * 4];
-        convert_u8_to_f32(&u8s, &mut whole).unwrap();
-        for (v, d) in (0..=u8::MAX).zip(whole.as_chunks::<4>().0) {
-            let want = (f32::from(v) / 255.0).to_ne_bytes();
-            assert_eq!(*d, want, "u8 {v}");
-            convert_u8_to_f32(&[v], &mut one).unwrap();
-            assert_eq!(one, want, "u8 {v} alone");
-        }
-    });
 }

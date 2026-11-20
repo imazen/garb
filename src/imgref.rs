@@ -264,16 +264,11 @@ pub fn convert_rgba_to_bgr(
 }
 
 // ===========================================================================
-// Experimental
+// Gray layout and weighted luma
 // ===========================================================================
 
-#[cfg(feature = "experimental")]
-mod experimental_imgref {
+mod gray_imgref {
     use super::*;
-
-    // -----------------------------------------------------------------------
-    // Trait impls
-    // -----------------------------------------------------------------------
 
     impl_convert_image!(Gray<u8>, Rgb<u8>, crate::bytes::gray_to_rgb);
     impl_convert_image!(Gray<u8>, Bgr<u8>, crate::bytes::gray_to_bgr);
@@ -284,10 +279,6 @@ mod experimental_imgref {
     // Identity gray
     impl_convert_image!(Rgb<u8>, Gray<u8>, crate::bytes::rgb_to_gray_identity);
     impl_convert_image!(Rgba<u8>, Gray<u8>, crate::bytes::rgba_to_gray_identity);
-
-    // -----------------------------------------------------------------------
-    // Deprecated named functions
-    // -----------------------------------------------------------------------
 
     /// Use [`convert_imgref`](crate::convert_imgref) instead.
     #[deprecated(since = "0.2.1", note = "use garb::convert_imgref() instead")]
@@ -352,60 +343,56 @@ mod experimental_imgref {
         crate::convert_imgref(src, dst)
     }
 
-    // -----------------------------------------------------------------------
-    // Weighted luma — keep as named functions (matrix is a parameter choice)
-    // -----------------------------------------------------------------------
-
     macro_rules! luma_imgref {
-    ($matrix:ident, $doc_matrix:expr) => {
-        paste::paste! {
-            #[doc = concat!("Convert `ImgRef<Rgb<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
-            pub fn [<convert_rgb_to_gray_ $matrix>](
-                src: ImgRef<'_, Rgb<u8>>,
-                mut dst: ImgRefMut<'_, Gray<u8>>,
-            ) -> Result<(), SizeError> {
-                check_dims(src.width(), src.height(), dst.width(), dst.height())?;
-                for (s, d) in src.rows().zip(dst.rows_mut()) {
-                    crate::bytes::[<rgb_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+        ($matrix:ident, $doc_matrix:expr) => {
+            paste::paste! {
+                #[doc = concat!("Convert `ImgRef<Rgb<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+                pub fn [<convert_rgb_to_gray_ $matrix>](
+                    src: ImgRef<'_, Rgb<u8>>,
+                    mut dst: ImgRefMut<'_, Gray<u8>>,
+                ) -> Result<(), SizeError> {
+                    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+                    for (s, d) in src.rows().zip(dst.rows_mut()) {
+                        crate::bytes::[<rgb_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                    }
+                    Ok(())
                 }
-                Ok(())
-            }
-            #[doc = concat!("Convert `ImgRef<Bgr<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
-            pub fn [<convert_bgr_to_gray_ $matrix>](
-                src: ImgRef<'_, Bgr<u8>>,
-                mut dst: ImgRefMut<'_, Gray<u8>>,
-            ) -> Result<(), SizeError> {
-                check_dims(src.width(), src.height(), dst.width(), dst.height())?;
-                for (s, d) in src.rows().zip(dst.rows_mut()) {
-                    crate::bytes::[<bgr_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                #[doc = concat!("Convert `ImgRef<Bgr<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+                pub fn [<convert_bgr_to_gray_ $matrix>](
+                    src: ImgRef<'_, Bgr<u8>>,
+                    mut dst: ImgRefMut<'_, Gray<u8>>,
+                ) -> Result<(), SizeError> {
+                    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+                    for (s, d) in src.rows().zip(dst.rows_mut()) {
+                        crate::bytes::[<bgr_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                    }
+                    Ok(())
                 }
-                Ok(())
-            }
-            #[doc = concat!("Convert `ImgRef<Rgba<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
-            pub fn [<convert_rgba_to_gray_ $matrix>](
-                src: ImgRef<'_, Rgba<u8>>,
-                mut dst: ImgRefMut<'_, Gray<u8>>,
-            ) -> Result<(), SizeError> {
-                check_dims(src.width(), src.height(), dst.width(), dst.height())?;
-                for (s, d) in src.rows().zip(dst.rows_mut()) {
-                    crate::bytes::[<rgba_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                #[doc = concat!("Convert `ImgRef<Rgba<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+                pub fn [<convert_rgba_to_gray_ $matrix>](
+                    src: ImgRef<'_, Rgba<u8>>,
+                    mut dst: ImgRefMut<'_, Gray<u8>>,
+                ) -> Result<(), SizeError> {
+                    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+                    for (s, d) in src.rows().zip(dst.rows_mut()) {
+                        crate::bytes::[<rgba_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                    }
+                    Ok(())
                 }
-                Ok(())
-            }
-            #[doc = concat!("Convert `ImgRef<Bgra<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
-            pub fn [<convert_bgra_to_gray_ $matrix>](
-                src: ImgRef<'_, Bgra<u8>>,
-                mut dst: ImgRefMut<'_, Gray<u8>>,
-            ) -> Result<(), SizeError> {
-                check_dims(src.width(), src.height(), dst.width(), dst.height())?;
-                for (s, d) in src.rows().zip(dst.rows_mut()) {
-                    crate::bytes::[<bgra_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                #[doc = concat!("Convert `ImgRef<Bgra<u8>>` to `ImgRefMut<Gray<u8>>` using ", $doc_matrix, " luma.")]
+                pub fn [<convert_bgra_to_gray_ $matrix>](
+                    src: ImgRef<'_, Bgra<u8>>,
+                    mut dst: ImgRefMut<'_, Gray<u8>>,
+                ) -> Result<(), SizeError> {
+                    check_dims(src.width(), src.height(), dst.width(), dst.height())?;
+                    for (s, d) in src.rows().zip(dst.rows_mut()) {
+                        crate::bytes::[<bgra_to_gray_ $matrix>](bytemuck::cast_slice(s), bytemuck::cast_slice_mut(d))?;
+                    }
+                    Ok(())
                 }
-                Ok(())
             }
-        }
-    };
-}
+        };
+    }
 
     luma_imgref!(bt709, "BT.709");
     luma_imgref!(bt601, "BT.601");
@@ -428,39 +415,8 @@ mod experimental_imgref {
     ) -> Result<(), SizeError> {
         convert_rgba_to_gray_bt709(src, dst)
     }
-
-    // -----------------------------------------------------------------------
-    // f32 alpha premultiplication (not a type conversion)
-    // -----------------------------------------------------------------------
-
-    /// Premultiply alpha for an `Rgba<f32>` image in-place.
-    ///
-    /// Empty rows (width == 0) are skipped without panicking.
-    pub fn premultiply_rgba_f32(mut img: ImgRefMut<'_, Rgba<f32>>) {
-        for row in img.rows_mut() {
-            let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
-            if bytes.is_empty() {
-                continue;
-            }
-            crate::bytes::premultiply_alpha_f32(bytes).expect("row is always valid");
-        }
-    }
-
-    /// Unpremultiply alpha for an `Rgba<f32>` image in-place.
-    ///
-    /// Empty rows (width == 0) are skipped without panicking.
-    pub fn unpremultiply_rgba_f32(mut img: ImgRefMut<'_, Rgba<f32>>) {
-        for row in img.rows_mut() {
-            let bytes: &mut [u8] = bytemuck::cast_slice_mut(row);
-            if bytes.is_empty() {
-                continue;
-            }
-            crate::bytes::unpremultiply_alpha_f32(bytes).expect("row is always valid");
-        }
-    }
-} // mod experimental_imgref
-#[cfg(feature = "experimental")]
-pub use experimental_imgref::*;
+}
+pub use gray_imgref::*;
 
 // ===========================================================================
 // Tests
@@ -575,15 +531,6 @@ mod tests {
         assert_eq!(bgra.width(), 1);
         assert_eq!(bgra.height(), 0);
         assert!(bgra.buf().is_empty());
-    }
-
-    #[test]
-    fn test_premultiply_rgba_f32_zero_height_no_panic() {
-        // Same regression check on the experimental f32 premultiply path.
-        let mut img: ImgVec<Rgba<f32>> = ImgVec::new(vec![], 1, 0);
-        super::experimental_imgref::premultiply_rgba_f32(img.as_mut());
-        super::experimental_imgref::unpremultiply_rgba_f32(img.as_mut());
-        assert_eq!(img.height(), 0);
     }
 
     #[allow(deprecated)]

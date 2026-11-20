@@ -14,7 +14,7 @@ with automatic scalar fallback. `no_std` compatible, `#![forbid(unsafe_code)]`.
 
 ```toml
 [dependencies]
-garb = "0.2.9"
+garb = "0.3.0"
 ```
 
 ```rust
@@ -62,6 +62,10 @@ stripping channels — so you can get back to the interesting work.
 - Gray → ARGB / ABGR
 - GrayAlpha → ARGB / ABGR
 - Fill alpha (set byte 0 = 255 in each 4-byte pixel, for ARGB/ABGR/XRGB/XBGR layouts)
+- Gray → RGB / BGR, GrayAlpha → RGB / BGR, Gray ↔ GrayAlpha
+- RGB / RGBA / BGR / BGRA → Gray (weighted integer luma: BT.709, BT.601, BT.2020; or identity)
+- Integer depth conversion: u8 ↔ u16 (exact `v * 257` and `(v + 128) / 257`)
+- u8 alpha premultiply for RGBA / BGRA (exact integer `(c * a + 127) / 255`, in-place and copy)
 
 **Experimental** (feature `experimental` — API may change)
 - RGB565 → RGBA / BGRA (little-endian packed 16-bit, auto-vectorized)
@@ -72,11 +76,6 @@ stripping channels — so you can get back to the interesting work.
   matches DXGI `R10G10B10A2_UNORM` / Vulkan `A2B10G10R10_UNORM_PACK32` /
   WGPU `Rgb10a2Unorm`; 2-bit alpha bit-replicated to 10 bits per the graphics-API
   convention; transfer functions are NOT applied — chain with `linear-srgb` for PQ/HLG)
-- u8 alpha premultiply for RGBA / BGRA (exact integer, auto-vectorized)
-- Gray → RGB, GrayAlpha → RGB, Gray ↔ GrayAlpha
-- RGB / RGBA / BGR / BGRA → Gray (weighted luma: BT.709, BT.601, BT.2020; or identity)
-- Depth conversion: u8 ↔ u16, u8 ↔ f32, u16 ↔ f32
-- f32 alpha premultiply / unpremultiply (in-place and copy, AVX2 SIMD)
 
 All operations have `_strided` variants for images with padding between rows
 (common in video frames and GPU textures).
@@ -186,9 +185,9 @@ let bgra_img: ImgVec<Bgra<u8>> = convert_imgref_inplace(rgba_img);
 | Feature  | Default | What it adds |
 |----------|---------|--------------|
 | `std`    | yes     | Enables `std` on dependencies (e.g. `archmage`) |
-| `experimental` | no | Packed formats (RGB565, RGBA4444), gray layout, weighted luma, depth conversion, f32 premul (API may change) |
-| `rgb`    | no      | `garb::typed_rgb` — conversions on `Rgba<u8>`, `Bgra<u8>`, etc. |
-| `imgref` | no      | `garb::imgref` — whole-image conversions on `ImgVec` / `ImgRef` (implies `rgb`) |
+| `experimental` | no | Packed integer formats (`RGB565`, `RGBA4444`, `RGBA1010102` — API may change) |
+| `rgb`    | no      | `garb::typed_rgb` — conversions on `Rgba<u8>`, `Bgra<u8>`, etc. (enables `bytemuck`) |
+| `imgref` | no      | `garb::imgref` — whole-image conversions on `ImgVec` / `ImgRef` (implies `rgb` + `alloc`) |
 
 The crate is `no_std` by default — the core byte-slice API, plus the
 `experimental` and `rgb` surfaces, need no allocator (they operate on
@@ -196,12 +195,11 @@ caller-owned slices). Only the `imgref` feature pulls in `alloc`.
 
 ## Precision
 
-Depth narrowing rounds to nearest after clamping. f32→integer conversion
-widens before scaling, so a value just below a half-code does not round up
-prematurely. u16→u8 uses exact `(v + 128) / 257`; integer→f32 matches
-correctly rounded division at every native tier and row position.
-These fixes change some normalized float bits and output bytes versus 0.2.8.
-See the [precision review](https://github.com/imazen/garb/blob/main/docs/precision.md).
+`garb` 0.3.0 is strictly integer-only (floating-point depth and alpha conversions
+live in `zenpixels-convert` on `magetypes`). Integer narrowing rounds to nearest:
+`u16 → u8` uses exact `(v + 128) / 257`, `u8 → u16` uses exact `v * 257`, and
+`u8` alpha premultiply uses exact `(c * a + 127) / 255` across scalar, AVX2, and
+NEON. See the [precision review](https://github.com/imazen/garb/blob/main/docs/precision.md).
 
 ## SIMD dispatch
 
@@ -257,6 +255,20 @@ Every function returns `Result<(), SizeError>`. All have `_strided` variants.
 | `argb_to_bgr` | 4bpp → 3bpp, drop alpha + reverse channels |
 | `gray_to_argb` | 1bpp → 4bpp (A=255, R=G=B=gray) |
 | `gray_alpha_to_argb` | 2bpp → 4bpp (alpha first, R=G=B=gray) |
+| `gray_to_rgb` | 1bpp → 3bpp (R=G=B=gray) |
+| `gray_alpha_to_rgb` | 2bpp → 3bpp (R=G=B=gray, drop alpha) |
+| `gray_to_gray_alpha` | 1bpp → 2bpp (A=255) |
+| `gray_alpha_to_gray` | 2bpp → 1bpp (drop alpha) |
+| `rgb_to_gray` | 3bpp → 1bpp weighted luma (BT.709 default) |
+| `rgba_to_gray` | 4bpp → 1bpp weighted luma (BT.709 default) |
+| `rgb_to_gray_bt709` | 3bpp → 1bpp BT.709 luma (also `_bt601`, `_bt2020`) |
+| `rgba_to_gray_bt601` | 4bpp → 1bpp BT.601 luma (also `_bt709`, `_bt2020`) |
+| `rgb_to_gray_identity` | 3bpp → 1bpp, take first channel (for R=G=B data) |
+| `rgba_to_gray_identity` | 4bpp → 1bpp, take first channel (for R=G=B data) |
+| `convert_u8_to_u16` | Depth: u8 → u16 (0–255 → 0–65535, LE u16 bytes) |
+| `convert_u16_to_u8` | Depth: u16 → u8 (exact `(v + 128) / 257`, LE u16 bytes) |
+| `premultiply_alpha_rgba_u8` | Premultiply alpha in `[R,G,B,A]` u8 buffer (in-place) |
+| `premultiply_alpha_rgba_u8_copy` | Premultiply alpha u8, copy variant |
 
 Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 `bgr_to_rgb`, `gray_to_bgra`, `gray_alpha_to_bgra`,
@@ -265,7 +277,10 @@ Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 `rgba_to_abgr_inplace`, `rgba_to_abgr`,
 `fill_alpha_abgr`, `fill_alpha_xrgb`, `fill_alpha_xbgr`,
 `bgr_to_argb`, `bgr_to_abgr`, `abgr_to_bgr`, `abgr_to_rgb`,
-`gray_to_abgr`, `gray_alpha_to_abgr`.
+`gray_to_abgr`, `gray_alpha_to_abgr`,
+`gray_to_bgr`, `gray_alpha_to_bgr`,
+`bgr_to_gray`, `bgra_to_gray`, plus `_bt601`, `_bt709`, `_bt2020`, and `_identity` variants,
+`premultiply_alpha_bgra_u8`, `premultiply_alpha_bgra_u8_copy`.
 
 #### Experimental (`feature = "experimental"`)
 
@@ -281,94 +296,8 @@ Aliases: `bgra_to_rgba_inplace`, `bgra_to_rgba`, `bgr_to_rgb_inplace`,
 | `bgra_to_rgba4444` | BGRA (4bpp) → RGBA4444 (LE u16, 2bpp), lossy |
 | `rgba1010102_to_rgba16` | RGBA1010102 (LE u32, 4bpp) → interleaved RGBA u16 (4 channels in `[0, 1023]`); 2-bit alpha bit-replicated to 10 bits |
 | `rgba16_to_rgba1010102` | Interleaved RGBA u16 → RGBA1010102 (LE u32, 4bpp); alpha rounded to 2 bits via `(a*3+511)/1023` |
-| `premultiply_alpha_rgba_u8` | Premultiply alpha in `[R,G,B,A]` u8 buffer (in-place) |
-| `premultiply_alpha_rgba_u8_copy` | Premultiply alpha u8, copy variant |
-| `gray_to_rgb` | 1bpp → 3bpp (R=G=B=gray) |
-| `gray_alpha_to_rgb` | 2bpp → 3bpp (R=G=B=gray, drop alpha) |
-| `gray_to_gray_alpha` | 1bpp → 2bpp (A=255) |
-| `gray_alpha_to_gray` | 2bpp → 1bpp (drop alpha) |
-| `rgb_to_gray` | 3bpp → 1bpp weighted luma (BT.709 default) |
-| `rgba_to_gray` | 4bpp → 1bpp weighted luma (BT.709 default) |
-| `rgb_to_gray_bt709` | 3bpp → 1bpp BT.709 luma |
-| `rgba_to_gray_bt601` | 4bpp → 1bpp BT.601 luma (also `_bt709`, `_bt2020`) |
-| `rgb_to_gray_identity` | 3bpp → 1bpp, take first channel (for R=G=B data) |
-| `rgba_to_gray_identity` | 4bpp → 1bpp, take first channel (for R=G=B data) |
-| `convert_u8_to_u16` | Depth: u8 → u16 (0–255 → 0–65535) |
-| `convert_u16_to_u8` | Depth: u16 → u8 |
-| `convert_u8_to_f32` | Depth: u8 → f32 (0–255 → 0.0–1.0) |
-| `convert_f32_to_u8` | Depth: f32 → u8 (clamped) |
-| `convert_u16_to_f32` | Depth: u16 → f32 (0–65535 → 0.0–1.0) |
-| `convert_f32_to_u16` | Depth: f32 → u16 (clamped) |
-| `premultiply_alpha_f32` | Premultiply alpha in `[R,G,B,A]` f32 buffer (in-place) |
-| `unpremultiply_alpha_f32` | Unpremultiply alpha in `[R,G,B,A]` f32 buffer (in-place) |
-| `premultiply_alpha_f32_copy` | Premultiply alpha, copy variant |
-| `unpremultiply_alpha_f32_copy` | Unpremultiply alpha, copy variant |
 
-Aliases: `premultiply_alpha_bgra_u8`, `premultiply_alpha_bgra_u8_copy`,
-`bgr_to_gray`, `bgra_to_gray`, plus `_identity` and BGR variants for all
-gray conversions. All functions have `_strided` variants.
-
-### Deinterleave — `garb::deinterleave` (`feature = "experimental"`)
-
-Pure identity (no transfer-function, no color matrix, no normalization)
-interleave/deinterleave between packed-RGB(A) buffers and `f32` planes.
-
-Two flavors of dispatch underneath, chosen per signal:
-
-- **u8 / u16 inputs** — hand-written `_mm_shuffle_epi8` deinterleave +
-  256-bit AVX2 widening (`_mm256_cvtepu8_epi32` + `_mm256_storeu_ps`).
-  Verified +21–52% over LLVM autovec at L1–L3 sizes (see
-  `benchmarks/{rgb24,rgb48}_chunk_vs_autovec_2026-05-07`). The
-  `_mm_shuffle_epi8` mask pattern is a deinterleave LLVM autovec
-  can't infer from generic strided indexing, so the hand-written
-  kernel earns its keep.
-- **f32 inputs** — `#[autoversion(v3, neon, wasm128)]` over the inline
-  scalar loop. LLVM autovec under each tier's `target_feature` emits
-  256-bit YMM (AVX2) / `vld3q_f32` (NEON) / `v128.load` (wasm SIMD128)
-  on the loop body. Beats the prior hand-written 128-bit-XMM chunks
-  by 26–37% at 1024 px (see `benchmarks/deinterleave_autovec_vs_chunk_2026-05-07`).
-
-| Function | Operation |
-|----------|-----------|
-| `rgb24_to_planes_f32` | RGB24 (`u8`, 3bpp) → 3 × `f32` planes (R, G, B). AVX2 chunk SIMD: vpshufb + vpmovzxbd + vcvtdq2ps. NEON: vld3q_u8. |
-| `rgb48_to_planes_f32` | RGB48 (`u16`, 6bpp) → 3 × `f32` planes. AVX2 chunk SIMD: 3-way vpshufb + vpmovzxwd. NEON: vld3q_u16. |
-| `rgb_f32_to_planes_f32` | f32 RGB interleaved → 3 × `f32` planes (identity, no widen). `#[autoversion]` autovec. |
-| `rgba_f32_to_planes_f32` | f32 RGBA interleaved → 4 × `f32` planes. |
-| `planes_f32_to_rgb_f32` | 3 × `f32` planes → f32 RGB interleaved (gather). |
-| `planes_f32_to_rgba_f32` | 4 × `f32` planes → f32 RGBA interleaved. |
-
-#### Chunk-level u8/u16 hooks for fusion into caller SIMD loops
-
-These experimental hooks take arrays and no token. Native calls require a matching CPU-feature function; see [calling context and migration status](https://github.com/imazen/garb/blob/main/docs/SIMD_TRANSITION.md).
-
-For callers already inside a `#[target_feature(enable = "avx2,...")]`
-region (set up by `#[arcane]`, `#[rite]`, or `#[magetypes]`), the u8/u16
-chunk-level primitives skip per-call dispatch. They're tokenless — the
-caller's region establishes target_feature; `#[rite(v3)]` on each
-function adds matching `#[target_feature]` and `#[inline]` attributes.
-Inspect the compiled caller before relying on register-only array passing.
-
-| Function | Operation |
-|----------|-----------|
-| `rgb24_chunk8_to_planes_tokenless_v3` | 8 packed RGB24 pixels → 3 × `[f32; 8]` (inline AVX2) |
-| `rgb48_chunk8_to_planes_tokenless_v3` | 8 packed RGB48 pixels → 3 × `[f32; 8]` (inline AVX2) |
-| `rgb24_chunk8_to_planes_scalar` | Scalar fallback (autovec'd inline by the caller's target_feature region) |
-| `rgb48_chunk8_to_planes_scalar` | Scalar fallback for `u16` |
-
-(See `zenanalyze::tier1` for a complete example.)
-
-#### Chunk-level f32 hooks (scalar only)
-
-For f32 input where autovec is the right answer, only the scalar chunks
-are exposed — callers in their own `#[arcane(<tier>)]` region get
-256-bit YMM autovec'd by LLVM. The tokenless `_v3` / `_neon` / `_wasm128`
-variants don't ship: they were faster at 128-bit XMM, slower than autovec
-at 256-bit YMM, and no longer earn their keep.
-
-| Function | Shape |
-|----------|-------|
-| `{rgb,rgba}_f32_chunk{4,8,16}_to_planes_scalar` | f32 chunk → planes (deinterleave) |
-| `planes_to_{rgb,rgba}_f32_chunk{4,8,16}_scalar` | planes → f32 chunk (interleave) |
+All experimental functions also have `_strided` variants.
 
 ### Generic API — `convert` / `convert_inplace` (feature `rgb`)
 
@@ -395,26 +324,16 @@ the right SIMD-optimized conversion from the source and destination types.
 
 | From | To |
 |------|----|
-| `Rgba<u8>` | `Bgra<u8>`, `Rgb<u8>`, `Bgr<u8>` |
-| `Bgra<u8>` | `Rgba<u8>`, `Bgr<u8>`, `Rgb<u8>` |
-| `Rgb<u8>` | `Rgba<u8>`, `Bgra<u8>` |
-| `Bgr<u8>` | `Rgba<u8>`, `Bgra<u8>` |
-| `Gray<u8>` | `Rgba<u8>`, `Bgra<u8>` |
-| `GrayAlpha<u8>` | `Rgba<u8>`, `Bgra<u8>` |
+| `Rgba<u8>` | `Bgra<u8>`, `Rgb<u8>`, `Bgr<u8>`, `Gray<u8>` (identity) |
+| `Bgra<u8>` | `Rgba<u8>`, `Bgr<u8>`, `Rgb<u8>`, `Gray<u8>` (identity) |
+| `Rgb<u8>` | `Rgba<u8>`, `Bgra<u8>`, `Gray<u8>` (identity) |
+| `Bgr<u8>` | `Rgba<u8>`, `Bgra<u8>`, `Gray<u8>` (identity) |
+| `Gray<u8>` | `Rgba<u8>`, `Bgra<u8>`, `Rgb<u8>`, `Bgr<u8>`, `GrayAlpha<u8>` |
+| `GrayAlpha<u8>` | `Rgba<u8>`, `Bgra<u8>`, `Rgb<u8>`, `Bgr<u8>`, `Gray<u8>` |
 
-**Additional pairs with `experimental`:**
-
-| From | To |
-|------|----|
-| `Gray<u8>` | `Rgb<u8>`, `Bgr<u8>`, `GrayAlpha<u8>` |
-| `GrayAlpha<u8>` | `Rgb<u8>`, `Bgr<u8>`, `Gray<u8>` |
-| `Rgb<u8>` | `Gray<u8>` (identity) |
-| `Rgba<u8>` | `Gray<u8>` (identity) |
-| `Bgr<u8>` | `Gray<u8>` (identity) |
-| `Bgra<u8>` | `Gray<u8>` (identity) |
-
-Weighted luma conversions (`rgb_to_gray_bt709_buf`, etc.) and
-`premultiply_rgba_f32` / `unpremultiply_rgba_f32` remain as named functions.
+Weighted luma conversions (`rgb_to_gray_bt709_buf`, etc.) and `u8` alpha
+premultiply (`premultiply_rgba_u8`, `premultiply_rgba_u8_buf`, etc.) remain as
+named functions.
 
 ARGB/ABGR types are not in the `rgb` crate, so those conversions are only
 available through `garb::bytes`.
@@ -425,14 +344,13 @@ are deprecated but still available.
 ### Generic API — `convert_imgref` / `convert_imgref_inplace` (feature `imgref`)
 
 Type-inferred conversions on `ImgVec` / `ImgRef` / `ImgRefMut` from the
-[`imgref`](https://crates.io/crates/imgref) crate. Same type pairs as above.
+[`imgref`](https://crates.io/crates/imgref) crate. Same type pairs as above,
+plus named weighted-luma and `u8` alpha-premultiply helpers.
 
 | Function | Description |
 |----------|-------------|
 | `convert_imgref(ImgRef<S>, ImgRefMut<D>)` | Copy-convert between images |
 | `convert_imgref_inplace(ImgVec<S>) -> ImgVec<D>` | In-place, returns reinterpreted image |
-
-With `experimental`: additional pairs plus weighted luma and premultiply.
 
 The previous named functions (`swap_rgba_to_bgra`, `convert_rgb_to_bgra`, etc.)
 are deprecated but still available.

@@ -687,17 +687,12 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_strided_scalar(
 }
 
 // ===========================================================================
-// Experimental: depth, gray layout, luma, premul (feature = "experimental")
+// Integer depth, gray layout, luma, u8 premul
 // ===========================================================================
 
-#[cfg(feature = "experimental")]
 #[cfg_attr(target_arch = "x86", allow(unused_imports))]
-mod experimental {
+mod integer_depth_gray_luma {
     use archmage::prelude::*;
-
-    // -----------------------------------------------------------------------
-    // Depth conversion row implementations
-    // -----------------------------------------------------------------------
 
     pub(in crate::bytes) fn convert_u8_to_u16_row_scalar(
         _t: ScalarToken,
@@ -718,57 +713,6 @@ mod experimental {
             *d = ((v as u32 + 128) / 257) as u8;
         }
     }
-    pub(in crate::bytes) fn convert_u8_to_f32_row_scalar(
-        _t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-    ) {
-        for (s, d) in src.iter().zip(dst.as_chunks_mut::<4>().0.iter_mut()) {
-            d.copy_from_slice(&(*s as f32 / 255.0).to_ne_bytes());
-        }
-    }
-    pub(in crate::bytes) fn convert_f32_to_u8_row_scalar(
-        _t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-    ) {
-        for (s, d) in src.as_chunks::<4>().0.iter().zip(dst.iter_mut()) {
-            let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
-            *d = (f64::from(v).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-        }
-    }
-    pub(in crate::bytes) fn convert_u16_to_f32_row_scalar(
-        _t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-    ) {
-        for (s, d) in src
-            .as_chunks::<2>()
-            .0
-            .iter()
-            .zip(dst.as_chunks_mut::<4>().0.iter_mut())
-        {
-            let v = u16::from_ne_bytes([s[0], s[1]]);
-            d.copy_from_slice(&(v as f32 / 65535.0).to_ne_bytes());
-        }
-    }
-    pub(in crate::bytes) fn convert_f32_to_u16_row_scalar(
-        _t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-    ) {
-        for (s, d) in src
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .zip(dst.as_chunks_mut::<2>().0.iter_mut())
-        {
-            let v = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
-            d.copy_from_slice(
-                &((f64::from(v).clamp(0.0, 1.0) * 65535.0 + 0.5) as u16).to_ne_bytes(),
-            );
-        }
-    }
 
     // Depth contiguous wrappers
     pub(in crate::bytes) fn convert_u8_to_u16_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
@@ -776,18 +720,6 @@ mod experimental {
     }
     pub(in crate::bytes) fn convert_u16_to_u8_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
         convert_u16_to_u8_row_scalar(t, s, d);
-    }
-    pub(in crate::bytes) fn convert_u8_to_f32_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        convert_u8_to_f32_row_scalar(t, s, d);
-    }
-    pub(in crate::bytes) fn convert_f32_to_u8_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        convert_f32_to_u8_row_scalar(t, s, d);
-    }
-    pub(in crate::bytes) fn convert_u16_to_f32_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        convert_u16_to_f32_row_scalar(t, s, d);
-    }
-    pub(in crate::bytes) fn convert_f32_to_u16_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        convert_f32_to_u16_row_scalar(t, s, d);
     }
 
     // Depth strided wrappers
@@ -815,58 +747,6 @@ mod experimental {
     ) {
         for y in 0..h {
             convert_u16_to_u8_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w]);
-        }
-    }
-    pub(in crate::bytes) fn convert_u8_to_f32_strided_scalar(
-        t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-        w: usize,
-        h: usize,
-        ss: usize,
-        ds: usize,
-    ) {
-        for y in 0..h {
-            convert_u8_to_f32_row_scalar(t, &src[y * ss..][..w], &mut dst[y * ds..][..w * 4]);
-        }
-    }
-    pub(in crate::bytes) fn convert_f32_to_u8_strided_scalar(
-        t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-        w: usize,
-        h: usize,
-        ss: usize,
-        ds: usize,
-    ) {
-        for y in 0..h {
-            convert_f32_to_u8_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w]);
-        }
-    }
-    pub(in crate::bytes) fn convert_u16_to_f32_strided_scalar(
-        t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-        w: usize,
-        h: usize,
-        ss: usize,
-        ds: usize,
-    ) {
-        for y in 0..h {
-            convert_u16_to_f32_row_scalar(t, &src[y * ss..][..w * 2], &mut dst[y * ds..][..w * 4]);
-        }
-    }
-    pub(in crate::bytes) fn convert_f32_to_u16_strided_scalar(
-        t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-        w: usize,
-        h: usize,
-        ss: usize,
-        ds: usize,
-    ) {
-        for y in 0..h {
-            convert_f32_to_u16_row_scalar(t, &src[y * ss..][..w * 4], &mut dst[y * ds..][..w * 2]);
         }
     }
 
@@ -1096,159 +976,8 @@ mod experimental {
     luma_scalar_all!(bt2020, 67, 174, 15);
 
     // -----------------------------------------------------------------------
-    // f32 alpha premultiplication
-    // -----------------------------------------------------------------------
-
-    pub(in crate::bytes) fn premul_f32_row_scalar(_t: ScalarToken, buf: &mut [u8]) {
-        for px in buf.as_chunks_mut::<16>().0.iter_mut() {
-            let r = f32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
-            let g = f32::from_ne_bytes([px[4], px[5], px[6], px[7]]);
-            let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
-            let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
-            px[0..4].copy_from_slice(&(r * a).to_ne_bytes());
-            px[4..8].copy_from_slice(&(g * a).to_ne_bytes());
-            px[8..12].copy_from_slice(&(b * a).to_ne_bytes());
-        }
-    }
-    pub(in crate::bytes) fn premul_f32_copy_row_scalar(
-        _t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-    ) {
-        for (s, d) in src
-            .as_chunks::<16>()
-            .0
-            .iter()
-            .zip(dst.as_chunks_mut::<16>().0.iter_mut())
-        {
-            let r = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
-            let g = f32::from_ne_bytes([s[4], s[5], s[6], s[7]]);
-            let b = f32::from_ne_bytes([s[8], s[9], s[10], s[11]]);
-            let a = f32::from_ne_bytes([s[12], s[13], s[14], s[15]]);
-            d[0..4].copy_from_slice(&(r * a).to_ne_bytes());
-            d[4..8].copy_from_slice(&(g * a).to_ne_bytes());
-            d[8..12].copy_from_slice(&(b * a).to_ne_bytes());
-            d[12..16].copy_from_slice(&a.to_ne_bytes());
-        }
-    }
-    pub(in crate::bytes) fn unpremul_f32_row_scalar(_t: ScalarToken, buf: &mut [u8]) {
-        for px in buf.as_chunks_mut::<16>().0.iter_mut() {
-            let r = f32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
-            let g = f32::from_ne_bytes([px[4], px[5], px[6], px[7]]);
-            let b = f32::from_ne_bytes([px[8], px[9], px[10], px[11]]);
-            let a = f32::from_ne_bytes([px[12], px[13], px[14], px[15]]);
-            if a == 0.0 {
-                px[0..12].fill(0);
-            } else {
-                let inv_a = 1.0 / a;
-                px[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());
-                px[4..8].copy_from_slice(&(g * inv_a).to_ne_bytes());
-                px[8..12].copy_from_slice(&(b * inv_a).to_ne_bytes());
-            }
-        }
-    }
-    pub(in crate::bytes) fn unpremul_f32_copy_row_scalar(
-        _t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-    ) {
-        for (s, d) in src
-            .as_chunks::<16>()
-            .0
-            .iter()
-            .zip(dst.as_chunks_mut::<16>().0.iter_mut())
-        {
-            let r = f32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
-            let g = f32::from_ne_bytes([s[4], s[5], s[6], s[7]]);
-            let b = f32::from_ne_bytes([s[8], s[9], s[10], s[11]]);
-            let a = f32::from_ne_bytes([s[12], s[13], s[14], s[15]]);
-            if a == 0.0 {
-                d.fill(0);
-            } else {
-                let inv_a = 1.0 / a;
-                d[0..4].copy_from_slice(&(r * inv_a).to_ne_bytes());
-                d[4..8].copy_from_slice(&(g * inv_a).to_ne_bytes());
-                d[8..12].copy_from_slice(&(b * inv_a).to_ne_bytes());
-                d[12..16].copy_from_slice(&a.to_ne_bytes());
-            }
-        }
-    }
-
-    // Premul contiguous wrappers
-    pub(in crate::bytes) fn premul_f32_impl_scalar(t: ScalarToken, b: &mut [u8]) {
-        premul_f32_row_scalar(t, b);
-    }
-    pub(in crate::bytes) fn premul_f32_copy_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        premul_f32_copy_row_scalar(t, s, d);
-    }
-    pub(in crate::bytes) fn unpremul_f32_impl_scalar(t: ScalarToken, b: &mut [u8]) {
-        unpremul_f32_row_scalar(t, b);
-    }
-    pub(in crate::bytes) fn unpremul_f32_copy_impl_scalar(t: ScalarToken, s: &[u8], d: &mut [u8]) {
-        unpremul_f32_copy_row_scalar(t, s, d);
-    }
-
-    // Premul strided wrappers
-    pub(in crate::bytes) fn premul_f32_strided_scalar(
-        t: ScalarToken,
-        buf: &mut [u8],
-        w: usize,
-        h: usize,
-        stride: usize,
-    ) {
-        for y in 0..h {
-            premul_f32_row_scalar(t, &mut buf[y * stride..][..w * 16]);
-        }
-    }
-    pub(in crate::bytes) fn premul_f32_copy_strided_scalar(
-        t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-        w: usize,
-        h: usize,
-        ss: usize,
-        ds: usize,
-    ) {
-        for y in 0..h {
-            premul_f32_copy_row_scalar(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
-        }
-    }
-    pub(in crate::bytes) fn unpremul_f32_strided_scalar(
-        t: ScalarToken,
-        buf: &mut [u8],
-        w: usize,
-        h: usize,
-        stride: usize,
-    ) {
-        for y in 0..h {
-            unpremul_f32_row_scalar(t, &mut buf[y * stride..][..w * 16]);
-        }
-    }
-    pub(in crate::bytes) fn unpremul_f32_copy_strided_scalar(
-        t: ScalarToken,
-        src: &[u8],
-        dst: &mut [u8],
-        w: usize,
-        h: usize,
-        ss: usize,
-        ds: usize,
-    ) {
-        for y in 0..h {
-            unpremul_f32_copy_row_scalar(t, &src[y * ss..][..w * 16], &mut dst[y * ds..][..w * 16]);
-        }
-    }
-    // -----------------------------------------------------------------------
     // u8 alpha premultiplication (RGBA, alpha-last)
     // -----------------------------------------------------------------------
-    //
-    // Premultiply: c' = (c * a + 128 + ((c * a + 128) >> 8)) >> 8
-    //
-    // This is the exact integer formula for round(c * a / 255). The naive
-    // `(c * a + 127) / 255` is also exact but uses division; the shift-based
-    // form above is equivalent and faster. Proof: for all (c, a) in [0,255]²,
-    // both formulas produce the same result, which equals round(c * a / 255.0).
-    //
-    // Alpha channel is preserved unchanged.
 
     /// Fast exact div-by-255: round(x * a / 255).
     #[inline(always)]
@@ -1326,5 +1055,4 @@ mod experimental {
     }
 }
 
-#[cfg(feature = "experimental")]
-pub(super) use experimental::*;
+pub(super) use integer_depth_gray_luma::*;

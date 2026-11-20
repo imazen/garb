@@ -1,10 +1,10 @@
 [package]
 name = "garb"
-version = "0.2.9"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.89"
 authors = ["Lilith River <lilith@imazen.io>"]
-description = "Dress your pixels for the occasion — SIMD-optimized pixel format conversions"
+description = "Dress your pixels for the occasion — SIMD-optimized integer pixel format conversions"
 license = "MIT OR Apache-2.0"
 keywords = ["pixel", "swizzle", "bgra", "rgba", "simd"]
 categories = ["graphics", "multimedia::images", "no-std"]
@@ -13,6 +13,11 @@ readme = "README.crates.md"
 exclude = [
     ".github/",
     ".gitignore",
+    ".zenbench/",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "apidoc/",
     "benchmarks/",
     "tests/",
     "docs/",
@@ -20,14 +25,14 @@ exclude = [
 ]
 
 [dependencies]
-archmage = { version = ">=0.9.31-beta.2, <0.10.0", features = ["macros"] }
-bytemuck = { version = "1.25.2", features = ["derive", "extern_crate_alloc"] }
-paste = { package = "pastey", version = "0.2.3", optional = true }
+archmage = { version = "0.9.31", default-features = false, features = ["macros"] }
+paste = { package = "pastey", version = "0.2.3" }
+bytemuck = { version = "1.25.2", default-features = false, optional = true }
 rgb = { version = "0.8.53", features = ["bytemuck"], optional = true }
 imgref = { version = "1.12.3", optional = true }
 
 [dev-dependencies]
-archmage = { version = ">=0.9.31-beta.2, <0.10.0", features = ["testable_dispatch"] }
+archmage = { version = "0.9.31", default-features = false, features = ["std", "testable_dispatch"] }
 rgb = { version = "0.8.53", features = ["bytemuck"] }
 imgref = "1.12.3"
 criterion = { version = "0.8.2", default-features = false, features = ["plotters", "html_reports"] }
@@ -37,17 +42,12 @@ zenbench = "0.1.11"
 name = "swizzle"
 harness = false
 
-[[bench]]
-name = "deinterleave"
-harness = false
-required-features = ["experimental"]
-
 [features]
 default = ["std"]
 std = ["archmage/std"]
-experimental = ["dep:paste"]
-rgb = ["dep:rgb"]
-imgref = ["dep:imgref", "rgb"]
+experimental = []
+rgb = ["dep:rgb", "dep:bytemuck"]
+imgref = ["dep:imgref", "rgb", "bytemuck/extern_crate_alloc"]
 
 [[bench]]
 name = "kernel_tiers"
@@ -55,4 +55,3 @@ harness = false
 
 [[example]]
 name = "precision_policies"
-required-features = ["experimental"]

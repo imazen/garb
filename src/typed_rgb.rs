@@ -250,16 +250,11 @@ pub fn rgba_to_bgr_buf(src: &[Rgba<u8>], dst: &mut [Bgr<u8>]) -> Result<(), Size
 }
 
 // ===========================================================================
-// Experimental (feature = "experimental")
+// Gray layout and weighted luma conversions
 // ===========================================================================
 
-#[cfg(feature = "experimental")]
-mod experimental_typed {
+mod gray_typed {
     use super::*;
-
-    // -----------------------------------------------------------------------
-    // Trait impls for experimental conversions
-    // -----------------------------------------------------------------------
 
     impl_convert_to!(Gray<u8>, Rgb<u8>, crate::bytes::gray_to_rgb);
     impl_convert_to!(Gray<u8>, Bgr<u8>, crate::bytes::gray_to_bgr);
@@ -271,10 +266,6 @@ mod experimental_typed {
     impl_convert_to!(Rgba<u8>, Gray<u8>, crate::bytes::rgba_to_gray_identity);
     impl_convert_to!(Bgr<u8>, Gray<u8>, crate::bytes::bgr_to_gray_identity);
     impl_convert_to!(Bgra<u8>, Gray<u8>, crate::bytes::bgra_to_gray_identity);
-
-    // -----------------------------------------------------------------------
-    // Deprecated named functions
-    // -----------------------------------------------------------------------
 
     /// Use [`convert`](crate::convert) instead.
     #[deprecated(since = "0.2.1", note = "use garb::convert() instead")]
@@ -364,32 +355,28 @@ mod experimental_typed {
         crate::convert(src, dst)
     }
 
-    // -----------------------------------------------------------------------
-    // Weighted luma — these use specific matrices, not a single trait pair
-    // -----------------------------------------------------------------------
-
     macro_rules! luma_typed {
-    ($matrix:ident, $doc_matrix:expr) => {
-        paste::paste! {
-            #[doc = concat!("RGB → Gray using ", $doc_matrix, " luma weights.")]
-            pub fn [<rgb_to_gray_ $matrix _buf>](src: &[Rgb<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
-                crate::bytes::[<rgb_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+        ($matrix:ident, $doc_matrix:expr) => {
+            paste::paste! {
+                #[doc = concat!("RGB → Gray using ", $doc_matrix, " luma weights.")]
+                pub fn [<rgb_to_gray_ $matrix _buf>](src: &[Rgb<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+                    crate::bytes::[<rgb_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+                }
+                #[doc = concat!("BGR → Gray using ", $doc_matrix, " luma weights.")]
+                pub fn [<bgr_to_gray_ $matrix _buf>](src: &[Bgr<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+                    crate::bytes::[<bgr_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+                }
+                #[doc = concat!("RGBA → Gray using ", $doc_matrix, " luma weights.")]
+                pub fn [<rgba_to_gray_ $matrix _buf>](src: &[Rgba<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+                    crate::bytes::[<rgba_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+                }
+                #[doc = concat!("BGRA → Gray using ", $doc_matrix, " luma weights.")]
+                pub fn [<bgra_to_gray_ $matrix _buf>](src: &[Bgra<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
+                    crate::bytes::[<bgra_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
+                }
             }
-            #[doc = concat!("BGR → Gray using ", $doc_matrix, " luma weights.")]
-            pub fn [<bgr_to_gray_ $matrix _buf>](src: &[Bgr<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
-                crate::bytes::[<bgr_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
-            }
-            #[doc = concat!("RGBA → Gray using ", $doc_matrix, " luma weights.")]
-            pub fn [<rgba_to_gray_ $matrix _buf>](src: &[Rgba<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
-                crate::bytes::[<rgba_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
-            }
-            #[doc = concat!("BGRA → Gray using ", $doc_matrix, " luma weights.")]
-            pub fn [<bgra_to_gray_ $matrix _buf>](src: &[Bgra<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
-                crate::bytes::[<bgra_to_gray_ $matrix>](bytemuck::cast_slice(src), bytemuck::cast_slice_mut(dst))
-            }
-        }
-    };
-}
+        };
+    }
 
     luma_typed!(bt709, "BT.709");
     luma_typed!(bt601, "BT.601");
@@ -418,57 +405,8 @@ mod experimental_typed {
     pub fn bgra_to_gray_buf(src: &[Bgra<u8>], dst: &mut [Gray<u8>]) -> Result<(), SizeError> {
         bgra_to_gray_bt709_buf(src, dst)
     }
-
-    // -----------------------------------------------------------------------
-    // f32 alpha premultiplication (not convertible to trait pairs)
-    // -----------------------------------------------------------------------
-
-    /// Premultiply alpha for `&mut [Rgba<f32>]` in-place.
-    ///
-    /// Empty input is a no-op (no panic).
-    pub fn premultiply_rgba_f32(pixels: &mut [Rgba<f32>]) {
-        if pixels.is_empty() {
-            return;
-        }
-        let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-        crate::bytes::premultiply_alpha_f32(bytes).expect("typed slice is always valid");
-    }
-
-    /// Premultiply alpha, copying from `&[Rgba<f32>]` to `&mut [Rgba<f32>]`.
-    pub fn premultiply_rgba_f32_buf(
-        src: &[Rgba<f32>],
-        dst: &mut [Rgba<f32>],
-    ) -> Result<(), SizeError> {
-        crate::bytes::premultiply_alpha_f32_copy(
-            bytemuck::cast_slice(src),
-            bytemuck::cast_slice_mut(dst),
-        )
-    }
-
-    /// Unpremultiply alpha for `&mut [Rgba<f32>]` in-place.
-    ///
-    /// Empty input is a no-op (no panic).
-    pub fn unpremultiply_rgba_f32(pixels: &mut [Rgba<f32>]) {
-        if pixels.is_empty() {
-            return;
-        }
-        let bytes: &mut [u8] = bytemuck::cast_slice_mut(pixels);
-        crate::bytes::unpremultiply_alpha_f32(bytes).expect("typed slice is always valid");
-    }
-
-    /// Unpremultiply alpha, copying from `&[Rgba<f32>]` to `&mut [Rgba<f32>]`.
-    pub fn unpremultiply_rgba_f32_buf(
-        src: &[Rgba<f32>],
-        dst: &mut [Rgba<f32>],
-    ) -> Result<(), SizeError> {
-        crate::bytes::unpremultiply_alpha_f32_copy(
-            bytemuck::cast_slice(src),
-            bytemuck::cast_slice_mut(dst),
-        )
-    }
-} // mod experimental_typed
-#[cfg(feature = "experimental")]
-pub use experimental_typed::*;
+}
+pub use gray_typed::*;
 
 // ===========================================================================
 // Tests

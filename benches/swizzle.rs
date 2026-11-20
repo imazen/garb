@@ -349,24 +349,21 @@ fn bench_crossbpp_sweep(c: &mut Criterion) {
         enable_all_simd();
         g.finish();
 
-        #[cfg(feature = "experimental")]
-        {
-            // luma (rgba_to_gray_bt709) — arithmetic per pixel, unlike the swizzles
-            let mut g = c.benchmark_group(std::format!("sweep_rgba_to_gray/{label}"));
-            g.throughput(Throughput::Bytes((px * 4) as u64));
-            let src: Vec<u8> = (0..px * 4).map(|i| (i % 251) as u8).collect();
-            g.bench_function("simd", |b| {
-                let mut dst = vec![0u8; px];
-                b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
-            });
-            disable_all_simd();
-            g.bench_function("scalar", |b| {
-                let mut dst = vec![0u8; px];
-                b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
-            });
-            enable_all_simd();
-            g.finish();
-        }
+        // luma (rgba_to_gray_bt709) — arithmetic per pixel, unlike the swizzles
+        let mut g = c.benchmark_group(std::format!("sweep_rgba_to_gray/{label}"));
+        g.throughput(Throughput::Bytes((px * 4) as u64));
+        let src: Vec<u8> = (0..px * 4).map(|i| (i % 251) as u8).collect();
+        g.bench_function("simd", |b| {
+            let mut dst = vec![0u8; px];
+            b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
+        });
+        disable_all_simd();
+        g.bench_function("scalar", |b| {
+            let mut dst = vec![0u8; px];
+            b.iter(|| garb::bytes::rgba_to_gray_bt709(&src, &mut dst).unwrap());
+        });
+        enable_all_simd();
+        g.finish();
 
         // 3bpp copy+swap (rgb_to_bgr)
         let mut g = c.benchmark_group(std::format!("sweep_rgb_to_bgr/{label}"));
@@ -493,98 +490,14 @@ fn bench_fill_alpha(c: &mut Criterion) {
     group.finish();
 }
 
-// === Naive baselines for new operations ===
+// === Naive baselines for luma ===
 
-#[cfg(feature = "experimental")]
-fn naive_u8_to_f32(src: &[u8], dst: &mut [u8]) {
-    let dst_f: &mut [f32] = bytemuck::cast_slice_mut(dst);
-    for (s, d) in src.iter().zip(dst_f.iter_mut()) {
-        *d = *s as f32 / 255.0;
-    }
-}
-
-#[cfg(feature = "experimental")]
-fn naive_f32_to_u8(src: &[u8], dst: &mut [u8]) {
-    let src_f: &[f32] = bytemuck::cast_slice(src);
-    for (s, d) in src_f.iter().zip(dst.iter_mut()) {
-        *d = (s.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-    }
-}
-
-#[cfg(feature = "experimental")]
 fn naive_rgba_to_gray_bt709(src: &[u8], dst: &mut [u8]) {
     for (px, d) in src.as_chunks::<4>().0.iter().zip(dst.iter_mut()) {
         *d = ((px[0] as u16 * 54 + px[1] as u16 * 183 + px[2] as u16 * 19 + 128) >> 8) as u8;
     }
 }
 
-#[cfg(feature = "experimental")]
-fn naive_premul_f32(buf: &mut [u8]) {
-    let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
-    for px in floats.as_chunks_mut::<4>().0.iter_mut() {
-        let a = px[3];
-        px[0] *= a;
-        px[1] *= a;
-        px[2] *= a;
-    }
-}
-
-#[cfg(feature = "experimental")]
-fn naive_unpremul_f32(buf: &mut [u8]) {
-    let floats: &mut [f32] = bytemuck::cast_slice_mut(buf);
-    for px in floats.as_chunks_mut::<4>().0.iter_mut() {
-        let a = px[3];
-        if a == 0.0 {
-            px[0] = 0.0;
-            px[1] = 0.0;
-            px[2] = 0.0;
-        } else {
-            let inv = 1.0 / a;
-            px[0] *= inv;
-            px[1] *= inv;
-            px[2] *= inv;
-        }
-    }
-}
-
-// === New benchmark groups ===
-
-#[cfg(feature = "experimental")]
-fn bench_depth_u8_to_f32(c: &mut Criterion) {
-    let mut group = c.benchmark_group("depth_u8_to_f32");
-    let src_n = W * H * 4; // 4 channels
-    let dst_n = src_n * 4; // f32 is 4× bigger
-    group.throughput(Throughput::Bytes(src_n as u64));
-    let src: Vec<u8> = (0..src_n).map(|i| (i % 256) as u8).collect();
-    bench_copy(
-        &mut group,
-        garb::bytes::convert_u8_to_f32,
-        naive_u8_to_f32,
-        &src,
-        dst_n,
-    );
-    group.finish();
-}
-
-#[cfg(feature = "experimental")]
-fn bench_depth_f32_to_u8(c: &mut Criterion) {
-    let mut group = c.benchmark_group("depth_f32_to_u8");
-    let n = W * H * 4; // number of elements
-    let src_n = n * 4; // f32 bytes
-    group.throughput(Throughput::Bytes(src_n as u64));
-    let src_f: Vec<f32> = (0..n).map(|i| (i % 256) as f32 / 255.0).collect();
-    let src: Vec<u8> = bytemuck::cast_slice(&src_f).to_vec();
-    bench_copy(
-        &mut group,
-        garb::bytes::convert_f32_to_u8,
-        naive_f32_to_u8,
-        &src,
-        n,
-    );
-    group.finish();
-}
-
-#[cfg(feature = "experimental")]
 fn bench_rgba_to_gray_bt709(c: &mut Criterion) {
     let mut group = c.benchmark_group("rgba_to_gray_bt709");
     let src_n = W * H * 4;
@@ -597,47 +510,6 @@ fn bench_rgba_to_gray_bt709(c: &mut Criterion) {
         naive_rgba_to_gray_bt709,
         &src,
         dst_n,
-    );
-    group.finish();
-}
-
-#[cfg(feature = "experimental")]
-fn bench_premul_f32(c: &mut Criterion) {
-    let mut group = c.benchmark_group("premul_f32_inplace");
-    let n = W * H * 16; // 4 f32 per pixel
-    group.throughput(Throughput::Bytes(n as u64));
-    let buf: Vec<u8> = {
-        let floats: Vec<f32> = (0..W * H * 4).map(|i| (i % 256) as f32 / 255.0).collect();
-        bytemuck::cast_slice(&floats).to_vec()
-    };
-    bench_inplace(
-        &mut group,
-        garb::bytes::premultiply_alpha_f32,
-        naive_premul_f32,
-        &buf,
-    );
-    group.finish();
-}
-
-#[cfg(feature = "experimental")]
-fn bench_unpremul_f32(c: &mut Criterion) {
-    let mut group = c.benchmark_group("unpremul_f32_inplace");
-    let n = W * H * 16;
-    group.throughput(Throughput::Bytes(n as u64));
-    let buf: Vec<u8> = {
-        let floats: Vec<f32> = (0..W * H * 4)
-            .map(|i| {
-                let v = (i % 256) as f32 / 255.0;
-                if i % 4 == 3 { v.max(0.01) } else { v * 0.5 }
-            })
-            .collect();
-        bytemuck::cast_slice(&floats).to_vec()
-    };
-    bench_inplace(
-        &mut group,
-        garb::bytes::unpremultiply_alpha_f32,
-        naive_unpremul_f32,
-        &buf,
     );
     group.finish();
 }
@@ -854,13 +726,9 @@ fn main() {
     bench_fill_alpha(&mut criterion);
     bench_crossbpp_sweep(&mut criterion);
     bench_crossbpp_row_sweep(&mut criterion);
+    bench_rgba_to_gray_bt709(&mut criterion);
     #[cfg(feature = "experimental")]
     {
-        bench_depth_u8_to_f32(&mut criterion);
-        bench_depth_f32_to_u8(&mut criterion);
-        bench_rgba_to_gray_bt709(&mut criterion);
-        bench_premul_f32(&mut criterion);
-        bench_unpremul_f32(&mut criterion);
         bench_rgb565_to_rgba(&mut criterion);
         bench_rgba4444_to_rgba(&mut criterion);
     }

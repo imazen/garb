@@ -1,16 +1,14 @@
 # SIMD boundaries and outstanding work
 
-Observed 2026-11-05 against source baseline `7ab73292`; later `76abf370` prepares package version 0.2.9 without publishing it. Re-check branch and issue state before acting.
+Updated 2026-11-19 for `0.3.0` (`feat/0.3-integer-only`) from earlier 2026-11-05 inventory (`7ab73292`).
 
 ## API guidance
 
-Ordinary callers use the dispatched functions in `garb::bytes` or the bulk `garb::deinterleave` API. The experimental chunk functions already use arrays, not public archmage/magetypes types. No additive renaming or deprecation was needed here.
+`garb` 0.3.0 is strictly integer-only. All public entry points in `garb::bytes`, `garb::typed_rgb`, and `garb::imgref` take byte or typed integer slices — no `archmage` tokens or SIMD vector types appear in any public signature.
 
-`rgb24_chunk8_to_planes_tokenless_v3` accepts `&[u8; 24]`; the RGB48 counterpart accepts `&[u16; 24]`. Both return three `[f32; 8]` arrays. **Neither accepts a token.** On native x86, call inside a matching V3 feature function. A runtime CPU check alone does not establish the compiler context; put the call inside a feature function rather than adding an unsafe block. V3 requires `sse,sse2,sse3,ssse3,sse4.1,sse4.2,popcnt,cmpxchg16b,avx,avx2,fma,bmi1,bmi2,f16c,lzcnt,movbe` in the current archmage tier. Scalar chunk functions require no CPU feature context. Do not infer shipping NEON/WASM chunk APIs from historical naming comments.
+In `0.3.0`, floating-point depth conversions (`u8`/`u16` ↔ `f32`), `f32` alpha premultiply/unpremultiply, and `garb::deinterleave` were removed so floating-point policies (`DepthPolicy`, `FloatFacts`, transfer functions) live in `zenpixels-convert` on `magetypes`. Integer grayscale layout, weighted integer luma (`bt601`, `bt709`, `bt2020`), `u8 ↔ u16` depth conversion, and `u8` RGBA/BGRA premultiply were promoted out of `experimental` into core `garb::bytes`.
 
-Returned RGB24 values are widened `0..255`; RGB48 values are `0..65535`. Normalize before feeding a transfer function that expects normalized sRGB samples. With linear-srgb's proposed [array API](https://github.com/imazen/linear-srgb/pull/30), keep tokens and vector types internal to each dependency and exchange arrays in the surrounding feature function. That API is not in linear-srgb's crates.io 0.6.12 release. Never relabel integer code values as normalized or linear light.
-
-The chunk functions are `#[doc(hidden)]` experimental hooks. Preserve their current signatures; this documentation change does not promote them into a new stability promise. Inlining and register passing depend on the compiled caller: inspect assembly and benchmark before making a new cost claim.
+With floating-point kernels removed, soft-float targets such as `x86_64-unknown-none` compile cleanly without extra feature guards.
 
 ## Branch and PR inventory
 

@@ -37,9 +37,6 @@ beta-all-formats-check:
 precision-depth-check:
     cargo test --all-features --lib depth_u16_to_u8_nearest_exhaustive
 
-precision-float-check:
-    cargo test --all-features --lib depth_f32_nearest_at_every_quantization_boundary
-
 # Required release validation, without publishing.
 release-check:
     cargo test --all-targets --all-features

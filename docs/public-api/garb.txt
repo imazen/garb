@@ -6,22 +6,22 @@
 # impls omitted; re-export duplicates annotated `[also: path]`.
 # DO NOT EDIT BY HAND — commit regenerated changes with the code.
 #
-# files: garb.txt 116 lines (supported surface) | garb.features.txt 228 added (features: experimental,imgref,rgb,std) | garb.internal.txt 13 lines (14 hidden + 0 excluded-feature)
+# files: garb.txt 176 lines (supported surface) | garb.features.txt 123 added (features: experimental,imgref,rgb,std) | garb.internal.txt 1 lines (1 hidden + 0 excluded-feature)
 
 ## summary
 #
 #   pub modules                                 2
 #   pub types (struct/enum/trait/alias)         1
-#   free functions                            108
+#   free functions                            168
 #   enum variants                               3
 #   trait roster entries (type × trait)         7
 #   auto-trait-complete types                   1
 #
 # per-module pub lines:
 #   (root)                            6
-#   bytes                           108
+#   bytes                           168
 
-## items (114 lines)
+## items (174 lines)
 
 pub mod garb
 pub mod bytes
@@ -55,6 +55,15 @@ pub fn bytes::bgr_to_argb(&[u8], &mut [u8]) -> core::result::Result<(), SizeErro
 pub fn bytes::bgr_to_argb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::bgr_to_bgra(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::bgr_to_bgra_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt2020(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt2020_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt601(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt601_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt709(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_bt709_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_identity(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgr_to_gray_identity_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::bgr_to_rgb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::bgr_to_rgb_inplace(&mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::bgr_to_rgb_inplace_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
@@ -71,12 +80,25 @@ pub fn bytes::bgra_to_argb_inplace_strided(&mut [u8], usize, usize, usize) -> co
 pub fn bytes::bgra_to_argb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::bgra_to_bgr(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::bgra_to_bgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt2020(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt2020_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt601(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt601_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt709(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_bt709_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_identity(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::bgra_to_gray_identity_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::bgra_to_rgb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::bgra_to_rgb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::bgra_to_rgba(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::bgra_to_rgba_inplace(&mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::bgra_to_rgba_inplace_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::bgra_to_rgba_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u16_to_u8(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u16_to_u8_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u8_to_u16(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::convert_u8_to_u16_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::fill_alpha_abgr(&mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::fill_alpha_abgr_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::fill_alpha_argb(&mut [u8]) -> core::result::Result<(), SizeError>
@@ -93,18 +115,38 @@ pub fn bytes::gray_alpha_to_abgr(&[u8], &mut [u8]) -> core::result::Result<(), S
 pub fn bytes::gray_alpha_to_abgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_alpha_to_argb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_alpha_to_argb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_bgr(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_bgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_alpha_to_bgra(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_alpha_to_bgra_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_gray_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_rgb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_alpha_to_rgb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_alpha_to_rgba(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_alpha_to_rgba_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_to_abgr(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_to_abgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_to_argb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_to_argb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_bgr(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_bgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_to_bgra(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_to_bgra_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_gray_alpha(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_gray_alpha_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_rgb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::gray_to_rgb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_to_rgba(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::gray_to_rgba_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_bgra_u8(&mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_bgra_u8_copy(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_bgra_u8_copy_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_bgra_u8_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_u8(&mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_u8_copy(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_u8_copy_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::premultiply_alpha_rgba_u8_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::rgb_to_abgr(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::rgb_to_abgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::rgb_to_argb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
@@ -115,6 +157,15 @@ pub fn bytes::rgb_to_bgr_inplace_strided(&mut [u8], usize, usize, usize) -> core
 pub fn bytes::rgb_to_bgr_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::rgb_to_bgra(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::rgb_to_bgra_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt2020(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt2020_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt601(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt601_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt709(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_bt709_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_identity(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgb_to_gray_identity_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::rgb_to_rgba(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::rgb_to_rgba_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::rgba_to_abgr(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
@@ -131,6 +182,15 @@ pub fn bytes::rgba_to_bgra(&[u8], &mut [u8]) -> core::result::Result<(), SizeErr
 pub fn bytes::rgba_to_bgra_inplace(&mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::rgba_to_bgra_inplace_strided(&mut [u8], usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::rgba_to_bgra_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt2020(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt2020_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt601(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt601_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt709(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_bt709_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_identity(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
+pub fn bytes::rgba_to_gray_identity_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 pub fn bytes::rgba_to_rgb(&[u8], &mut [u8]) -> core::result::Result<(), SizeError>
 pub fn bytes::rgba_to_rgb_strided(&[u8], &mut [u8], usize, usize, usize, usize) -> core::result::Result<(), SizeError>
 #[non_exhaustive] pub enum SizeError
