@@ -20,8 +20,8 @@ exclude = [
 ]
 
 [dependencies]
-archmage = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "98e6e12da7e2212dda10ec2b81b80263a515ee03", default-features = false, features = ["macros"] }
-magetypes = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "98e6e12da7e2212dda10ec2b81b80263a515ee03", default-features = false, optional = true }
+archmage = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "35eb67f60a014a4706c40fbd1ad1306d138296f3", default-features = false, features = ["macros"] }
+magetypes = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "35eb67f60a014a4706c40fbd1ad1306d138296f3", default-features = false, optional = true }
 bytemuck = { version = "1.25.2", features = ["derive", "extern_crate_alloc"], optional = true }
 paste = { package = "pastey", version = "0.2.3", optional = true }
 rgb = { version = "0.8.53", features = ["bytemuck"], optional = true }
@@ -31,7 +31,7 @@ imgref = { version = "1.12.3", optional = true }
 bytemuck = { version = "1.25.2", features = ["derive", "extern_crate_alloc"] }
 
 [dev-dependencies]
-archmage = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "98e6e12da7e2212dda10ec2b81b80263a515ee03", default-features = false, features = ["std", "testable_dispatch"] }
+archmage = { version = "0.9.32", git = "https://github.com/imazen/archmage", rev = "35eb67f60a014a4706c40fbd1ad1306d138296f3", default-features = false, features = ["std", "testable_dispatch"] }
 rgb = { version = "0.8.53", features = ["bytemuck"] }
 imgref = "1.12.3"
 criterion = { version = "0.8.2", default-features = false, features = ["plotters", "html_reports"] }
@@ -63,5 +63,5 @@ required-features = ["experimental"]
 
 # Use the reviewed SIMD stack until 0.9.32 ships on crates.io.
 [patch.crates-io]
-archmage = { git = "https://github.com/imazen/archmage", rev = "98e6e12da7e2212dda10ec2b81b80263a515ee03" }
-magetypes = { git = "https://github.com/imazen/archmage", rev = "98e6e12da7e2212dda10ec2b81b80263a515ee03" }
+archmage = { git = "https://github.com/imazen/archmage", rev = "35eb67f60a014a4706c40fbd1ad1306d138296f3" }
+magetypes = { git = "https://github.com/imazen/archmage", rev = "35eb67f60a014a4706c40fbd1ad1306d138296f3" }
