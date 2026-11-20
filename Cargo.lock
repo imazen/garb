@@ -106,7 +106,8 @@ dependencies = [
 [[package]]
 name = "archmage"
 version = "0.9.32"
-source = "git+https://github.com/imazen/archmage?rev=303341570757936368fca1ee7254a19075cbff08#303341570757936368fca1ee7254a19075cbff08"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a92f0e72adfba3f34ee8726e42cffed7384571e95411265060c638ece0f00ff2"
 dependencies = [
  "archmage-macros",
  "safe_unaligned_simd",
@@ -116,7 +117,8 @@ dependencies = [
 [[package]]
 name = "archmage-macros"
 version = "0.9.32"
-source = "git+https://github.com/imazen/archmage?rev=303341570757936368fca1ee7254a19075cbff08#303341570757936368fca1ee7254a19075cbff08"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d4e76b4cdc9779ac80e4b04cbc6c15fdb5b714116a7047eea481fb2f45017d2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -528,7 +530,8 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 [[package]]
 name = "magetypes"
 version = "0.9.32"
-source = "git+https://github.com/imazen/archmage?rev=303341570757936368fca1ee7254a19075cbff08#303341570757936368fca1ee7254a19075cbff08"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a4bf97ae47bb9993221b6e00114dd4ef0920c11e72d39bc550d46ecd50c257c"
 dependencies = [
  "archmage",
  "rustversion",
