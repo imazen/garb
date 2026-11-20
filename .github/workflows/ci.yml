@@ -80,10 +80,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1, wasm32-unknown-unknown
-      - name: Install wasmtime
-        run: |
-          curl https://wasmtime.dev/install.sh -sSf | bash
-          echo "$HOME/.wasmtime/bin" >> "$GITHUB_PATH"
+      - uses: taiki-e/install-action@wasmtime
       - uses: Swatinem/rust-cache@v2
       - name: Check wasm32-unknown-unknown (no SIMD)
         run: cargo check --target wasm32-unknown-unknown --no-default-features
