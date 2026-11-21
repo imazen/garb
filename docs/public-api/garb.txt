@@ -6,7 +6,7 @@
 # impls omitted; re-export duplicates annotated `[also: path]`.
 # DO NOT EDIT BY HAND — commit regenerated changes with the code.
 #
-# files: garb.txt 116 lines (supported surface) | garb.features.txt 228 added (features: experimental,imgref,rgb,std) | garb.internal.txt 13 lines (14 hidden + 0 excluded-feature)
+# files: garb.txt 116 lines (supported surface) | garb.features.txt 228 added (features: experimental,imgref,rgb,std) | garb.internal.txt 13 lines (13 hidden + 0 excluded-feature)
 
 ## summary
 #

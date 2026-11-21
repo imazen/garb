@@ -14,6 +14,7 @@ Prepared package version: **0.2.9**. Publication awaits README approval and rele
 
 ### Added
 
+- Versioned `examples/downstream_codegen.rs`, `benchmarks/codegen_vs_028_2026-11-21.md`, and `just asm-{v3,v4,neon,wasm128,wasm128-relaxed,all}` recipes (`cargo-show-asm` under full LTO) to audit 5-tier SIMD assembly across all downstream-exercised `garb::bytes` functions.
 - WASM SIMD128 depth conversion, packed RGB-to-planar, and f32 RGBA alpha kernels.
 
 ### Fixed
@@ -31,6 +32,7 @@ Prepared package version: **0.2.9**. Publication awaits README approval and rele
 
 ### Changed
 
+- Eliminate in-loop bounds checks and `<8`-pixel vector tail bloat in `src/bytes/avx2.rs` (`gray_alpha_to_rgba` 2.02× faster in L2 at `157 GiB/s` via 4× AVX2 unrolling; `-16` to `-114` instructions across `rgba_to_bgra`, `rgba_to_bgra_inplace`, `argb_to_rgba`, `rgba_to_argb_inplace`, `rgb_to_argb`, and `fill_alpha_rgba` via branchless masked tails).
 - Upgrade `archmage` and `magetypes` to published crates.io `0.9.32` (removing git patches) and exclude repo-local metadata (`CLAUDE.md`, `AGENTS.md`, `README.md`, `apidoc/`, `.zenbench/`) from published crate archives.
 - Switch float depth conversion to the same f32 reciprocal multiply and nearest-even quantization on every tier. Integer normalization stays within 1 ULP of division. Quantization can change by one code at half-code boundaries; NaN still maps to zero.
 

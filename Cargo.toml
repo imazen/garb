@@ -62,3 +62,6 @@ harness = false
 [[example]]
 name = "precision_policies"
 required-features = ["experimental"]
+
+[[example]]
+name = "downstream_codegen"

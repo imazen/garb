@@ -128,19 +128,20 @@ const GA_EXPAND_ALPHA_FIRST_MASK_AVX: [i8; 32] = [
 #[rite]
 pub(super) fn swap_br_row_v3(_token: X64V3Token, row: &mut [u8]) {
     let mask = _mm256_loadu_si256(&BR_SHUF_MASK_AVX);
-    let n = row.len();
-    let mut i = 0;
-    while i + 32 <= n {
-        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
-        let v = _mm256_loadu_si256(arr);
+    let (chunks, rem) = row.as_chunks_mut::<32>();
+    for chunk in chunks {
+        let v = _mm256_loadu_si256(chunk);
         let shuffled = _mm256_shuffle_epi8(v, mask);
-        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
-        _mm256_storeu_si256(out, shuffled);
-        i += 32;
+        _mm256_storeu_si256(chunk, shuffled);
     }
-    for px in row[i..].as_chunks_mut::<4>().0 {
-        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
-        px.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
+    let rem_px = rem.as_chunks_mut::<4>().0;
+    #[expect(
+        clippy::needless_range_loop,
+        reason = "index counter exposes <8 bound to ScalarEvolution for branchless masked tail"
+    )]
+    for j in 0..rem_px.len() {
+        let v = u32::from_ne_bytes(rem_px[j]);
+        rem_px[j] = swap_br_u32(v).to_ne_bytes();
     }
 }
 
@@ -148,42 +149,38 @@ pub(super) fn swap_br_row_v3(_token: X64V3Token, row: &mut [u8]) {
 pub(super) fn copy_swap_br_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
     let mask = _mm256_loadu_si256(&BR_SHUF_MASK_AVX);
     let n = src.len().min(dst.len());
-    let mut i = 0;
-    while i + 32 <= n {
-        let s: &[u8; 32] = src[i..i + 32].try_into().unwrap();
+    let (s_chunks, s_rem) = src[..n].as_chunks::<32>();
+    let (d_chunks, d_rem) = dst[..n].as_chunks_mut::<32>();
+    for (s, d) in s_chunks.iter().zip(d_chunks.iter_mut()) {
         let v = _mm256_loadu_si256(s);
         let shuffled = _mm256_shuffle_epi8(v, mask);
-        let d: &mut [u8; 32] = (&mut dst[i..i + 32]).try_into().unwrap();
         _mm256_storeu_si256(d, shuffled);
-        i += 32;
     }
-    for (s, d) in src[i..]
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
-    {
-        let v = u32::from_ne_bytes([s[0], s[1], s[2], s[3]]);
-        d.copy_from_slice(&swap_br_u32(v).to_ne_bytes());
+    let s_px = s_rem.as_chunks::<4>().0;
+    let d_px = d_rem.as_chunks_mut::<4>().0;
+    for (s, d) in s_px.iter().zip(d_px.iter_mut()) {
+        let v = u32::from_ne_bytes(*s);
+        *d = swap_br_u32(v).to_ne_bytes();
     }
 }
 
 #[rite]
 pub(super) fn fill_alpha_row_v3(_token: X64V3Token, row: &mut [u8]) {
     let alpha = _mm256_loadu_si256(&ALPHA_FF_MASK_AVX);
-    let n = row.len();
-    let mut i = 0;
-    while i + 32 <= n {
-        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
-        let v = _mm256_loadu_si256(arr);
+    let (chunks, rem) = row.as_chunks_mut::<32>();
+    for chunk in chunks {
+        let v = _mm256_loadu_si256(chunk);
         let result = _mm256_or_si256(v, alpha);
-        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
-        _mm256_storeu_si256(out, result);
-        i += 32;
+        _mm256_storeu_si256(chunk, result);
     }
-    for px in row[i..].as_chunks_mut::<4>().0 {
-        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
-        px.copy_from_slice(&(v | 0xFF00_0000).to_ne_bytes());
+    let rem_px = rem.as_chunks_mut::<4>().0;
+    #[expect(
+        clippy::needless_range_loop,
+        reason = "index counter exposes <8 bound to ScalarEvolution for branchless masked tail"
+    )]
+    for j in 0..rem_px.len() {
+        let v = u32::from_ne_bytes(rem_px[j]);
+        rem_px[j] = (v | 0xFF00_0000).to_ne_bytes();
     }
 }
 
@@ -253,50 +250,43 @@ pub(super) fn rgb_to_rgba_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
 pub(super) fn gray_to_4bpp_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
     let expand = _mm256_loadu_si256(&GRAY_EXPAND_MASK_AVX);
     let alpha = _mm256_loadu_si256(&ALPHA_FF_MASK_AVX);
-    let (slen, dlen) = (src.len(), dst.len());
-    let (mut is, mut id) = (0, 0);
-    while is + 8 <= slen && id + 32 <= dlen {
-        let gray8 = u64::from_ne_bytes(src[is..is + 8].try_into().unwrap());
+    let npx = src.len().min(dst.len() / 4);
+    let (s_chunks, s_rem) = src[..npx].as_chunks::<8>();
+    let (d_chunks, d_rem) = dst[..npx * 4].as_chunks_mut::<32>();
+    for (s, d) in s_chunks.iter().zip(d_chunks.iter_mut()) {
+        let gray8 = u64::from_ne_bytes(*s);
         let grays = _mm256_set1_epi64x(gray8 as i64);
         let expanded = _mm256_shuffle_epi8(grays, expand);
         let bgra = _mm256_or_si256(expanded, alpha);
-        let d: &mut [u8; 32] = (&mut dst[id..id + 32]).try_into().unwrap();
         _mm256_storeu_si256(d, bgra);
-        is += 8;
-        id += 32;
     }
-    for (&v, d) in src[is..]
-        .iter()
-        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
-    {
+    for (&v, d) in s_rem.iter().zip(d_rem.as_chunks_mut::<4>().0.iter_mut()) {
         let g = v as u32;
-        d.copy_from_slice(&(g | (g << 8) | (g << 16) | 0xFF00_0000).to_ne_bytes());
+        *d = (g | (g << 8) | (g << 16) | 0xFF00_0000).to_ne_bytes();
     }
 }
 
 #[rite]
 pub(super) fn gray_alpha_to_4bpp_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
     let expand = _mm256_loadu_si256(&GA_EXPAND_MASK_AVX);
-    let (slen, dlen) = (src.len(), dst.len());
-    let (mut is, mut id) = (0, 0);
-    while is + 16 <= slen && id + 32 <= dlen {
-        let lo = u64::from_ne_bytes(src[is..is + 8].try_into().unwrap());
-        let hi = u64::from_ne_bytes(src[is + 8..is + 16].try_into().unwrap());
+    let npx = (src.len() / 2).min(dst.len() / 4);
+    let (s_chunks, s_rem) = src[..npx * 2].as_chunks::<16>();
+    let (d_chunks, d_rem) = dst[..npx * 4].as_chunks_mut::<32>();
+    for (s, d) in s_chunks.iter().zip(d_chunks.iter_mut()) {
+        let lo = u64::from_ne_bytes([s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]]);
+        let hi = u64::from_ne_bytes([s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15]]);
         let gas = _mm256_set_epi64x(hi as i64, lo as i64, hi as i64, lo as i64);
         let bgra = _mm256_shuffle_epi8(gas, expand);
-        let d: &mut [u8; 32] = (&mut dst[id..id + 32]).try_into().unwrap();
         _mm256_storeu_si256(d, bgra);
-        is += 16;
-        id += 32;
     }
-    for (ga, d) in src[is..]
+    for (ga, d) in s_rem
         .as_chunks::<2>()
         .0
         .iter()
-        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+        .zip(d_rem.as_chunks_mut::<4>().0.iter_mut())
     {
         let g = ga[0] as u32;
-        d.copy_from_slice(&(g | (g << 8) | (g << 16) | ((ga[1] as u32) << 24)).to_ne_bytes());
+        *d = (g | (g << 8) | (g << 16) | ((ga[1] as u32) << 24)).to_ne_bytes();
     }
 }
 
@@ -414,22 +404,19 @@ pub(super) fn bgra_to_rgb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
 #[rite]
 pub(super) fn rotate_left_row_v3(_token: X64V3Token, row: &mut [u8]) {
     let mask = _mm256_loadu_si256(&ROTATE_LEFT_SHUF_AVX);
-    let n = row.len();
-    let mut i = 0;
-    while i + 32 <= n {
-        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
-        let v = _mm256_loadu_si256(arr);
+    let (chunks, rem) = row.as_chunks_mut::<32>();
+    for chunk in chunks {
+        let v = _mm256_loadu_si256(chunk);
         let shuffled = _mm256_shuffle_epi8(v, mask);
-        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
-        _mm256_storeu_si256(out, shuffled);
-        i += 32;
+        _mm256_storeu_si256(chunk, shuffled);
     }
-    for px in row[i..].as_chunks_mut::<4>().0 {
-        let a = px[0];
-        px[0] = px[1];
-        px[1] = px[2];
-        px[2] = px[3];
-        px[3] = a;
+    let rem_px = rem.as_chunks_mut::<4>().0;
+    #[expect(
+        clippy::needless_range_loop,
+        reason = "index counter exposes <8 bound to ScalarEvolution for branchless masked tail"
+    )]
+    for j in 0..rem_px.len() {
+        rem_px[j] = u32::from_le_bytes(rem_px[j]).rotate_right(8).to_le_bytes();
     }
 }
 
@@ -437,47 +424,36 @@ pub(super) fn rotate_left_row_v3(_token: X64V3Token, row: &mut [u8]) {
 pub(super) fn copy_rotate_left_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
     let mask = _mm256_loadu_si256(&ROTATE_LEFT_SHUF_AVX);
     let n = src.len().min(dst.len());
-    let mut i = 0;
-    while i + 32 <= n {
-        let s: &[u8; 32] = src[i..i + 32].try_into().unwrap();
+    let (s_chunks, s_rem) = src[..n].as_chunks::<32>();
+    let (d_chunks, d_rem) = dst[..n].as_chunks_mut::<32>();
+    for (s, d) in s_chunks.iter().zip(d_chunks.iter_mut()) {
         let v = _mm256_loadu_si256(s);
         let shuffled = _mm256_shuffle_epi8(v, mask);
-        let d: &mut [u8; 32] = (&mut dst[i..i + 32]).try_into().unwrap();
         _mm256_storeu_si256(d, shuffled);
-        i += 32;
     }
-    for (s, d) in src[i..]
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
-    {
-        d[0] = s[1];
-        d[1] = s[2];
-        d[2] = s[3];
-        d[3] = s[0];
+    let s_px = s_rem.as_chunks::<4>().0;
+    let d_px = d_rem.as_chunks_mut::<4>().0;
+    for (s, d) in s_px.iter().zip(d_px.iter_mut()) {
+        *d = u32::from_le_bytes(*s).rotate_right(8).to_le_bytes();
     }
 }
 
 #[rite]
 pub(super) fn rotate_right_row_v3(_token: X64V3Token, row: &mut [u8]) {
     let mask = _mm256_loadu_si256(&ROTATE_RIGHT_SHUF_AVX);
-    let n = row.len();
-    let mut i = 0;
-    while i + 32 <= n {
-        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
-        let v = _mm256_loadu_si256(arr);
+    let (chunks, rem) = row.as_chunks_mut::<32>();
+    for chunk in chunks {
+        let v = _mm256_loadu_si256(chunk);
         let shuffled = _mm256_shuffle_epi8(v, mask);
-        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
-        _mm256_storeu_si256(out, shuffled);
-        i += 32;
+        _mm256_storeu_si256(chunk, shuffled);
     }
-    for px in row[i..].as_chunks_mut::<4>().0 {
-        let d = px[3];
-        px[3] = px[2];
-        px[2] = px[1];
-        px[1] = px[0];
-        px[0] = d;
+    let rem_px = rem.as_chunks_mut::<4>().0;
+    #[expect(
+        clippy::needless_range_loop,
+        reason = "index counter exposes <8 bound to ScalarEvolution for branchless masked tail"
+    )]
+    for j in 0..rem_px.len() {
+        rem_px[j] = u32::from_le_bytes(rem_px[j]).rotate_left(8).to_le_bytes();
     }
 }
 
@@ -485,44 +461,36 @@ pub(super) fn rotate_right_row_v3(_token: X64V3Token, row: &mut [u8]) {
 pub(super) fn copy_rotate_right_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
     let mask = _mm256_loadu_si256(&ROTATE_RIGHT_SHUF_AVX);
     let n = src.len().min(dst.len());
-    let mut i = 0;
-    while i + 32 <= n {
-        let s: &[u8; 32] = src[i..i + 32].try_into().unwrap();
+    let (s_chunks, s_rem) = src[..n].as_chunks::<32>();
+    let (d_chunks, d_rem) = dst[..n].as_chunks_mut::<32>();
+    for (s, d) in s_chunks.iter().zip(d_chunks.iter_mut()) {
         let v = _mm256_loadu_si256(s);
         let shuffled = _mm256_shuffle_epi8(v, mask);
-        let d: &mut [u8; 32] = (&mut dst[i..i + 32]).try_into().unwrap();
         _mm256_storeu_si256(d, shuffled);
-        i += 32;
     }
-    for (s, d) in src[i..]
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
-    {
-        d[0] = s[3];
-        d[1] = s[0];
-        d[2] = s[1];
-        d[3] = s[2];
+    let s_px = s_rem.as_chunks::<4>().0;
+    let d_px = d_rem.as_chunks_mut::<4>().0;
+    for (s, d) in s_px.iter().zip(d_px.iter_mut()) {
+        *d = u32::from_le_bytes(*s).rotate_left(8).to_le_bytes();
     }
 }
 
 #[rite]
 pub(super) fn reverse_4bpp_row_v3(_token: X64V3Token, row: &mut [u8]) {
     let mask = _mm256_loadu_si256(&REVERSE_4BPP_SHUF_AVX);
-    let n = row.len();
-    let mut i = 0;
-    while i + 32 <= n {
-        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
-        let v = _mm256_loadu_si256(arr);
+    let (chunks, rem) = row.as_chunks_mut::<32>();
+    for chunk in chunks {
+        let v = _mm256_loadu_si256(chunk);
         let shuffled = _mm256_shuffle_epi8(v, mask);
-        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
-        _mm256_storeu_si256(out, shuffled);
-        i += 32;
+        _mm256_storeu_si256(chunk, shuffled);
     }
-    for px in row[i..].as_chunks_mut::<4>().0 {
-        let v = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
-        px.copy_from_slice(&v.swap_bytes().to_ne_bytes());
+    let rem_px = rem.as_chunks_mut::<4>().0;
+    #[expect(
+        clippy::needless_range_loop,
+        reason = "index counter exposes <8 bound to ScalarEvolution for branchless masked tail"
+    )]
+    for j in 0..rem_px.len() {
+        rem_px[j] = u32::from_ne_bytes(rem_px[j]).swap_bytes().to_ne_bytes();
     }
 }
 
@@ -530,43 +498,36 @@ pub(super) fn reverse_4bpp_row_v3(_token: X64V3Token, row: &mut [u8]) {
 pub(super) fn copy_reverse_4bpp_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
     let mask = _mm256_loadu_si256(&REVERSE_4BPP_SHUF_AVX);
     let n = src.len().min(dst.len());
-    let mut i = 0;
-    while i + 32 <= n {
-        let s: &[u8; 32] = src[i..i + 32].try_into().unwrap();
+    let (s_chunks, s_rem) = src[..n].as_chunks::<32>();
+    let (d_chunks, d_rem) = dst[..n].as_chunks_mut::<32>();
+    for (s, d) in s_chunks.iter().zip(d_chunks.iter_mut()) {
         let v = _mm256_loadu_si256(s);
         let shuffled = _mm256_shuffle_epi8(v, mask);
-        let d: &mut [u8; 32] = (&mut dst[i..i + 32]).try_into().unwrap();
         _mm256_storeu_si256(d, shuffled);
-        i += 32;
     }
-    for (s, d) in src[i..]
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(dst[i..].as_chunks_mut::<4>().0.iter_mut())
-    {
-        d[0] = s[3];
-        d[1] = s[2];
-        d[2] = s[1];
-        d[3] = s[0];
+    let s_px = s_rem.as_chunks::<4>().0;
+    let d_px = d_rem.as_chunks_mut::<4>().0;
+    for (s, d) in s_px.iter().zip(d_px.iter_mut()) {
+        *d = u32::from_ne_bytes(*s).swap_bytes().to_ne_bytes();
     }
 }
 
 #[rite]
 pub(super) fn fill_alpha_first_row_v3(_token: X64V3Token, row: &mut [u8]) {
     let alpha = _mm256_loadu_si256(&ALPHA_FIRST_MASK_AVX);
-    let n = row.len();
-    let mut i = 0;
-    while i + 32 <= n {
-        let arr: &[u8; 32] = row[i..i + 32].try_into().unwrap();
-        let v = _mm256_loadu_si256(arr);
+    let (chunks, rem) = row.as_chunks_mut::<32>();
+    for chunk in chunks {
+        let v = _mm256_loadu_si256(chunk);
         let result = _mm256_or_si256(v, alpha);
-        let out: &mut [u8; 32] = (&mut row[i..i + 32]).try_into().unwrap();
-        _mm256_storeu_si256(out, result);
-        i += 32;
+        _mm256_storeu_si256(chunk, result);
     }
-    for px in row[i..].as_chunks_mut::<4>().0 {
-        px[0] = 0xFF;
+    let rem_px = rem.as_chunks_mut::<4>().0;
+    #[expect(
+        clippy::needless_range_loop,
+        reason = "index counter exposes <8 bound to ScalarEvolution for branchless masked tail"
+    )]
+    for j in 0..rem_px.len() {
+        rem_px[j][0] = 0xFF;
     }
 }
 
@@ -594,10 +555,8 @@ pub(super) fn rgb_to_argb_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
         .iter()
         .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
     {
-        d[0] = 0xFF;
-        d[1] = s[0];
-        d[2] = s[1];
-        d[3] = s[2];
+        *d = (0xFFu32 | ((s[0] as u32) << 8) | ((s[1] as u32) << 16) | ((s[2] as u32) << 24))
+            .to_le_bytes();
     }
 }
 
@@ -625,10 +584,8 @@ pub(super) fn rgb_to_abgr_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
         .iter()
         .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
     {
-        d[0] = 0xFF;
-        d[1] = s[2];
-        d[2] = s[1];
-        d[3] = s[0];
+        *d = (0xFFu32 | ((s[2] as u32) << 8) | ((s[1] as u32) << 16) | ((s[0] as u32) << 24))
+            .to_le_bytes();
     }
 }
 
@@ -694,26 +651,19 @@ pub(super) fn argb_to_bgr_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8])
 pub(super) fn gray_to_4bpp_alpha_first_row_v3(_token: X64V3Token, src: &[u8], dst: &mut [u8]) {
     let expand = _mm256_loadu_si256(&GRAY_EXPAND_ALPHA_FIRST_MASK_AVX);
     let alpha = _mm256_loadu_si256(&ALPHA_FIRST_MASK_AVX);
-    let (slen, dlen) = (src.len(), dst.len());
-    let (mut is, mut id) = (0, 0);
-    while is + 8 <= slen && id + 32 <= dlen {
-        let gray8 = u64::from_ne_bytes(src[is..is + 8].try_into().unwrap());
+    let npx = src.len().min(dst.len() / 4);
+    let (s_chunks, s_rem) = src[..npx].as_chunks::<8>();
+    let (d_chunks, d_rem) = dst[..npx * 4].as_chunks_mut::<32>();
+    for (s, d) in s_chunks.iter().zip(d_chunks.iter_mut()) {
+        let gray8 = u64::from_ne_bytes(*s);
         let grays = _mm256_set1_epi64x(gray8 as i64);
         let expanded = _mm256_shuffle_epi8(grays, expand);
         let argb = _mm256_or_si256(expanded, alpha);
-        let d: &mut [u8; 32] = (&mut dst[id..id + 32]).try_into().unwrap();
         _mm256_storeu_si256(d, argb);
-        is += 8;
-        id += 32;
     }
-    for (&v, d) in src[is..]
-        .iter()
-        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
-    {
-        d[0] = 0xFF;
-        d[1] = v;
-        d[2] = v;
-        d[3] = v;
+    for (&v, d) in s_rem.iter().zip(d_rem.as_chunks_mut::<4>().0.iter_mut()) {
+        let g = v as u32;
+        *d = (0xFFu32 | (g << 8) | (g << 16) | (g << 24)).to_le_bytes();
     }
 }
 
@@ -724,28 +674,24 @@ pub(super) fn gray_alpha_to_4bpp_alpha_first_row_v3(
     dst: &mut [u8],
 ) {
     let expand = _mm256_loadu_si256(&GA_EXPAND_ALPHA_FIRST_MASK_AVX);
-    let (slen, dlen) = (src.len(), dst.len());
-    let (mut is, mut id) = (0, 0);
-    while is + 16 <= slen && id + 32 <= dlen {
-        let lo = u64::from_ne_bytes(src[is..is + 8].try_into().unwrap());
-        let hi = u64::from_ne_bytes(src[is + 8..is + 16].try_into().unwrap());
+    let npx = (src.len() / 2).min(dst.len() / 4);
+    let (s_chunks, s_rem) = src[..npx * 2].as_chunks::<16>();
+    let (d_chunks, d_rem) = dst[..npx * 4].as_chunks_mut::<32>();
+    for (s, d) in s_chunks.iter().zip(d_chunks.iter_mut()) {
+        let lo = u64::from_ne_bytes([s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]]);
+        let hi = u64::from_ne_bytes([s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15]]);
         let gas = _mm256_set_epi64x(hi as i64, lo as i64, hi as i64, lo as i64);
         let argb = _mm256_shuffle_epi8(gas, expand);
-        let d: &mut [u8; 32] = (&mut dst[id..id + 32]).try_into().unwrap();
         _mm256_storeu_si256(d, argb);
-        is += 16;
-        id += 32;
     }
-    for (ga, d) in src[is..]
+    for (ga, d) in s_rem
         .as_chunks::<2>()
         .0
         .iter()
-        .zip(dst[id..].as_chunks_mut::<4>().0.iter_mut())
+        .zip(d_rem.as_chunks_mut::<4>().0.iter_mut())
     {
-        d[0] = ga[1];
-        d[1] = ga[0];
-        d[2] = ga[0];
-        d[3] = ga[0];
+        let g = ga[0] as u32;
+        *d = ((ga[1] as u32) | (g << 8) | (g << 16) | (g << 24)).to_le_bytes();
     }
 }
 
